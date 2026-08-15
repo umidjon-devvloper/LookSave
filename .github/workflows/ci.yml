@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+
+      - run: npm ci
+
+      - name: Format
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test --workspace=apps/api
+
+  # Migratsiyalar haqiqiy PostGIS'da qo'llanadimi — har PR'da tekshiriladi.
+  # Sxema xatosi productionga yetib bormasin.
+  migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4-alpine
+        env:
+          POSTGRES_DB: looksave
+          POSTGRES_USER: looksave
+          POSTGRES_PASSWORD: looksave
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U looksave -d looksave"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Migratsiyalar
+        env:
+          PGPASSWORD: looksave
+        run: |
+          for f in infra/migrations/*.sql; do
+            echo "→ $(basename "$f")"
+            psql -h 127.0.0.1 -U looksave -d looksave -v ON_ERROR_STOP=1 \
+              --single-transaction -q -f "$f"
+          done
+
+      - name: Smoke test (sxema + triggerlar)
+        env:
+          PGPASSWORD: looksave
+        run: |
+          psql -h 127.0.0.1 -U looksave -d looksave -v ON_ERROR_STOP=1 \
+            -f infra/tests/smoke.sql | tee /tmp/smoke.out
+          if grep -q "XATO" /tmp/smoke.out; then
+            echo "❌ Smoke testda xato"
+            exit 1
+          fi
+
+  # Haqiqiy PostGIS va Redis bilan uchidan-uchiga oqimlar.
+  # Birlik testlari sxemalarni tekshiradi, bu esa SQL, tranzaksiya va
+  # triggerlarni — xatolar odatda o'sha yerda chiqadi.
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4-alpine
+        env:
+          POSTGRES_DB: looksave
+          POSTGRES_USER: looksave
+          POSTGRES_PASSWORD: looksave
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U looksave -d looksave"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+
+      - run: npm ci
+
+      - name: Integratsion testlar
+        env:
+          TEST_DATABASE_URL: postgres://looksave:looksave@127.0.0.1:5432/looksave_it
+          TEST_REDIS_URL: redis://127.0.0.1:6379
+        run: npm run test:integration --workspace=apps/api

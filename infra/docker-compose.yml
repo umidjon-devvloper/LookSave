@@ -1,0 +1,127 @@
+# LookSave — production stack (bitta VPS, K-02)
+# Ishlatish:  cd infra && cp .env.example .env && chmod 600 .env && docker compose up -d
+# Hujjat:     docs/08-deployment.md §4
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: looksave-caddy
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp' # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./data/caddy/data:/data
+      - ./data/caddy/config:/config
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:-admin@looksave.app}
+      API_DOMAIN: ${API_DOMAIN:-api.looksave.app}
+    depends_on:
+      - api
+    networks: [web]
+    logging:
+      driver: json-file
+      options: { max-size: '20m', max-file: '5' }
+
+  api:
+    image: ghcr.io/${GH_OWNER}/looksave-api:${API_TAG:-latest}
+    container_name: looksave-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgres://looksave:${POSTGRES_PASSWORD}@postgres:5432/looksave
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: ${API_MEM_LIMIT:-2G}
+    networks: [web, internal]
+    logging:
+      driver: json-file
+      options: { max-size: '20m', max-file: '5' }
+
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: looksave-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: looksave
+      POSTGRES_USER: looksave
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD .env da to`ldirilishi shart}
+      # Buyurtma raqami va sana formatlari uchun
+      POSTGRES_INITDB_ARGS: '--locale=C.UTF-8 --encoding=UTF8'
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U looksave -d looksave']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Standart qiymatlar 8 GB RAM (Hetzner CPX31, Faza 1) uchun.
+    # 16 GB ga o'tganda .env da: PG_SHARED_BUFFERS=2GB, PG_EFFECTIVE_CACHE=6GB, PG_MEM_LIMIT=6G
+    command: >
+      postgres
+      -c shared_buffers=${PG_SHARED_BUFFERS:-1GB}
+      -c effective_cache_size=${PG_EFFECTIVE_CACHE:-3GB}
+      -c work_mem=${PG_WORK_MEM:-32MB}
+      -c maintenance_work_mem=${PG_MAINTENANCE_WORK_MEM:-512MB}
+      -c max_connections=${PG_MAX_CONNECTIONS:-100}
+      -c random_page_cost=1.1
+      -c shared_preload_libraries=pg_stat_statements
+      -c log_min_duration_statement=500
+      -c timezone=UTC
+    deploy:
+      resources:
+        limits:
+          memory: ${PG_MEM_LIMIT:-3G}
+    networks: [internal]
+    logging:
+      driver: json-file
+      options: { max-size: '20m', max-file: '5' }
+
+  redis:
+    image: redis:7-alpine
+    container_name: looksave-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory ${REDIS_MAXMEMORY:-512mb}
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [internal]
+    logging:
+      driver: json-file
+      options: { max-size: '20m', max-file: '5' }
+
+networks:
+  web:
+  internal:
+    internal: true # baza va Redis internetga umuman chiqmaydi

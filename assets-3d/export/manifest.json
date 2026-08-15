@@ -1,0 +1,155 @@
+{
+  "version": "v1",
+  "bodies": [
+    "male",
+    "female"
+  ],
+  "garments": [
+    {
+      "key": "tshirt-white",
+      "file": "tshirt-white-v1.glb",
+      "slot": "top",
+      "title": "Oddiy futbolka",
+      "colorName": "Oq",
+      "colorHex": "#F2F2F5",
+      "hideBodyParts": [
+        "body_torso"
+      ],
+      "hasMorphs": true
+    },
+    {
+      "key": "tshirt-black",
+      "file": "tshirt-black-v1.glb",
+      "slot": "top",
+      "title": "Oddiy futbolka",
+      "colorName": "Qora",
+      "colorHex": "#1C1A22",
+      "hideBodyParts": [
+        "body_torso"
+      ],
+      "hasMorphs": true
+    },
+    {
+      "key": "tshirt-violet",
+      "file": "tshirt-violet-v1.glb",
+      "slot": "top",
+      "title": "Oddiy futbolka",
+      "colorName": "Binafsha",
+      "colorHex": "#8B5CF6",
+      "hideBodyParts": [
+        "body_torso"
+      ],
+      "hasMorphs": true
+    },
+    {
+      "key": "jacket-denim",
+      "file": "jacket-denim-v1.glb",
+      "slot": "outer",
+      "title": "Jinsi kurtka",
+      "colorName": "Ko'k",
+      "colorHex": "#3B5A8C",
+      "hideBodyParts": [
+        "body_torso",
+        "body_upperArm_L",
+        "body_upperArm_R",
+        "body_forearm_L",
+        "body_forearm_R"
+      ],
+      "hasMorphs": true
+    },
+    {
+      "key": "pants-graphite",
+      "file": "pants-graphite-v1.glb",
+      "slot": "bottom",
+      "title": "Klassik shim",
+      "colorName": "Grafit",
+      "colorHex": "#3A3746",
+      "hideBodyParts": [
+        "body_thigh_L",
+        "body_thigh_R",
+        "body_calf_L",
+        "body_calf_R"
+      ],
+      "hasMorphs": true
+    },
+    {
+      "key": "pants-beige",
+      "file": "pants-beige-v1.glb",
+      "slot": "bottom",
+      "title": "Chino shim",
+      "colorName": "Bej",
+      "colorHex": "#C8B79A",
+      "hideBodyParts": [
+        "body_thigh_L",
+        "body_thigh_R",
+        "body_calf_L",
+        "body_calf_R"
+      ],
+      "hasMorphs": true
+    },
+    {
+      "key": "sneakers-white",
+      "file": "sneakers-white-v1.glb",
+      "slot": "feet",
+      "title": "Krossovka",
+      "colorName": "Oq",
+      "colorHex": "#EDEDF2",
+      "hideBodyParts": [
+        "body_foot_L",
+        "body_foot_R"
+      ],
+      "hasMorphs": true
+    },
+    {
+      "key": "sneakers-black",
+      "file": "sneakers-black-v1.glb",
+      "slot": "feet",
+      "title": "Krossovka",
+      "colorName": "Qora",
+      "colorHex": "#201D28",
+      "hideBodyParts": [
+        "body_foot_L",
+        "body_foot_R"
+      ],
+      "hasMorphs": true
+    },
+    {
+      "key": "cap-black",
+      "file": "cap-black-v1.glb",
+      "slot": "head",
+      "title": "Kepka",
+      "colorName": "Qora",
+      "colorHex": "#1C1A22",
+      "hideBodyParts": [],
+      "hasMorphs": true
+    },
+    {
+      "key": "cap-violet",
+      "file": "cap-violet-v1.glb",
+      "slot": "head",
+      "title": "Kepka",
+      "colorName": "Binafsha",
+      "colorHex": "#8B5CF6",
+      "hideBodyParts": [],
+      "hasMorphs": true
+    }
+  ],
+  "animations": [
+    {
+      "name": "idle",
+      "file": "anim/idle-v1.glb"
+    },
+    {
+      "name": "turn",
+      "file": "anim/turn-v1.glb"
+    },
+    {
+      "name": "walk",
+      "file": "anim/walk-v1.glb"
+    },
+    {
+      "name": "sit",
+      "file": "anim/sit-v1.glb"
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+# Dependencies
+node_modules/
+.npm/
+.pnp.*
+
+# Build artefaktlari
+dist/
+build/
+.output/
+*.tsbuildinfo
+
+# Environment — hech qachon commit qilinmaydi
+.env
+.env.*
+!.env.example
+
+# Loglar
+*.log
+npm-debug.log*
+logs/
+
+# Expo / React Native
+.expo/
+.expo-shared/
+apps/mobile/ios/
+apps/mobile/android/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Vite / web panellar
+apps/*/dist/
+.vite/
+
+# Test va coverage
+coverage/
+.nyc_output/
+
+# IDE va OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.DS_Store
+Thumbs.db
+
+# Cache
+.eslintcache
+.cache/
+.turbo/
+
+# 3D ish fayllari (manba .blend git-lfs orqali, backup fayllar yo'q)
+*.blend1
+*.blend2
+assets-3d/**/tmp/
+
+# Ma'lumotlar bazasi dump/backup
+*.dump
+*.sql.gz
+backups/
+
+# Infra — volume ma`lumotlari va sirlar
+infra/data/
+infra/.env
+
+# API lokal muhit
+apps/api/.env
+
+# Python (blender_scripts)
+__pycache__/
+*.pyc

@@ -1,0 +1,49 @@
+{
+  "name": "looksave",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LookSave — AI fashion marketplace (geo-discovery + 3D try-on + marketplace)",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20.11 <23"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "npm run test --workspaces --if-present",
+    "check": "npm run format:check && npm run lint && npm run typecheck"
+  },
+  "comments": {
+    "optionalDependencies": [
+      "Rollup o'z platforma binarlarini optionalDependencies orqali tarqatadi,",
+      "npm esa lock faylga faqat lock YARATILGAN platformaning binarini yozadi",
+      "(npm/cli#4828). Bu lock Linux'da yaratilgan — shuning uchun macOS'da",
+      "`Cannot find module @rollup/rollup-darwin-arm64` xatosi chiqadi.",
+      "Yechim: kerakli platformalarni ochiq e'lon qilish. optional bo'lgani uchun",
+      "npm har bir muhitda faqat mos keladiganini o'rnatadi, qolganini o'tkazib",
+      "yuboradi. Versiya rollup versiyasiga (4.62.4) TENG bo'lishi shart."
+    ]
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-darwin-arm64": "4.62.4",
+    "@rollup/rollup-darwin-x64": "4.62.4",
+    "@rollup/rollup-linux-x64-gnu": "4.62.4",
+    "@rollup/rollup-linux-x64-musl": "4.62.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^22.10.2",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
+    "tsx": "^4.23.12",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.1"
+  }
+}

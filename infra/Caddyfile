@@ -1,0 +1,51 @@
+# LookSave — Caddy (TLS avtomatik, reverse proxy)
+# Hujjat: docs/08-deployment.md §5
+#
+# Panellar bu yerda YO'Q — ular Cloudflare Pages'da (K-02 izohi).
+# VPS faqat API bilan shug'ullanadi.
+{
+	email {$ACME_EMAIL}
+}
+
+# ── Eslatma ──
+# api.looksave.app DNS'da Cloudflare "proxied" (to'q sariq bulut) qilinsa,
+# Caddy'ga barcha so'rov Cloudflare IP'sidan keladi va rate limiting buziladi.
+# U holda bu yerga `servers { trusted_proxies static <CF IP ro'yxati> }` qo'shiladi.
+# Ro'yxat vaqti-vaqti bilan o'zgaradi (https://www.cloudflare.com/ips/), shuning uchun
+# tavsiya: api domeni "DNS only" (kulrang bulut) tursin — TLS'ni Caddy o'zi hal qiladi.
+
+{$API_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	request_body {
+		max_size 12MB
+	}
+
+	# Health tekshiruvi log'ni to'ldirmasin (UptimeRobot har 5 daqiqada uradi)
+	@health path /health
+	log_skip @health
+
+	reverse_proxy api:3000 {
+		# SSE uchun buferlash o'chiriladi (docs/07-web-panels.md §4.4).
+		# Bu bo'lmasa do'kon paneli yangi buyurtmani real vaqtda ko'rmaydi.
+		# SSE ulanishi soatlab ochiq turadi. Caddy'da standart holatda
+		# read timeout yo'q — atayin qo'shilmaydi, aks holda ulanish uziladi.
+		flush_interval -1
+	}
+
+	log {
+		output file /data/access.log {
+			roll_size 50MB
+			roll_keep 5
+		}
+		format json
+	}
+}

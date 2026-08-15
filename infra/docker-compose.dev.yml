@@ -1,0 +1,51 @@
+# Lokal ishlab chiqish — faqat Postgres + Redis, portlar localhost'ga ochiq.
+# API va panellar lokal mashinada `npm run dev` bilan ishlaydi, Docker'da emas.
+#
+#   cd infra && docker compose -f docker-compose.dev.yml up -d
+#   DATABASE_URL=postgres://looksave:looksave@localhost:5432/looksave
+#
+# Bu fayl productionga aloqasi yo'q. Parol qattiq yozilgan — atayin, bu lokal baza.
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: looksave-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: looksave
+      POSTGRES_USER: looksave
+      POSTGRES_PASSWORD: looksave
+      POSTGRES_INITDB_ARGS: '--locale=C.UTF-8 --encoding=UTF8'
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - looksave-dev-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U looksave -d looksave']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_stat_statements
+      -c log_min_duration_statement=200
+      -c timezone=UTC
+
+  redis:
+    image: redis:7-alpine
+    container_name: looksave-redis-dev
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - '127.0.0.1:6379:6379'
+    volumes:
+      - looksave-dev-redis:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  looksave-dev-postgres:
+  looksave-dev-redis:

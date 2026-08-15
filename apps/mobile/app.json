@@ -1,0 +1,66 @@
+{
+  "expo": {
+    "name": "LookSave",
+    "slug": "looksave",
+    "scheme": "looksave",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "backgroundColor": "#0A0A0F",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "bundleIdentifier": "com.umidjon.umidjon",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Avatar yaratish uchun kameraga ruxsat kerak",
+        "NSLocationWhenInUseUsageDescription": "Yaqin atrofdagi do'konlarni ko'rsatish uchun",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.umidjon.umidjon",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logo-mark.png",
+        "backgroundColor": "#0A0A0F"
+      },
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-localization",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Avatar uchun yuzingizni skanerlash — rasm faqat sizning profilingizga saqlanadi"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#8B5CF6",
+          "defaultChannel": "orders"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Yaqin atrofdagi do'konlarni ko'rsatish uchun joylashuvingiz kerak"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "apiUrl": null
+    },
+    "icon": "./assets/logo.png",
+    "splash": {
+      "image": "./assets/logo-mark.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0A0F"
+    }
+  }
+}

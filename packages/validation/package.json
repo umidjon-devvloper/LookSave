@@ -1,0 +1,26 @@
+{
+  "name": "@looksave/validation",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Zod sxemalari — mobil ilova va server bir xil qoidalarni ishlatadi (00-README §6)",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@looksave/shared-types": "*",
+    "libphonenumber-js": "^1.11.17",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,0 +1,53 @@
+name: Build panels
+
+# Panellar Cloudflare Pages'ga deploy qilinadi (K-02). Pages o'zi
+# repodagi o'zgarishni ko'rib build qiladi, shuning uchun bu workflow
+# faqat TEKSHIRADI: build buzilgan bo'lsa Pages'gacha bormasin.
+#
+# Cloudflare Pages sozlamalari (har panel uchun alohida proyekt):
+#   Build command:      npm ci && npm run build --workspace=apps/store-panel
+#   Build output:       apps/store-panel/dist
+#   Root directory:     /
+on:
+  pull_request:
+    paths:
+      - 'apps/store-panel/**'
+      - 'apps/admin-panel/**'
+      - 'packages/**'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/store-panel/**'
+      - 'apps/admin-panel/**'
+      - 'packages/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        panel: [store-panel, admin-panel]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+
+      - run: npm ci
+
+      # Sof mantiq testlari (store-panel/src/lib). Skript yo'q bo'lsa
+      # `--if-present` jim o'tkazib yuboradi.
+      - run: npm run test --if-present --workspace=apps/${{ matrix.panel }}
+
+      - run: npm run build --workspace=apps/${{ matrix.panel }}
+        env:
+          # Kalit yo'q bo'lsa build baribir o'tadi — panel xaritasiz
+          # ishlaydi. Haqiqiy kalit Cloudflare Pages sozlamalarida.
+          VITE_GOOGLE_MAPS_KEY: ${{ secrets.VITE_GOOGLE_MAPS_KEY }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.panel }}
+          path: apps/${{ matrix.panel }}/dist
+          retention-days: 7
