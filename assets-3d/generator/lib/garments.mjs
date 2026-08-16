@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 
+import { loft, verticalRings } from './loft.mjs';
+import { LIMB_RADIUS, shellKeys, SHAPE, torsoKeys } from './profiles.mjs';
 import { addMorphTargets, attachMorphNames, boxAt, capsuleBetween, ellipsoidAt } from './shape.mjs';
 
 /**
@@ -34,16 +36,15 @@ function part(name, geometry, material) {
   return attachMorphNames(mesh);
 }
 
-/** Ustki kiyim gavdasi — futbolka va kurtka uchun umumiy */
-function torsoShell(at, { extra, top, bottom }) {
-  const geometry = capsuleBetween(
-    [0, at('Hips').y + bottom, 0],
-    [0, at('Spine2').y + top, 0],
-    0.148 + CLEARANCE + extra,
-    20,
-  );
-  geometry.scale(1, 1, 0.74);
-  return geometry;
+/**
+ * Ustki kiyim gavdasi — TANA PROFILIDAN quriladi (`profiles.mjs`).
+ *
+ * Ilgari bu yerda o'z raqamlari bor edi va tana kengaygач kiyim unga
+ * botib qolgan edi. Endi bitta manba: tana o'zgarsa kiyim ham o'zgaradi.
+ */
+function torsoShell({ from, to, extra }) {
+  const keys = shellKeys(torsoKeys(SHAPE.male), { from, to, extra: CLEARANCE + extra });
+  return loft(verticalRings(keys, 3), { radialSegments: 22 });
 }
 
 /** Yeng — yelkadan berilgan nuqtagacha */
@@ -59,14 +60,19 @@ const BUILDERS = {
     const material = fabric(color);
     const group = new THREE.Group();
 
-    group.add(part('tshirt_body', torsoShell(at, { extra: 0.01, top: 0.05, bottom: 0.02 }), material));
+    group.add(part('tshirt_body', torsoShell({ from: 1.0, to: 1.43, extra: 0.008 }), material));
 
     for (const side of [1, -1]) {
       const arm = at(side > 0 ? 'LeftArm' : 'RightArm');
       const fore = at(side > 0 ? 'LeftForeArm' : 'RightForeArm');
       // Qisqa yeng — yelkadan bilakning 45% igacha
       const end = arm.clone().lerp(fore, 0.45);
-      const geometry = capsuleBetween(arm.toArray(), end.toArray(), 0.049 + CLEARANCE + 0.008, 12);
+      const geometry = capsuleBetween(
+        arm.toArray(),
+        end.toArray(),
+        LIMB_RADIUS.deltoid + CLEARANCE + 0.006,
+        12,
+      );
       group.add(part(side > 0 ? 'tshirt_sleeve_L' : 'tshirt_sleeve_R', geometry, material));
     }
 
@@ -78,10 +84,13 @@ const BUILDERS = {
     const material = fabric(color, 0.72);
     const group = new THREE.Group();
 
-    group.add(part('jacket_body', torsoShell(at, { extra: 0.026, top: 0.06, bottom: -0.04 }), material));
+    group.add(part('jacket_body', torsoShell({ from: 0.92, to: 1.44, extra: 0.024 }), material));
 
     for (const side of [1, -1]) {
-      const geometry = sleeve(at, side, { toBone: 'Hand', radius: 0.049 + CLEARANCE + 0.018 });
+      const geometry = sleeve(at, side, {
+        toBone: 'Hand',
+        radius: LIMB_RADIUS.deltoid + CLEARANCE + 0.016,
+      });
       group.add(part(side > 0 ? 'jacket_sleeve_L' : 'jacket_sleeve_R', geometry, material));
     }
 
@@ -93,23 +102,27 @@ const BUILDERS = {
     const material = fabric(color, 0.9);
     const group = new THREE.Group();
 
-    // Bel qismi
-    const hips = at('Hips');
-    const waist = capsuleBetween([0, hips.y - 0.07, 0], [0, hips.y + 0.06, 0], 0.15 + CLEARANCE, 18);
-    waist.scale(1, 1, 0.8);
-    group.add(part('pants_waist', waist, material));
+    // Bel qismi — tana profilining chanoq bo'lagi
+    group.add(
+      part('pants_waist', torsoShell({ from: 0.83, to: 1.05, extra: CLEARANCE * 0.5 }), material),
+    );
 
     for (const side of [1, -1]) {
       const up = at(side > 0 ? 'LeftUpLeg' : 'RightUpLeg');
       const knee = at(side > 0 ? 'LeftLeg' : 'RightLeg');
       const ankle = at(side > 0 ? 'LeftFoot' : 'RightFoot');
 
-      const thigh = capsuleBetween(up.toArray(), knee.toArray(), 0.077 + CLEARANCE + 0.012, 12);
+      const thigh = capsuleBetween(
+        up.toArray(),
+        knee.toArray(),
+        LIMB_RADIUS.thigh + CLEARANCE + 0.008,
+        14,
+      );
       const calf = capsuleBetween(
         knee.toArray(),
         [ankle.x, ankle.y + 0.03, ankle.z],
-        0.059 + CLEARANCE + 0.01,
-        12,
+        LIMB_RADIUS.calf + CLEARANCE + 0.006,
+        14,
       );
 
       group.add(part(side > 0 ? 'pants_thigh_L' : 'pants_thigh_R', thigh, material));

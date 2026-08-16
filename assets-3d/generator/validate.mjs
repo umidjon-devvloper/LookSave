@@ -209,6 +209,91 @@ for (const animation of manifest.animations ?? []) {
   console.log(`  ${animation.file}: ${bound} trek bog'landi`);
 }
 
+// ── Kiyim tanaga botib qolmaganmi ──
+/**
+ * NEGA BU TEKSHIRUV: kiyim tanadan ichkarida qolsa, model YUKLANADI va
+ * xato bermaydi — tana kiyim ichidan chiqib turadi (Z-fighting). Buni
+ * faqat ko'z bilan sezish mumkin, shuning uchun raqam bilan tekshiramiz:
+ * kiyim sirti har bir balandlikda tanadan tashqarida bo'lishi shart.
+ */
+function radiusProfile(root, include, step = 0.02) {
+  const byLevel = new Map();
+
+  root.traverse((child) => {
+    if (!child.isMesh || !include(child.name)) return;
+    const position = child.geometry.attributes.position;
+    const targets = child.geometry.morphAttributes.position ?? [];
+    const relative = child.geometry.morphTargetsRelative;
+
+    for (let i = 0; i < position.count; i++) {
+      let x = position.getX(i);
+      let y = position.getY(i);
+      let z = position.getZ(i);
+
+      // Neytral holat (0.5) — ilova aynan shuni ko'rsatadi
+      for (const target of targets) {
+        const dx = relative ? target.getX(i) : target.getX(i) - position.getX(i);
+        const dy = relative ? target.getY(i) : target.getY(i) - position.getY(i);
+        const dz = relative ? target.getZ(i) : target.getZ(i) - position.getZ(i);
+        x += 0.5 * dx;
+        y += 0.5 * dy;
+        z += 0.5 * dz;
+      }
+
+      const level = Math.round(y / step);
+      const radius = Math.hypot(x, z);
+      if (radius > (byLevel.get(level) ?? 0)) byLevel.set(level, radius);
+    }
+  });
+
+  return byLevel;
+}
+
+/*
+ * ⚠️ FAQAT GAVDA. Birinchi urinishda butun tana bilan solishtirilgan edi
+ * va tekshiruv yolg'on ogohlantirish berdi: y≈1.0 da eng chetdagi nuqta —
+ * pastga osilgan QO'L, futbolka esa uni qoplashi shart emas.
+ *
+ * Qo'l va oyoq yenglari bu yerda tekshirilmaydi: ular Y o'qidan uzoqda
+ * turadi, shuning uchun o'z o'qiga nisbatan o'lchash kerak bo'ladi.
+ * Ular hozircha ko'z bilan tekshiriladi.
+ */
+const bodyRadius = radiusProfile(bodyGltf.scene, (name) => name === 'body_torso');
+
+for (const garment of manifest.garments) {
+  // Faqat gavdaga kiyiladiganlar — poyabzal va kepka tana o'qidan uzoqda
+  if (!['top', 'outer', 'bottom'].includes(garment.slot)) continue;
+
+  const gltf = await load(garment.file);
+  // Kiyimning gavda qismi — yeng va shtanina emas
+  const garmentRadius = radiusProfile(gltf.scene, (name) =>
+    /_(body|waist)$/.test(name),
+  );
+
+  let tightest = Infinity;
+  let tightestY = 0;
+
+  for (const [level, radius] of garmentRadius) {
+    const body = bodyRadius.get(level);
+    if (body === undefined) continue;
+
+    const gap = radius - body;
+    if (gap < tightest) {
+      tightest = gap;
+      tightestY = level * 0.02;
+    }
+  }
+
+  if (tightest === Infinity) continue;
+
+  const mm = (tightest * 1000).toFixed(0);
+  if (tightest < 0) {
+    fail(garment.file, `tanaga botgan: y=${tightestY.toFixed(2)} da ${mm} mm`);
+  } else {
+    console.log(`  ${garment.file}: eng tor joyi y=${tightestY.toFixed(2)} da ${mm} mm`);
+  }
+}
+
 console.log('');
 if (problems.length > 0) {
   console.error(`❌ ${problems.length} ta muammo:`);

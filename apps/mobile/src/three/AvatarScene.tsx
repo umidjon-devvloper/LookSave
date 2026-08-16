@@ -148,6 +148,23 @@ function Avatar({
           if (slot) child.userData['slot'] = slot;
         });
 
+        /*
+         * Muvaffaqiyatli yuklanganda ham yozamiz. Sababi: model yuklanib,
+         * lekin EKRANDA KO'RINMASLIGI mumkin (skinning, kadr, material).
+         * Log bo'lmasa "yuklanmadi" bilan "yuklandi-yu chizilmadi" ni
+         * ajratib bo'lmaydi — ikkalasi ham bo'sh ekran bo'lib ko'rinadi.
+         */
+        let meshes = 0;
+        let bones = 0;
+        scene.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) meshes++;
+          if ((child as THREE.Bone).isBone) bones++;
+        });
+        // `warn` — loyiha qoidasi bo'yicha `console.log` taqiqlangan
+        console.warn(
+          `[avatar] ${isPlaceholder ? 'NAMUNA' : 'haqiqiy model'}: ${meshes} mesh, ${bones} suyak`,
+        );
+
         breathing.current = isPlaceholder;
         setBody(scene);
         if (isPlaceholder) onPlaceholder();

@@ -8,7 +8,32 @@ modellashtirishga o'tish.
 ```bash
 node assets-3d/generator/build.mjs      # modellarni yasaydi → export/
 node assets-3d/generator/validate.mjs   # qaytadan yuklab tekshiradi
+node assets-3d/generator/measure.mjs    # proporsiya va aylanalarni o'lchaydi
+node assets-3d/generator/publish.mjs    # R2 + bazaga (--apply bilan bajaradi)
 ```
+
+## Shaklni qanday o'zgartirish
+
+Geometriya kodiga tegish shart emas — hammasi `lib/profiles.mjs` dagi
+raqamlar bilan boshqariladi:
+
+```js
+[1.24, 0.175 * chest, 0.135, -0.004],  // ko'krak: balandlik, yon, chuqurlik, siljish
+```
+
+O'zgartirgandan keyin **albatta** `measure.mjs` ni yuriting. U ikki narsani
+ko'rsatadi:
+
+1. **Nisbatlar** — bosh soni, yelka/bo'y, oyoq/bo'y va h.k. Mezonlar
+   jinsga bog'liq: erkak mezonini ayolga qo'llash figurani buzadi.
+2. **Aylanalar santimetrda** — ko'krak/bel/son. Bu eng muhimi:
+   `apps/mobile/src/sizing.ts` razmerni AYLANAdan hisoblaydi. Birinchi
+   urinishda ko'krak 84 sm chiqqan — ya'ni avatar o'zi tavsiya qiladigan
+   XS dan ham kichik edi. Hozir erkak 98 sm (M), ayol 93 sm (S).
+
+Kiyim ham SHU profildan quriladi (`shellKeys`), shuning uchun tana
+kengaysa kiyim ham kengayadi. `validate.mjs` kiyim tanaga botmaganini
+raqam bilan tekshiradi.
 
 ## Nima yasaladi
 
@@ -29,7 +54,7 @@ Hammasi hujjatdagi byudjetdan ancha past (04-3d-pipeline §0: ~2-2.5 MB).
 
 Bu modellar Blender ishini **almashtirmaydi**. Ular:
 
-- **stilizatsiya qilingan maneken** — skan emas, teri/soch/yuz yo'q
+- **stilizatsiya qilingan base mesh** — skan emas, teri/soch/yuz qirralari yo'q
 - **teksturasiz** — faqat bir tusli material, normal map yo'q
 - **qattiq bog'langan** — har tana qismi bitta suyakka to'liq og'irlik bilan.
   Bo'g'imlarda teri cho'zilmaydi. Qismlar alohida mesh bo'lgani uchun
@@ -80,11 +105,16 @@ qabul qiladi, shuning uchun keyin animatsiya qo'shishga xalaqit bermaydi.
 ```
 generator/
 ├── build.mjs           # kirish nuqtasi
-├── validate.mjs        # yasalganini qaytadan yuklab tekshiradi
+├── validate.mjs        # tuzilma, animatsiya va kiyim o'lchamini tekshiradi
+├── measure.mjs         # proporsiya va aylana o'lchovi
+├── publish.mjs         # R2 ga yuklaydi va bazaga ulaydi
 └── lib/
     ├── glb.mjs         # GLTFExporter + Node uchun FileReader polifill
     ├── skeleton.mjs    # Mixamo suyaklari va socket'lar
-    ├── shape.mjs       # geometriya yasash, 6 shape key, teri bog'lash
+    ├── loft.mjs        # kesimlardan sirt qurish
+    ├── profiles.mjs    # ⭐ tana o'lchamlari — tana ham, kiyim ham shundan
+    ├── shape.mjs       # 6 shape key, teri bog'lash
     ├── body.mjs        # 15 ta tana qismi
-    └── garments.mjs    # kiyimlar katalogi
+    ├── garments.mjs    # kiyimlar katalogi
+    └── animations.mjs  # idle / turn / walk / sit
 ```

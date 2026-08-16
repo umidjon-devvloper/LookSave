@@ -80,11 +80,15 @@ async function doRefresh(): Promise<boolean> {
   if (!refreshToken) return false;
 
   try {
-    const response = await fetch(`${apiUrl()}/v1/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
-    });
+    // Ilova ochilishida chaqiriladi — muddatsiz qolsa splash abadiy kutadi
+    const response = await withTimeout((signal) =>
+      fetch(`${apiUrl()}/v1/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+        signal,
+      }),
+    );
 
     if (!response.ok) {
       await clearTokens();
@@ -118,6 +122,32 @@ export interface RequestOptions {
   retried?: boolean;
 }
 
+/**
+ * Har bir so'rovga muddat.
+ *
+ * NEGA KERAK: `fetch` o'zi hech qachon to'xtamaydi. Server javob bermasa
+ * (masalan Wi-Fi almashgan va eski IP hali "bor"dek ko'rinsa), so'rov
+ * cheksiz osilib qoladi. Ilova ochilishida bu ayniqsa yomon: `restore()`
+ * tugamaydi, `status` `loading` da qoladi va SPLASH ABADIY KUTADI —
+ * tashqaridan "ilova qotib qoldi" bo'lib ko'rinadi, sababi esa hech qayerda
+ * yozilmaydi.
+ *
+ * 15 soniya — mobil tarmoqda sekin javob bilan haqiqiy uzilishni ajratish
+ * uchun yetarli chegara.
+ */
+const REQUEST_TIMEOUT_MS = 15_000;
+
+async function withTimeout(run: (signal: AbortSignal) => Promise<Response>): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    return await run(controller.signal);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body } = options;
 
@@ -128,11 +158,14 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
 
   let response: Response;
   try {
-    response = await fetch(`${apiUrl()}/v1${path}`, {
-      method,
-      headers,
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    });
+    response = await withTimeout((signal) =>
+      fetch(`${apiUrl()}/v1${path}`, {
+        method,
+        headers,
+        signal,
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      }),
+    );
   } catch {
     throw new ApiError('NETWORK', 'Internetga ulanib bo`lmadi', 0);
   }
@@ -163,7 +196,9 @@ export async function apiList<T>(
   const headers: Record<string, string> = { 'Accept-Language': language };
   if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
 
-  const response = await fetch(`${apiUrl()}/v1${path}`, { headers });
+  const response = await withTimeout((signal) =>
+    fetch(`${apiUrl()}/v1${path}`, { headers, signal }),
+  );
   const payload = (await response.json()) as ApiSuccess<T[]> | ApiFailure;
 
   if ('error' in payload) {

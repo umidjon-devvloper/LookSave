@@ -1,14 +1,9 @@
 import * as THREE from 'three';
 
+import { limb, loft, verticalRings } from './loft.mjs';
 import { bonePosition, buildSkeleton } from './skeleton.mjs';
-import {
-  addMorphTargets,
-  attachMorphNames,
-  bindToBone,
-  boxAt,
-  capsuleBetween,
-  ellipsoidAt,
-} from './shape.mjs';
+import { headKeys, SHAPE, torsoKeys } from './profiles.mjs';
+import { addMorphTargets, attachMorphNames, bindToBone } from './shape.mjs';
 
 /**
  * Avatar tanasi (04-3d-pipeline §2).
@@ -18,34 +13,17 @@ import {
  * "qalqib" chiqadi (Z-fighting). `assets_3d.hide_body_parts` aynan shu
  * nomlarni saqlaydi.
  *
- * ⚠️ Bu STILIZATSIYA QILINGAN maneken, skan emas. Proporsiyalar o'rtacha
- * antropometriyaga yaqin, lekin anatomik aniqlikka da'vo qilmaydi.
+ * SHAKL PROFIL JADVALLARIDAN quriladi (`loft.mjs`), primitivlardan emas.
+ * Ya'ni yelka kengligi, bel torligi, boldir bo'rtig'i — hammasi shu
+ * fayldagi raqamlar bilan boshqariladi va ularni o'zgartirish uchun
+ * geometriya kodiga tegish shart emas.
+ *
+ * ⚠️ Bu STILIZATSIYA QILINGAN base mesh. Proporsiyalar o'rtacha
+ * antropometriyaga yaqin, lekin yuz qirralari, soch, teri relyefi yo'q —
+ * ular Blender/skan ishi. Bu model ularning o'rnini bosmaydi, ustiga
+ * ishlash uchun asos beradi.
  */
 
-/** Erkak/ayol farqi — bir xil skelet, boshqa qalinliklar */
-const SHAPE = {
-  male: {
-    color: 0xb9aec6,
-    torsoRadius: 0.148,
-    torsoDepth: 0.72,
-    shoulderSpread: 1.0,
-    hipSpread: 1.0,
-    thighRadius: 0.077,
-    armRadius: 0.049,
-  },
-  female: {
-    color: 0xc7b6cf,
-    torsoRadius: 0.134,
-    torsoDepth: 0.7,
-    // Yelka torroq, son kengroq
-    shoulderSpread: 0.92,
-    hipSpread: 1.1,
-    thighRadius: 0.082,
-    armRadius: 0.043,
-  },
-};
-
-/** Har bir qism qaysi suyakka bog'lanadi */
 const PARTS = [
   ['body_head', 'Head'],
   ['body_neck', 'Neck'],
@@ -64,78 +42,118 @@ const PARTS = [
   ['body_foot_R', 'RightFoot'],
 ];
 
-/** Suyaklar orasidagi geometriyani yasaydi */
 function partGeometry(name, at, shape) {
-  const side = name.endsWith('_R') ? -1 : 1;
+  const right = name.endsWith('_R');
+  const side = right ? 'Right' : 'Left';
+  const k = shape.limbs;
 
   switch (name) {
-    case 'body_head': {
-      const head = at('Head');
-      return ellipsoidAt([0, head.y + 0.075, 0.008], [0.086, 0.108, 0.096], 18);
-    }
-    case 'body_neck':
-      return capsuleBetween(at('Neck').toArray(), at('Head').toArray(), 0.046, 10);
+    case 'body_torso':
+      return loft(verticalRings(torsoKeys(shape), 4), { radialSegments: 24, capEnd: false });
 
-    case 'body_torso': {
-      const hips = at('Hips');
-      const spine2 = at('Spine2');
-      const geometry = capsuleBetween(
-        [0, hips.y + 0.02, 0],
-        [0, spine2.y + 0.06, 0],
-        shape.torsoRadius,
-        20,
+    case 'body_neck':
+      return loft(
+        verticalRings(
+          [
+            [1.4, 0.062, 0.066, 0],
+            [1.47, 0.055, 0.06, 0.002],
+            [1.52, 0.052, 0.058, 0.002],
+          ],
+          3,
+        ),
+        { radialSegments: 16, capStart: false, capEnd: false },
       );
-      // Ko'krak qafasi doira emas — oldindan orqaga yassiroq
-      geometry.scale(1, 1, shape.torsoDepth);
-      return geometry;
-    }
+
+    case 'body_head':
+      return loft(verticalRings(headKeys(), 4), { radialSegments: 22, capStart: false });
 
     case 'body_upperArm_L':
     case 'body_upperArm_R':
-      return capsuleBetween(
-        at(side > 0 ? 'LeftArm' : 'RightArm').toArray(),
-        at(side > 0 ? 'LeftForeArm' : 'RightForeArm').toArray(),
-        shape.armRadius,
-        10,
+      return limb(
+        at(`${side}Arm`).toArray(),
+        at(`${side}ForeArm`).toArray(),
+        [
+          [0, 0.06 * k, 0.06 * k], // deltoid
+          [0.35, 0.05 * k, 0.05 * k], // bitseps
+          [1, 0.041 * k, 0.041 * k], // tirsak
+        ],
+        { radialSegments: 14 },
       );
 
     case 'body_forearm_L':
     case 'body_forearm_R':
-      return capsuleBetween(
-        at(side > 0 ? 'LeftForeArm' : 'RightForeArm').toArray(),
-        at(side > 0 ? 'LeftHand' : 'RightHand').toArray(),
-        shape.armRadius * 0.86,
-        10,
+      return limb(
+        at(`${side}ForeArm`).toArray(),
+        at(`${side}Hand`).toArray(),
+        [
+          [0, 0.043 * k, 0.043 * k],
+          [0.3, 0.041 * k, 0.041 * k],
+          [1, 0.028 * k, 0.031 * k], // bilak
+        ],
+        { radialSegments: 14 },
       );
 
     case 'body_hand_L':
     case 'body_hand_R': {
-      const hand = at(side > 0 ? 'LeftHand' : 'RightHand');
-      return ellipsoidAt([hand.x, hand.y - 0.045, hand.z], [0.038, 0.058, 0.024], 10);
+      const wrist = at(`${side}Hand`);
+      // Qo'l pastga osilgan — kaft tanaga qaragan, shuning uchun X bo'yicha
+      // yupqa, Z bo'yicha keng
+      return limb(
+        wrist.toArray(),
+        [wrist.x + (right ? -0.006 : 0.006), wrist.y - 0.19, wrist.z],
+        [
+          [0, 0.026 * k, 0.038 * k],
+          [0.35, 0.03 * k, 0.05 * k], // kaft
+          [0.75, 0.026 * k, 0.045 * k],
+          [1, 0.016 * k, 0.028 * k], // barmoq uchlari
+        ],
+        { radialSegments: 12 },
+      );
     }
 
     case 'body_thigh_L':
     case 'body_thigh_R':
-      return capsuleBetween(
-        at(side > 0 ? 'LeftUpLeg' : 'RightUpLeg').toArray(),
-        at(side > 0 ? 'LeftLeg' : 'RightLeg').toArray(),
-        shape.thighRadius,
-        12,
+      return limb(
+        at(`${side}UpLeg`).toArray(),
+        at(`${side}Leg`).toArray(),
+        [
+          [0, 0.092 * k, 0.096 * k],
+          [0.3, 0.082 * k, 0.087 * k],
+          [1, 0.056 * k, 0.059 * k], // tizza
+        ],
+        { radialSegments: 16 },
       );
 
     case 'body_calf_L':
     case 'body_calf_R':
-      return capsuleBetween(
-        at(side > 0 ? 'LeftLeg' : 'RightLeg').toArray(),
-        at(side > 0 ? 'LeftFoot' : 'RightFoot').toArray(),
-        shape.thighRadius * 0.76,
-        12,
+      return limb(
+        at(`${side}Leg`).toArray(),
+        at(`${side}Foot`).toArray(),
+        [
+          [0, 0.057 * k, 0.059 * k],
+          [0.25, 0.064 * k, 0.068 * k], // boldir bo'rtig'i
+          [0.7, 0.042 * k, 0.046 * k],
+          [1, 0.032 * k, 0.036 * k], // to'piq
+        ],
+        { radialSegments: 16 },
       );
 
     case 'body_foot_L':
     case 'body_foot_R': {
-      const foot = at(side > 0 ? 'LeftFoot' : 'RightFoot');
-      return boxAt([foot.x, 0.038, foot.z + 0.05], [0.092, 0.076, 0.235]);
+      const ankle = at(`${side}Foot`);
+      // O'q deyarli gorizontal (tovondan barmoqqa) — halqalar tik turadi,
+      // shuning uchun `rx` eni, `rz` balandligi bo'lib qoladi
+      return limb(
+        [ankle.x, 0.042, ankle.z - 0.058],
+        [ankle.x, 0.02, ankle.z + 0.15],
+        [
+          [0, 0.032, 0.042], // tovon
+          [0.35, 0.042, 0.038],
+          [0.75, 0.045, 0.026],
+          [1, 0.034, 0.016], // barmoqlar
+        ],
+        { radialSegments: 14 },
+      );
     }
 
     default:
@@ -143,27 +161,27 @@ function partGeometry(name, at, shape) {
   }
 }
 
-/**
- * Tanani quradi. Qaytadi: `{ group, skeleton, byName }` —
- * `skeleton` kiyimlarni ham shu suyaklarga bog'lash uchun kerak.
- */
 export function buildBody(gender = 'male') {
   const shape = SHAPE[gender];
   if (!shape) throw new Error(`Noma'lum jins: ${gender}`);
 
   const { root, bones, boneIndex, byName } = buildSkeleton();
 
-  // Yelka va son kengligi jinsga qarab — suyaklarning o'zi ham suriladi,
-  // aks holda kiyim tanaga mos tushmaydi
-  for (const name of ['LeftShoulder', 'RightShoulder']) byName.get(name).position.x *= shape.shoulderSpread;
-  for (const name of ['LeftUpLeg', 'RightUpLeg']) byName.get(name).position.x *= shape.hipSpread;
+  // Yelka va son suyaklari ham jinsga qarab suriladi — aks holda qo'l
+  // gavdadan ajralib qoladi
+  for (const name of ['LeftShoulder', 'RightShoulder']) {
+    byName.get(name).position.x *= shape.shoulders;
+  }
+  for (const name of ['LeftUpLeg', 'RightUpLeg']) {
+    byName.get(name).position.x *= shape.hips;
+  }
   root.updateMatrixWorld(true);
 
   const at = (name) => bonePosition(byName, name);
 
   const material = new THREE.MeshStandardMaterial({
     color: shape.color,
-    roughness: 0.78,
+    roughness: 0.74,
     metalness: 0.03,
   });
 

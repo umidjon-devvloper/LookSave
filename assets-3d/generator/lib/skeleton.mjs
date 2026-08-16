@@ -32,13 +32,13 @@ const BONES = [
   // Chap qo'l — A-poza: yelkadan pastga, biroz yonga
   ['LeftShoulder', 'Spine2', [0.05, 0.09, 0]],
   ['LeftArm', 'LeftShoulder', [0.11, 0.01, 0]],
-  ['LeftForeArm', 'LeftArm', [0.055, -0.26, 0]],
-  ['LeftHand', 'LeftForeArm', [0.035, -0.25, 0]],
+  ['LeftForeArm', 'LeftArm', [0.055, -0.29, 0]],
+  ['LeftHand', 'LeftForeArm', [0.035, -0.27, 0]],
 
   ['RightShoulder', 'Spine2', [-0.05, 0.09, 0]],
   ['RightArm', 'RightShoulder', [-0.11, 0.01, 0]],
-  ['RightForeArm', 'RightArm', [-0.055, -0.26, 0]],
-  ['RightHand', 'RightForeArm', [-0.035, -0.25, 0]],
+  ['RightForeArm', 'RightArm', [-0.055, -0.29, 0]],
+  ['RightHand', 'RightForeArm', [-0.035, -0.27, 0]],
 
   ['LeftUpLeg', 'Hips', [0.09, -0.06, 0]],
   ['LeftLeg', 'LeftUpLeg', [0, -0.42, 0]],
