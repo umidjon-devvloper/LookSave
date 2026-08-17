@@ -57,6 +57,7 @@ const PRODUCT_META = {
   pants: { slug: 'trousers', price: 320000 },
   sneakers: { slug: 'sneakers', price: 850000 },
   cap: { slug: 'cap', price: 120000 },
+  watch: { slug: 'watch', price: 1450000 },
 };
 
 /** `tshirt-white` → `tshirt` */

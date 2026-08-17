@@ -19,14 +19,16 @@ import { api } from '../../src/api/client';
 import { createLook, getFullProfile, type Measurements } from '../../src/api/endpoints';
 import { Icon, type IconName } from '../../src/components/Icon';
 import { Button, ErrorView, Loading } from '../../src/components/ui';
+import { useAuthStore } from '../../src/store/authStore';
+import { SignInRequired } from '../../src/components/SignInRequired';
 import { missingMeasurementFor, recommendSize } from '../../src/sizing';
 import { useAiFlowStore } from '../../src/store/aiFlowStore';
 import { money } from '../../src/theme/format';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 import { AvatarScene, type AvatarConfig } from '../../src/three/AvatarScene';
-import { SlotState, type Quality, type TryonItem } from '../../src/three/core';
+import { nextIndex, SlotState, type Quality, type TryonItem } from '../../src/three/core';
 import {
-  applyMorphs,
+  bakeForExpoGl,
   disposeObject,
   loadGarment,
   pinModel,
@@ -91,6 +93,13 @@ function ControlButton({
 }
 
 export default function Dressing(): JSX.Element {
+  /*
+   * ⚠️ ENG BIRINCHI TEKSHIRUV. Ilova endi kirish so'ramasdan ochiladi, lekin
+   * bu ekran shaxsiy ma'lumotga tayanadi. Tekshiruv boshqa hook'lardan
+   * keyin turmasligi kerak — quyida shartli `return` lar bor va hook'lar
+   * ular ortida qolib ketsa React qoidasi buziladi.
+   */
+  const authStatus = useAuthStore((state) => state.status);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -107,10 +116,20 @@ export default function Dressing(): JSX.Element {
   const [placeholder, setPlaceholder] = useState(false);
   const [equipping, setEquipping] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  /** GL holati — sahna bo'sh bo'lganda sababni ekranda ko'rsatish uchun */
+  const [glInfo, setGlInfo] = useState<string | null>(null);
   const [, forceRender] = useState(0);
 
   /** Slot mantiqi `core.ts` da testlangan — bu yerda faqat ishlatiladi */
   const slots = useMemo(() => new SlotState(), []);
+
+  /*
+   * `AvatarScene` ga beriladigan chaqiruvlar BARQAROR bo'lishi kerak.
+   * Inline funksiya har renderda yangi bo'ladi va sahnani qayta qurishga
+   * majbur qiladi — bir marta cheksiz qayta yuklashga olib kelgan.
+   */
+  const handleBodyReady = useCallback(() => setBodyReady(true), []);
+  const handlePlaceholder = useCallback(() => setPlaceholder(true), []);
   const models = useRef(new Map<string, THREE.Group | null>()).current;
 
   const step = DRESS_STEPS[stepIndex];
@@ -119,6 +138,8 @@ export default function Dressing(): JSX.Element {
   const config = useQuery({
     queryKey: ['avatar', 'config'],
     queryFn: () => api<AvatarConfig & { qualityHint: Quality }>('/avatar/config'),
+    // Kirmagan holatda 401 keladi — so'rov umuman yuborilmaydi
+    enabled: authStatus === 'signedIn',
   });
 
   const profile = useQuery({ queryKey: ['profile', 'full'], queryFn: getFullProfile });
@@ -182,7 +203,11 @@ export default function Dressing(): JSX.Element {
         }
 
         tagSlot(model, slot);
-        if (config.data) applyMorphs(model, config.data.morphTargets);
+        /*
+         * Kiyimga ham singdiriladi: u tana bilan bir xil shape key'larga ega
+         * va ular ham float tekstura talab qiladi (`loader.ts` izohi).
+         */
+        if (config.data) bakeForExpoGl(model, config.data.morphTargets);
 
         const previous = slots.equip(slot, item);
         const previousModel = models.get(slot);
@@ -207,6 +232,21 @@ export default function Dressing(): JSX.Element {
       }
     },
     [config.data, models, quality, slots],
+  );
+
+  /** Joriy slotdagi ro'yxat bo'ylab oldinga/orqaga siljiydi */
+  const move = useCallback(
+    (direction: 1 | -1): void => {
+      if (!step || list.length === 0) return;
+
+      const current = slots.get(step.slot);
+      const index = current ? list.findIndex((item) => item.variantId === current.variantId) : -1;
+
+      const next = nextIndex(index < 0 ? 0 : index, direction, list.length);
+      const item = list[next];
+      if (item) void equip(item, step.slot);
+    },
+    [equip, list, slots, step],
   );
 
   const remove = useCallback(
@@ -240,13 +280,40 @@ export default function Dressing(): JSX.Element {
     onError: () => setNotice('Komplekt saqlanmadi — kamida bitta kiyim tanlang'),
   });
 
+  /**
+   * Svayp — mahsulotni almashtirish, sekin surish — avatarni aylantirish.
+   *
+   * Ikkalasi ham gorizontal harakat, shuning uchun ular TEZLIK bilan
+   * ajratiladi: keskin surish (300 dan tez) mahsulotni almashtiradi,
+   * sekin surish avatarni aylantiradi. `activeOffsetX` esa vertikal
+   * aralashuvni to'sadi — aks holda ro'yxatni aylantirganda avatar
+   * ham qimirlab ketardi.
+   */
+  const swipe = Gesture.Pan()
+    .activeOffsetX([-20, 20])
+    .onEnd((event) => {
+      if (Math.abs(event.velocityX) < 300) return;
+      move(event.velocityX < 0 ? 1 : -1);
+    })
+    .runOnJS(true);
+
   const rotate = Gesture.Pan()
+    .activeOffsetY([-20, 20])
     .onChange((event) => setRotation((value) => value + event.changeX * 0.01))
     .runOnJS(true);
 
   const pinch = Gesture.Pinch()
     .onChange((event) => setZoom((value) => Math.min(2.2, Math.max(0.7, value * event.scale))))
     .runOnJS(true);
+
+  if (authStatus !== 'signedIn') {
+    return (
+      <SignInRequired
+        title="Kiyintirish"
+        hint="Komplekt sizning avataringizga kiydiriladi, shuning uchun kirish kerak."
+      />
+    );
+  }
 
   if (config.isLoading || profile.isLoading) return <Loading />;
   if (config.isError || !config.data) {
@@ -293,7 +360,7 @@ export default function Dressing(): JSX.Element {
 
       {/* 3D sahna */}
       <View style={styles.scene}>
-        <GestureDetector gesture={Gesture.Simultaneous(rotate, pinch)}>
+        <GestureDetector gesture={Gesture.Race(swipe, Gesture.Simultaneous(rotate, pinch))}>
           <View style={StyleSheet.absoluteFill}>
             <AvatarScene
               config={config.data}
@@ -303,9 +370,10 @@ export default function Dressing(): JSX.Element {
               zoom={zoom}
               quality={quality}
               onQualityChange={setQuality}
-              onBodyReady={() => setBodyReady(true)}
+              onBodyReady={handleBodyReady}
               onError={setNotice}
-              onPlaceholder={() => setPlaceholder(true)}
+              onPlaceholder={handlePlaceholder}
+              onDiagnostics={setGlInfo}
             />
           </View>
         </GestureDetector>
@@ -349,6 +417,12 @@ export default function Dressing(): JSX.Element {
             <Text style={styles.badgeText}>Namuna avatar</Text>
           </View>
         ) : null}
+
+        {/* GL tashxisi — sahna bo'sh bo'lsa sabab shu yerda ko'rinadi.
+            Qator umuman chiqmasa: GL konteksti yaratilmagan. */}
+        <View style={styles.glBadge} pointerEvents="none">
+          <Text style={styles.glBadgeText}>{glInfo ?? 'GL: kontekst yaratilmadi'}</Text>
+        </View>
 
         {!bodyReady ? (
           <View style={styles.overlay}>
@@ -535,6 +609,21 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   badgeText: { ...text.tiny, color: colors.warning },
+  glBadge: {
+    position: 'absolute',
+    top: spacing.md,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  glBadgeText: {
+    ...text.tiny,
+    color: colors.accent,
+    backgroundColor: colors.surface2,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
 
   overlay: {
     ...StyleSheet.absoluteFillObject,

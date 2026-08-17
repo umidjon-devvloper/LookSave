@@ -1,0 +1,10 @@
+{
+  "male": {
+    "source": "Base Mesh Pro_LP.fbx",
+    "triangles": 53124
+  },
+  "female": {
+    "source": "NewChar.fbx",
+    "triangles": 5666
+  }
+}

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -26,9 +27,11 @@ import {
 import { Icon, type IconName } from '../../src/components/Icon';
 import { distanceMeters } from '../../src/map/distance';
 import { Button, ErrorView, Field, Loading } from '../../src/components/ui';
+import { useAuthStore } from '../../src/store/authStore';
+import { SignInRequired } from '../../src/components/SignInRequired';
 import { useAiFlowStore } from '../../src/store/aiFlowStore';
 import { useLocationStore } from '../../src/store/locationStore';
-import { colors, radius, spacing, text } from '../../src/theme/tokens';
+import { colors, fonts, radius, spacing, text } from '../../src/theme/tokens';
 
 /**
  * Avatar yasash oqimi — bitta ekran, ichida qadamlar.
@@ -47,14 +50,25 @@ import { colors, radius, spacing, text } from '../../src/theme/tokens';
  * bo'sh qolaveradi). Hozircha rasm profil suratiga tushadi.
  */
 
-type StepKey = 'gender' | 'face' | 'body' | 'shoe' | 'store' | 'done';
+type StepKey = 'gender' | 'body' | 'shoe' | 'store' | 'face' | 'done';
 
+/**
+ * Qadam tartibi.
+ *
+ * ⚠️ YUZ SKANERI OXIRIDA. Ilgari u ikkinchi qadam edi va oqim boshida
+ * kamerani so'rardi — foydalanuvchi hali ilova nima qilishini tushunmasdan
+ * turib ruxsat berishi kerak bo'lardi. Bunda rad etish ehtimoli yuqori.
+ *
+ * Oxirida esa avatar deyarli tayyor: jins, o'lchamlar va do'kon tanlangan.
+ * Foydalanuvchi nima uchun surat kerakligini ko'rib turadi va bu so'rovni
+ * qabul qilishi osonroq.
+ */
 const STEPS: Array<{ key: StepKey; label: string; icon: IconName }> = [
   { key: 'gender', label: 'Jins', icon: 'profile' },
-  { key: 'face', label: 'Yuz', icon: 'camera' },
   { key: 'body', label: 'Tana', icon: 'slotTop' },
   { key: 'shoe', label: 'Oyoq', icon: 'slotFeet' },
   { key: 'store', label: "Do'kon", icon: 'stores' },
+  { key: 'face', label: 'Yuz', icon: 'camera' },
   { key: 'done', label: 'Tayyor', icon: 'authentic' },
 ];
 
@@ -86,27 +100,53 @@ function parseField(raw: string, key: MeasureKey): number | null | 'invalid' {
   return value;
 }
 
+/**
+ * Qadam ko'rsatkichi.
+ *
+ * NEGA CHIZIQ BILAN: alohida turgan doiralar "nechta qadam qoldi" degan
+ * savolga javob bermaydi — ular ro'yxatga o'xshaydi. Ularni bog'lovchi
+ * chiziq va uning to'lgan qismi jarayonni ko'rsatadi: qayerdan
+ * boshlanganini, qayerda turganini va qancha qolganini.
+ *
+ * Faol nuqta atrofidagi halqa — diqqatni tortadi va "hozir shu yerdasiz"
+ * degan yagona urg'u bo'lib qoladi.
+ */
 function StepBar({ current }: { current: StepKey }): JSX.Element {
   const activeIndex = STEPS.findIndex((step) => step.key === current);
+  // Chiziq faol qadamning MARKAZIgacha to'ladi
+  const progress = STEPS.length > 1 ? activeIndex / (STEPS.length - 1) : 0;
 
   return (
     <View style={styles.stepBar}>
+      {/* Orqa yo'lak va uning to'lgan qismi — nuqtalar ostidan o'tadi */}
+      <View style={styles.stepTrack} />
+      <View style={[styles.stepTrackFill, { width: `${progress * 100}%` }]} />
+
       {STEPS.map((step, index) => {
         const done = index < activeIndex;
         const active = index === activeIndex;
 
         return (
           <View key={step.key} style={styles.stepItem}>
-            <View
-              style={[styles.stepDot, done && styles.stepDotDone, active && styles.stepDotActive]}
-            >
-              <Icon
-                name={done ? 'authentic' : step.icon}
-                size={14}
-                color={active || done ? colors.textOnPrimary : colors.textDim}
-              />
+            <View style={active ? styles.stepHalo : undefined}>
+              <View
+                style={[styles.stepDot, done && styles.stepDotDone, active && styles.stepDotActive]}
+              >
+                <Icon
+                  name={done ? 'authentic' : step.icon}
+                  size={active ? 16 : 14}
+                  color={active || done ? colors.textOnPrimary : colors.textDim}
+                />
+              </View>
             </View>
-            <Text style={[styles.stepLabel, active && styles.stepLabelActive]} numberOfLines={1}>
+            <Text
+              style={[
+                styles.stepLabel,
+                active && styles.stepLabelActive,
+                done && styles.stepLabelDone,
+              ]}
+              numberOfLines={1}
+            >
               {step.label}
             </Text>
           </View>
@@ -117,6 +157,13 @@ function StepBar({ current }: { current: StepKey }): JSX.Element {
 }
 
 export default function AvatarFlow(): JSX.Element {
+  /*
+   * ⚠️ ENG BIRINCHI TEKSHIRUV. Ilova endi kirish so'ramasdan ochiladi, lekin
+   * bu ekran shaxsiy ma'lumotga tayanadi. Tekshiruv boshqa hook'lardan
+   * keyin turmasligi kerak — quyida shartli `return` lar bor va hook'lar
+   * ular ortida qolib ketsa React qoidasi buziladi.
+   */
+  const authStatus = useAuthStore((state) => state.status);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
@@ -161,6 +208,15 @@ export default function AvatarFlow(): JSX.Element {
       void queryClient.invalidateQueries({ queryKey: ['avatar', 'config'] });
     },
   });
+
+  if (authStatus !== 'signedIn') {
+    return (
+      <SignInRequired
+        title="AI Designer"
+        hint="Avatar yaratish uchun akkaunt kerak — o‘lchamlar va tanlovlar sizga bog‘lanadi."
+      />
+    );
+  }
 
   if (profile.isLoading) return <Loading />;
   if (profile.isError) {
@@ -339,6 +395,16 @@ export default function AvatarFlow(): JSX.Element {
 
 // ── Qadamlar ──
 
+/**
+ * Jins tanlash.
+ *
+ * NEGA KATTA KARTALAR: bu oqimning birinchi va eng muhim qarori — tana
+ * modeli, kiyim kesimi va o'lcham jadvali shunga bog'liq. Kichik chip yoki
+ * ro'yxat uni ikkinchi darajali ko'rsatardi.
+ *
+ * Tanlangan karta gradient va nur bilan ajratiladi: to'q fonda faqat
+ * chegara rangini o'zgartirish yetarli emas — u sezilmay qoladi.
+ */
 function GenderStep({
   value,
   busy,
@@ -348,9 +414,9 @@ function GenderStep({
   busy: boolean;
   onSelect: (value: 'male' | 'female') => void;
 }): JSX.Element {
-  const options: Array<{ key: 'male' | 'female'; label: string; icon: IconName }> = [
-    { key: 'male', label: 'Erkak', icon: 'slotTop' },
-    { key: 'female', label: 'Ayol', icon: 'dress' },
+  const options: Array<{ key: 'male' | 'female'; label: string; hint: string; icon: IconName }> = [
+    { key: 'male', label: 'Erkak', hint: 'Erkaklar kesimi', icon: 'slotTop' },
+    { key: 'female', label: 'Ayol', hint: 'Ayollar kesimi', icon: 'dress' },
   ];
 
   return (
@@ -361,20 +427,50 @@ function GenderStep({
       </Text>
 
       <View style={styles.genderRow}>
-        {options.map((option) => (
-          <Pressable
-            key={option.key}
-            accessibilityRole="button"
-            disabled={busy}
-            onPress={() => onSelect(option.key)}
-            style={[styles.genderCard, value === option.key && styles.genderCardActive]}
-          >
-            <View style={styles.genderIcon}>
-              <Icon name={option.icon} size={28} color={colors.accent} />
-            </View>
-            <Text style={styles.genderLabel}>{option.label}</Text>
-          </Pressable>
-        ))}
+        {options.map((option) => {
+          const selected = value === option.key;
+
+          return (
+            <Pressable
+              key={option.key}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              disabled={busy}
+              onPress={() => onSelect(option.key)}
+              style={[styles.genderCard, selected && styles.genderCardActive]}
+            >
+              <LinearGradient
+                colors={
+                  selected
+                    ? ['rgba(139,92,246,0.28)', 'rgba(139,92,246,0.04)']
+                    : ['rgba(255,255,255,0.03)', 'rgba(255,255,255,0)']
+                }
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+
+              <View style={[styles.genderIcon, selected && styles.genderIconActive]}>
+                <Icon
+                  name={option.icon}
+                  size={30}
+                  color={selected ? colors.accent : colors.textMuted}
+                />
+              </View>
+
+              <Text style={[styles.genderLabel, selected && styles.genderLabelActive]}>
+                {option.label}
+              </Text>
+              <Text style={styles.genderHint}>{option.hint}</Text>
+
+              {selected ? (
+                <View style={styles.genderCheck}>
+                  <Icon name="authentic" size={14} color={colors.textOnPrimary} />
+                </View>
+              ) : null}
+            </Pressable>
+          );
+        })}
       </View>
 
       {busy ? <ActivityIndicator color={colors.primary} /> : null}
@@ -382,11 +478,25 @@ function GenderStep({
   );
 }
 
-const FACE_TIPS: Array<{ icon: IconName; label: string }> = [
-  { icon: 'limited', label: "Yorug'lik yetarli" },
-  { icon: 'profile', label: 'Yuz markazda' },
-  { icon: 'reset', label: 'Boshni egmang' },
+/** Chap ustundagi holat ko'rsatkichlari — rasmdagi kompozitsiya */
+const FACE_GUIDES: Array<{ icon: IconName; label: string }> = [
+  { icon: 'limited', label: "Yorug'lik\nyetarli" },
+  { icon: 'profile', label: 'Yuz\nmarkazda' },
+  { icon: 'reset', label: 'Boshni\negmang' },
 ];
+
+/** Pastdagi maslahatlar kartasi */
+const FACE_TIPS: Array<{ icon: IconName; label: string }> = [
+  { icon: 'limited', label: "Yaxshi yorug'lik" },
+  { icon: 'profile', label: 'Yuz ramkada' },
+  { icon: 'camera', label: "To'g'ri qarang" },
+  { icon: 'close', label: "Ko'zoynaksiz" },
+];
+
+/** Ramkaning to'rt burchagidagi qavs — kamera "vizyor" bo'lib ko'rinadi */
+function FrameCorner({ position }: { position: 'tl' | 'tr' | 'bl' | 'br' }): JSX.Element {
+  return <View style={[styles.corner, styles[`corner_${position}`]]} />;
+}
 
 function FaceStep({
   onDone,
@@ -406,8 +516,8 @@ function FaceStep({
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Yuz skaneri</Text>
         <Text style={styles.cardHint}>
-          Avatarga yuzingizni qo‘shish uchun kameraga ruxsat kerak. Rasm faqat sizning profilingizga
-          saqlanadi.
+          Avatarga yuzingizni qo‘shish uchun kameraga ruxsat kerak. Surat faqat sizning
+          profilingizga saqlanadi va boshqa hech kimga ko‘rinmaydi.
         </Text>
         <Button title="Kameraga ruxsat berish" onPress={() => void requestPermission()} />
         <Pressable onPress={onDone} style={styles.skip}>
@@ -435,7 +545,13 @@ function FaceStep({
       const url = await uploadAvatar(photo.uri);
 
       stage = 'profilni saqlash';
-      await updateProfile({ avatarUrl: url });
+      /*
+       * Bitta surat ikki joyga: profil surati (ro'yxatlarda ko'rinadi) va
+       * yuz teksturasi (3D avatar boshiga tushadi). Ular alohida maydon,
+       * chunki foydalanuvchi profil suratini almashtirsa avatar yuzi
+       * o'zgarmasligi kerak.
+       */
+      await updateProfile({ avatarUrl: url, faceTextureUrl: url });
       onDone();
     } catch (error) {
       console.warn(`[face-scan] "${stage}" bosqichida yiqildi`, error);
@@ -446,31 +562,58 @@ function FaceStep({
   };
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>Yuz skaneri</Text>
-      <Text style={styles.cardHint}>Yuzingizni ramka ichiga joylang</Text>
+    <View style={styles.faceWrap}>
+      {/* Kamera vizyori */}
+      <View style={styles.viewfinder}>
+        <FrameCorner position="tl" />
+        <FrameCorner position="tr" />
+        <FrameCorner position="bl" />
+        <FrameCorner position="br" />
 
-      <View style={styles.scanRow}>
-        <View style={styles.tips}>
+        <Text style={styles.faceTitle}>Yuz skaneri</Text>
+        <Text style={styles.faceSubtitle}>Yuzingizni ramka ichiga joylang</Text>
+
+        <View style={styles.scanRow}>
+          <View style={styles.guides}>
+            {FACE_GUIDES.map((guide) => (
+              <View key={guide.label} style={styles.guide}>
+                <View style={styles.guideIcon}>
+                  <Icon name={guide.icon} size={16} color={colors.accent} />
+                </View>
+                <Text style={styles.guideText}>{guide.label}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.ovalWrap}>
+            <View style={styles.oval}>
+              <CameraView ref={camera} facing="front" style={StyleSheet.absoluteFill} />
+            </View>
+            {/* Ikki halqa: tashqisi uzluksiz, ichkisi punktir — rasmdagidek */}
+            <View pointerEvents="none" style={styles.ovalRing} />
+            <View pointerEvents="none" style={styles.ovalRingInner} />
+          </View>
+        </View>
+
+        <View style={styles.facePill}>
+          <Text style={styles.facePillText}>To‘g‘ridan-to‘g‘ri kameraga qarang</Text>
+        </View>
+      </View>
+
+      {/* Maslahatlar */}
+      <View style={styles.tipsCard}>
+        <Text style={styles.tipsTitle}>Yaxshi natija uchun</Text>
+        <View style={styles.tipsRow}>
           {FACE_TIPS.map((tip) => (
             <View key={tip.label} style={styles.tip}>
               <View style={styles.tipIcon}>
-                <Icon name={tip.icon} size={14} color={colors.accent} />
+                <Icon name={tip.icon} size={16} color={colors.textMuted} />
               </View>
               <Text style={styles.tipText}>{tip.label}</Text>
             </View>
           ))}
         </View>
-
-        <View style={styles.ovalWrap}>
-          <View style={styles.oval}>
-            <CameraView ref={camera} facing="front" style={StyleSheet.absoluteFill} />
-          </View>
-          <View pointerEvents="none" style={styles.ovalRing} />
-        </View>
       </View>
-
-      <Text style={styles.scanHint}>To‘g‘ridan-to‘g‘ri kameraga qarang</Text>
 
       <Button
         title={scanning ? 'Skanerlanmoqda…' : 'Skanerlashni boshlash'}
@@ -698,30 +841,64 @@ const styles = StyleSheet.create({
   },
   backButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   headerText: { flex: 1, alignItems: 'center' },
-  headerTitle: { ...text.h3, color: colors.text },
-  headerHint: { ...text.tiny, color: colors.textDim },
+  headerTitle: { ...text.h2, color: colors.text },
+  headerHint: { ...text.tiny, color: colors.textDim, letterSpacing: 1, marginTop: 2 },
 
   stepBar: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.sm,
-    paddingBottom: spacing.md,
-    gap: 2,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.lg,
+    paddingTop: spacing.xs,
   },
-  stepItem: { flex: 1, alignItems: 'center', gap: 4 },
+  // Yo'lak nuqtalarning markazi balandligida — chetki nuqtalar orasida
+  stepTrack: {
+    position: 'absolute',
+    left: spacing.md + 22,
+    right: spacing.md + 22,
+    top: spacing.xs + 21,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: colors.surface2,
+  },
+  stepTrackFill: {
+    position: 'absolute',
+    left: spacing.md + 22,
+    top: spacing.xs + 21,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: colors.accent,
+  },
+  stepItem: { flex: 1, alignItems: 'center', gap: spacing.xs },
+  // Faol nuqta atrofidagi nurli halqa
+  stepHalo: {
+    padding: 3,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1,
+    borderColor: colors.borderAccent,
+  },
   stepDot: {
-    width: 30,
-    height: 30,
+    width: 36,
+    height: 36,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface2,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  stepDotActive: { backgroundColor: colors.primary, borderColor: colors.accent },
+  stepDotActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.accent,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+  },
   stepDotDone: { backgroundColor: colors.primaryDark, borderColor: colors.primaryDark },
   stepLabel: { ...text.tiny, color: colors.textDim, fontSize: 10 },
-  stepLabelActive: { color: colors.accent },
+  stepLabelActive: { color: colors.accent, fontFamily: fonts.semibold },
+  stepLabelDone: { color: colors.textMuted },
 
   body: { paddingHorizontal: spacing.md, gap: spacing.md },
   error: {
@@ -732,59 +909,155 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
   },
 
+  /*
+   * Karta foni ekran fonidan bir pog'ona yorug'roq. To'q interfeysda
+   * qatlamlar aynan shu farq bilan ajraladi — chegara chizig'i o'zi yetarli
+   * emas, u faqat yaqindan ko'rinadi.
+   */
   card: {
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius.xxl,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.md,
+    padding: spacing.lg,
     gap: spacing.sm,
   },
-  cardTitle: { ...text.h3, color: colors.text },
-  cardHint: { ...text.small, color: colors.textMuted },
+  cardTitle: { ...text.h2, color: colors.text },
+  cardHint: { ...text.body, color: colors.textMuted, lineHeight: 21 },
 
-  genderRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
+  genderRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm },
   genderCard: {
     flex: 1,
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.lg,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface2,
+    gap: spacing.xs,
+    paddingVertical: spacing.xl,
+    borderRadius: radius.xl,
+    // `overflow: hidden` — gradient burchaklardan chiqib ketmasin
+    overflow: 'hidden',
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  genderCardActive: { borderColor: colors.borderAccent, backgroundColor: colors.primarySoft },
+  genderCardActive: {
+    borderColor: colors.borderAccent,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+  },
   genderIcon: {
-    width: 56,
-    height: 56,
+    width: 68,
+    height: 68,
     borderRadius: radius.pill,
     backgroundColor: colors.bgElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: spacing.xs,
   },
-  genderLabel: { ...text.bodyMed, color: colors.text },
-
-  scanRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  tips: { gap: spacing.md, width: 76 },
-  tip: { alignItems: 'center', gap: 4 },
-  tipIcon: {
-    width: 32,
-    height: 32,
+  genderIconActive: { borderColor: colors.borderAccent, backgroundColor: colors.primarySoft },
+  genderLabel: { ...text.h3, color: colors.textMuted },
+  genderLabelActive: { color: colors.text },
+  genderHint: { ...text.tiny, color: colors.textDim },
+  // Tanlangan kartaning burchagidagi belgi — tanlov bir qarashda ko'rinadi
+  genderCheck: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    width: 24,
+    height: 24,
     borderRadius: radius.pill,
-    backgroundColor: colors.surface2,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tipText: { ...text.tiny, color: colors.textDim, textAlign: 'center', fontSize: 10 },
+
+  faceWrap: { gap: spacing.md },
+
+  /*
+   * Kamera vizyori — burchak qavslari bilan.
+   *
+   * Qavslar shunchaki bezak emas: ular ramkaning chegarasini ko'rsatadi va
+   * "bu yerga qarang" degan ishorani beradi. To'liq chegara chizig'i esa
+   * kameraning o'zini quti ichiga qamab qo'yardi.
+   */
+  viewfinder: {
+    backgroundColor: colors.bgElevated,
+    borderRadius: radius.xxl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
+    alignItems: 'center',
+  },
+  corner: {
+    position: 'absolute',
+    width: 22,
+    height: 22,
+    borderColor: colors.borderAccent,
+  },
+  corner_tl: {
+    top: spacing.sm,
+    left: spacing.sm,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderTopLeftRadius: radius.md,
+  },
+  corner_tr: {
+    top: spacing.sm,
+    right: spacing.sm,
+    borderTopWidth: 2,
+    borderRightWidth: 2,
+    borderTopRightRadius: radius.md,
+  },
+  corner_bl: {
+    bottom: spacing.sm,
+    left: spacing.sm,
+    borderBottomWidth: 2,
+    borderLeftWidth: 2,
+    borderBottomLeftRadius: radius.md,
+  },
+  corner_br: {
+    bottom: spacing.sm,
+    right: spacing.sm,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderBottomRightRadius: radius.md,
+  },
+
+  faceTitle: { ...text.h2, color: colors.text },
+  faceSubtitle: { ...text.small, color: colors.textDim, textAlign: 'center' },
+
+  scanRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  guides: { gap: spacing.lg, width: 62 },
+  guide: { alignItems: 'center', gap: spacing.xs },
+  guideIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  guideText: { ...text.tiny, color: colors.textDim, textAlign: 'center', fontSize: 9 },
 
   ovalWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   oval: {
     width: 180,
     height: 240,
     borderRadius: 120,
+    // `overflow: hidden` — kamera oval shaklga kesiladi
     overflow: 'hidden',
-    backgroundColor: colors.bgElevated,
+    backgroundColor: colors.bg,
   },
   ovalRing: {
     position: 'absolute',
@@ -793,9 +1066,51 @@ const styles = StyleSheet.create({
     borderRadius: 125,
     borderWidth: 2,
     borderColor: colors.accent,
-    opacity: 0.7,
+    opacity: 0.8,
   },
-  scanHint: { ...text.tiny, color: colors.textDim, textAlign: 'center' },
+  // Ichki punktir halqa — rasmdagi ikki qatlamli ramka
+  ovalRingInner: {
+    position: 'absolute',
+    width: 168,
+    height: 228,
+    borderRadius: 114,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.accent,
+    opacity: 0.4,
+  },
+
+  facePill: {
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface2,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  facePillText: { ...text.tiny, color: colors.textMuted },
+
+  tipsCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  tipsTitle: { ...text.small, color: colors.text },
+  tipsRow: { flexDirection: 'row', gap: spacing.xs },
+  tip: { flex: 1, alignItems: 'center', gap: spacing.xs },
+  tipIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tipText: { ...text.tiny, color: colors.textDim, textAlign: 'center', fontSize: 9 },
 
   skip: { alignSelf: 'center', padding: spacing.sm },
   skipText: { ...text.small, color: colors.textDim, textDecorationLine: 'underline' },

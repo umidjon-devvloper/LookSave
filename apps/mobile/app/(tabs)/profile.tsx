@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getFullProfile, updateProfile } from '../../src/api/endpoints';
 import { Icon, type IconName } from '../../src/components/Icon';
 import { AvatarPicker } from '../../src/components/profile/AvatarPicker';
+import { SignInRequired } from '../../src/components/SignInRequired';
 import { Button, Screen } from '../../src/components/ui';
 import { rtlStyles, useI18n } from '../../src/i18n';
 import { useAuthStore } from '../../src/store/authStore';
@@ -66,6 +67,7 @@ function Stat({ value, label }: { value: number; label: string }): JSX.Element {
 
 export default function Profile(): JSX.Element {
   const router = useRouter();
+  const status = useAuthStore((state) => state.status);
   const user = useAuthStore((state) => state.user);
   const signOut = useAuthStore((state) => state.signOut);
   const { locale, setLocale, t, isRTL } = useI18n();
@@ -73,7 +75,18 @@ export default function Profile(): JSX.Element {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
 
-  const profile = useQuery({ queryKey: ['profile'], queryFn: getFullProfile });
+  const signedIn = status === 'signedIn';
+
+  /*
+   * Kirmagan foydalanuvchi uchun so'rov YUBORILMAYDI. `enabled: false`
+   * bo'lmasa `GET /profile` 401 qaytaradi va ekranda "xato" ko'rinadi —
+   * holbuki bu xato emas, shunchaki hali kirilmagan.
+   */
+  const profile = useQuery({
+    queryKey: ['profile'],
+    queryFn: getFullProfile,
+    enabled: signedIn,
+  });
 
   const saveAvatar = useMutation({
     mutationFn: (avatarUrl: string) => updateProfile({ avatarUrl }),
@@ -82,6 +95,15 @@ export default function Profile(): JSX.Element {
 
   const height = profile.data?.measurements.height;
   const openOrders = profile.data?.trust.openOrders ?? 0;
+
+  if (!signedIn) {
+    return (
+      <SignInRequired
+        title="Profilingiz"
+        hint="Buyurtmalar, o‘lchamlar va sevimlilar akkauntingizga bog‘lanadi. Katalogni ko‘rish uchun esa kirish shart emas."
+      />
+    );
+  }
 
   return (
     <Screen>

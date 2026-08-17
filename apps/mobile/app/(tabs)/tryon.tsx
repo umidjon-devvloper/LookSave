@@ -9,6 +9,8 @@ import type * as THREE from 'three';
 import { api } from '../../src/api/client';
 import { Icon, type IconName } from '../../src/components/Icon';
 import { Button, ErrorView, Loading } from '../../src/components/ui';
+import { useAuthStore } from '../../src/store/authStore';
+import { SignInRequired } from '../../src/components/SignInRequired';
 import { useI18n } from '../../src/i18n';
 import { AvatarScene, type AvatarConfig } from '../../src/three/AvatarScene';
 import {
@@ -19,7 +21,7 @@ import {
   type TryonItem,
 } from '../../src/three/core';
 import {
-  applyMorphs,
+  bakeForExpoGl,
   disposeObject,
   loadGarment,
   pinModel,
@@ -58,6 +60,13 @@ interface SlotCount {
 }
 
 export default function TryOn(): JSX.Element {
+  /*
+   * ⚠️ ENG BIRINCHI TEKSHIRUV. Ilova endi kirish so'ramasdan ochiladi, lekin
+   * bu ekran shaxsiy ma'lumotga tayanadi. Tekshiruv boshqa hook'lardan
+   * keyin turmasligi kerak — quyida shartli `return` lar bor va hook'lar
+   * ular ortida qolib ketsa React qoidasi buziladi.
+   */
+  const authStatus = useAuthStore((state) => state.status);
   const router = useRouter();
   const t = useI18n((state) => state.t);
 
@@ -75,21 +84,31 @@ export default function TryOn(): JSX.Element {
 
   /** Kiyilganlar — `SlotState` mantiqi `core.ts` da testlangan. */
   const slots = useMemo(() => new SlotState(), []);
+
+  // Barqaror chaqiruvlar — inline funksiya sahnani qayta qurishga majbur qiladi
+  const handleBodyReady = useCallback(() => setBodyReady(true), []);
+  const handlePlaceholder = useCallback(() => setPlaceholder(true), []);
   const models = useRef(new Map<string, THREE.Group | null>()).current;
 
   const config = useQuery({
     queryKey: ['avatar', 'config'],
     queryFn: () => api<AvatarConfig & { qualityHint: Quality }>('/avatar/config'),
+    // Kirmagan holatda 401 keladi — so'rov umuman yuborilmaydi
+    enabled: authStatus === 'signedIn',
   });
 
   const slotCounts = useQuery({
     queryKey: ['tryon', 'slots'],
     queryFn: () => api<SlotCount[]>('/tryon/slots'),
+    // Kirmagan holatda 401 keladi — so'rov umuman yuborilmaydi
+    enabled: authStatus === 'signedIn',
   });
 
   const items = useQuery({
     queryKey: ['tryon', 'slot', activeSlot],
     queryFn: () => api<TryonItem[]>(`/tryon/slot/${activeSlot}?limit=50`),
+    // Kirmagan holatda 401 keladi — so'rov umuman yuborilmaydi
+    enabled: authStatus === 'signedIn',
   });
 
   // Server tavsiya qilgan sifatdan boshlanadi, keyin FPS bo'yicha tuzatiladi
@@ -133,7 +152,8 @@ export default function TryOn(): JSX.Element {
         tagSlot(model, slot);
         // Kiyim tana bilan bir xil shape key'larga ega bo'lishi kerak,
         // aks holda o'lcham mos kelmaydi
-        if (config.data) applyMorphs(model, config.data.morphTargets);
+        // Kiyimga ham singdiriladi — izohi `loader.ts` da
+        if (config.data) bakeForExpoGl(model, config.data.morphTargets);
 
         const previous = slots.equip(slot, item);
         const previousModel = models.get(slot);
@@ -224,6 +244,15 @@ export default function TryOn(): JSX.Element {
     onSuccess: (productId) => router.push(`/product/${productId}`),
   });
 
+  if (authStatus !== 'signedIn') {
+    return (
+      <SignInRequired
+        title="Kiyib ko‘rish"
+        hint="Avatar sizning o‘lchamlaringizga quriladi, shuning uchun kirish kerak."
+      />
+    );
+  }
+
   if (config.isLoading || slotCounts.isLoading) return <Loading />;
   if (config.isError || !config.data) {
     return <ErrorView message={t.errors.generic} onRetry={() => void config.refetch()} />;
@@ -243,9 +272,9 @@ export default function TryOn(): JSX.Element {
             zoom={zoom}
             quality={quality}
             onQualityChange={setQuality}
-            onBodyReady={() => setBodyReady(true)}
+            onBodyReady={handleBodyReady}
             onError={setNotice}
-            onPlaceholder={() => setPlaceholder(true)}
+            onPlaceholder={handlePlaceholder}
           />
 
           {!bodyReady ? (

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 import { loft, verticalRings } from './loft.mjs';
-import { LIMB_RADIUS, shellKeys, SHAPE, torsoKeys } from './profiles.mjs';
+import { LIMB_RADIUS, measuredTorsoKeys, shellKeys, SHAPE, torsoKeys } from './profiles.mjs';
 import { addMorphTargets, attachMorphNames, boxAt, capsuleBetween, ellipsoidAt } from './shape.mjs';
 
 /**
@@ -43,7 +43,9 @@ function part(name, geometry, material) {
  * botib qolgan edi. Endi bitta manba: tana o'zgarsa kiyim ham o'zgaradi.
  */
 function torsoShell({ from, to, extra }) {
-  const keys = shellKeys(torsoKeys(SHAPE.male), { from, to, extra: CLEARANCE + extra });
+  // Haqiqiy tana o'lchovi bo'lsa o'shandan, bo'lmasa protsedural jadvaldan
+  const base = measuredTorsoKeys() ?? torsoKeys(SHAPE.male);
+  const keys = shellKeys(base, { from, to, extra: CLEARANCE + extra });
   return loft(verticalRings(keys, 3), { radialSegments: 22 });
 }
 
@@ -60,7 +62,7 @@ const BUILDERS = {
     const material = fabric(color);
     const group = new THREE.Group();
 
-    group.add(part('tshirt_body', torsoShell({ from: 1.0, to: 1.43, extra: 0.008 }), material));
+    group.add(part('tshirt_body', torsoShell({ from: 1.0, to: 1.43, extra: 0.014 }), material));
 
     for (const side of [1, -1]) {
       const arm = at(side > 0 ? 'LeftArm' : 'RightArm');
@@ -157,6 +159,36 @@ const BUILDERS = {
         ),
       );
     }
+
+    return group;
+  },
+
+  /**
+   * Soat — bilakka, `socket_wrist` atrofida.
+   *
+   * Chap bilakka qo'yiladi: o'ng qo'lda soat kamdan-kam taqiladi va ikkala
+   * qo'lga qo'yish g'alati ko'rinadi.
+   */
+  watch(at, color) {
+    const band = fabric(0x1c1a22, 0.7);
+    const face = fabric(color, 0.25);
+    const group = new THREE.Group();
+
+    const wrist = at('LeftHand');
+    // Bilakning bir oz yuqorisida — kaft ustida emas
+    const y = wrist.y + 0.035;
+
+    const strap = capsuleBetween(
+      [wrist.x - 0.005, y + 0.02, wrist.z],
+      [wrist.x - 0.005, y - 0.02, wrist.z],
+      0.032,
+      14,
+    );
+    strap.scale(0.62, 1, 1);
+    group.add(part('watch_strap', strap, band));
+
+    const dial = ellipsoidAt([wrist.x - 0.026, y, wrist.z], [0.008, 0.021, 0.021], 14);
+    group.add(part('watch_face', dial, face));
 
     return group;
   },
@@ -267,6 +299,27 @@ export const CATALOG = [
     colorHex: '#201D28',
     color: 0x201d28,
     hideBodyParts: ['body_foot_L', 'body_foot_R'],
+  },
+  {
+    key: 'watch-steel',
+    builder: 'watch',
+    slot: 'wrist',
+    title: 'Qo‘l soati',
+    colorName: 'Kumush',
+    colorHex: '#C9CCD4',
+    color: 0xc9ccd4,
+    // Soat tana qismini yashirmaydi — u kaft ustida turadi
+    hideBodyParts: [],
+  },
+  {
+    key: 'watch-gold',
+    builder: 'watch',
+    slot: 'wrist',
+    title: 'Qo‘l soati',
+    colorName: 'Oltin',
+    colorHex: '#C9A227',
+    color: 0xc9a227,
+    hideBodyParts: [],
   },
   {
     key: 'cap-black',

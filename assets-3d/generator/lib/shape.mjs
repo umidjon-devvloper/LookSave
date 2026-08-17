@@ -175,8 +175,32 @@ export function addMorphTargets(geometry) {
   }
   base.needsUpdate = true;
 
-  // Nishonlar: asos + o'sha kalitning to'liq og'ishi
-  const morphs = offsets.map((offset) => {
+  /*
+   * Nishonlar: asos + o'sha kalitning to'liq og'ishi.
+   *
+   * ⚠️ NOL NISHONLAR TASHLANADI. `mt_waist` kabi kalitlar faqat ma'lum
+   * balandlikda ishlaydi (`band(...)`), shuning uchun bosh yoki kaft
+   * geometriyasida ularning og'ishi butunlay nol bo'ladi. Nol massiv ham
+   * faylda to'liq joy egallaydi: 6 kalit har verteksni olti marta
+   * takrorlaydi. Boshda 17 000 uchburchak bor va uning 4 ta kaliti nol —
+   * bu bir necha megabayt bekorga.
+   *
+   * Tashlab yuborish xavfsiz: ilova shape key'ni NOM bo'yicha qidiradi
+   * (`morphTargetDictionary['mt_' + nom]`) va topmasa jimgina o'tkazib
+   * yuboradi. Ya'ni nolni saqlash bilan saqlamaslik bir xil natija beradi.
+   */
+  const kept = [];
+  const morphs = [];
+
+  offsets.forEach((offset, morphIndex) => {
+    let largest = 0;
+    for (let i = 0; i < offset.length; i++) {
+      const value = Math.abs(offset[i]);
+      if (value > largest) largest = value;
+    }
+    // 0.1 mm dan kichik siljish ko'zga ko'rinmaydi
+    if (largest < 0.0001) return;
+
     const target = new THREE.Float32BufferAttribute(new Float32Array(count * 3), 3);
     for (let i = 0; i < count; i++) {
       target.setXYZ(
@@ -186,13 +210,16 @@ export function addMorphTargets(geometry) {
         base.getZ(i) + (offset[i * 3 + 2] ?? 0),
       );
     }
-    return target;
+    kept.push(MORPH_NAMES[morphIndex]);
+    morphs.push(target);
   });
 
   geometry.morphAttributes.position = morphs;
   geometry.morphTargetsRelative = false;
   geometry.computeVertexNormals();
 
+  // Chaqiruvchi `attachMorphNames` ga aynan shu ro'yxatni berishi kerak
+  geometry.userData.morphNames = kept;
   return geometry;
 }
 
@@ -225,9 +252,15 @@ export function bindToBone(geometry, boneName, boneIndex) {
   return geometry;
 }
 
-/** Shape key nomlarini mesh'ga yozadi — ilova ular bo'yicha qidiradi */
+/**
+ * Shape key nomlarini mesh'ga yozadi — ilova ular bo'yicha qidiradi.
+ *
+ * Nomlar `addMorphTargets` saqlab qolganlaridan olinadi: nol nishonlar
+ * tashlangani uchun ro'yxat har mesh'da har xil bo'lishi mumkin.
+ */
 export function attachMorphNames(mesh) {
-  mesh.morphTargetDictionary = Object.fromEntries(MORPH_NAMES.map((name, i) => [name, i]));
-  mesh.morphTargetInfluences = MORPH_NAMES.map(() => 0.5);
+  const names = mesh.geometry.userData.morphNames ?? MORPH_NAMES;
+  mesh.morphTargetDictionary = Object.fromEntries(names.map((name, i) => [name, i]));
+  mesh.morphTargetInfluences = names.map(() => 0.5);
   return mesh;
 }

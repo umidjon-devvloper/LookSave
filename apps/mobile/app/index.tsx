@@ -1,14 +1,18 @@
 import { Redirect } from 'expo-router';
 
-import { useAuthStore } from '../src/store/authStore';
-
 /**
- * Kirish nuqtasi. Auth holatiga qarab yo'naltiradi.
+ * Kirish nuqtasi.
  *
- * ⚠️ Hujjatda (05-mobile §6.2) telefon → OTP oqimi ko'zda tutilgan.
- * Faza 1 da OTP yo'q — telefon + parol (5-bosqich qarori).
+ * ⚠️ KIRISH SO'RALMAYDI. Ilgari bu yerda auth holati tekshirilib,
+ * kirmagan foydalanuvchi `welcome` ekraniga yuborilardi — ya'ni ilovani
+ * ochgan odam birinchi ko'radigan narsa parol so'rovi bo'lardi.
+ *
+ * Magazin ilovasida bu noto'g'ri: katalogni ko'rish, do'konlarni izlash va
+ * narxlarni solishtirish uchun akkaunt kerak emas. Kirish faqat shaxsiy
+ * qismga o'tganda so'raladi — profil, buyurtma, avatar.
+ *
+ * O'sha ekranlar `SignInRequired` bilan o'zini himoya qiladi.
  */
 export default function Index(): JSX.Element {
-  const status = useAuthStore((state) => state.status);
-  return <Redirect href={status === 'signedIn' ? '/(tabs)' : '/(auth)/welcome'} />;
+  return <Redirect href="/(tabs)" />;
 }

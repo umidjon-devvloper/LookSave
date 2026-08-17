@@ -89,7 +89,24 @@ export async function updateProfile(userId: string, input: UpdateProfileInput): 
   if (input.locale !== undefined) push('locale', input.locale);
   if (input.avatarUrl !== undefined) push('avatar_url', input.avatarUrl);
 
-  await pool.query(`UPDATE users SET ${fields.join(', ')} WHERE id = $1`, params);
+  // Faqat `profiles` dagi maydon berilgan bo'lsa `users` ga tegilmaydi:
+  // bo'sh `SET` bilan so'rov sintaktik xato bo'lardi
+  if (fields.length > 0) {
+    await pool.query(`UPDATE users SET ${fields.join(', ')} WHERE id = $1`, params);
+  }
+
+  /*
+   * Yuz teksturasi `profiles` jadvalida — alohida so'rov.
+   *
+   * `face_scan_status` ham yangilanadi: surat kelgani skanerlash
+   * tugaganini bildiradi. `null` berilsa holat `none` ga qaytadi.
+   */
+  if (input.faceTextureUrl !== undefined) {
+    await pool.query(
+      `UPDATE profiles SET face_texture_url = $2, face_scan_status = $3 WHERE user_id = $1`,
+      [userId, input.faceTextureUrl, input.faceTextureUrl === null ? 'none' : 'ready'],
+    );
+  }
 
   // Jins o'zgarsa morph'lar qayta hisoblanadi: ayol va erkak tanasi
   // uchun tipik nisbatlar boshqacha

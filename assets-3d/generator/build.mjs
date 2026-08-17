@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -56,9 +56,21 @@ async function emit(label, object, file) {
 }
 
 // ── Tana modellari ──
+/*
+ * Tashqi modeldan kelgan tanaga TEGILMAYDI. `adopt.mjs` uni `adopted.json`
+ * ga belgilaydi — belgisiz protsedural tana yasaladi, belgi bo'lsa mavjud
+ * fayl saqlanadi. Aks holda haqiqiy model jimgina qayta yozilib ketardi.
+ */
+const markerFile = join(OUT, 'adopted.json');
+const adopted = existsSync(markerFile) ? JSON.parse(readFileSync(markerFile, 'utf8')) : {};
+
 const bodies = {};
 
 for (const gender of ['male', 'female']) {
+  if (adopted[gender]) {
+    console.log(`   ${gender}: tashqi model saqlandi (${adopted[gender].source}) — qayta yasalmadi`);
+    continue;
+  }
   const body = buildBody(gender);
   bodies[gender] = body;
   await emit(`${gender} tana`, body.group, `${gender}-base-${VERSION}.glb`);
@@ -68,7 +80,9 @@ for (const gender of ['male', 'female']) {
 // Erkak tanasining suyak o'rinlari asos qilib olinadi: ayol skeleti
 // faqat yelka/son kengligida farq qiladi, kiyim esa shape key orqali
 // moslashadi (04-3d-pipeline §3).
-const at = bodies.male.at;
+// Kiyim geometriyasi uchun suyak o'rinlari kerak — ular skeletdan,
+// tana mesh'idan emas, shuning uchun protsedural tanadan olinadi
+const at = (bodies.male ?? buildBody('male')).at;
 const manifest = [];
 
 for (const spec of CATALOG) {

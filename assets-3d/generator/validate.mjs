@@ -74,7 +74,21 @@ function collectNames(scene) {
   return names;
 }
 
-/** Har bir mesh'da oltita shape key to'g'ri nom bilan turibdimi */
+/**
+ * Shape key'lar joyidami.
+ *
+ * ⚠️ HAR MESH'DA OLTITASI SHART EMAS. `mt_waist` kabi kalitlar faqat
+ * ma'lum balandlikda ta'sir qiladi, shuning uchun bosh yoki kaftda ularning
+ * og'ishi nol bo'ladi va generator ularni faylga yozmaydi (o'nlab megabayt
+ * tejaydi). Ilova shape key'ni nom bo'yicha qidiradi va topmasa jimgina
+ * o'tkazadi — natija bir xil.
+ *
+ * Shuning uchun tekshiruv shunday: GAVDA'da oltitasi ham bo'lishi shart
+ * (o'lchamlarning hammasi unga ta'sir qiladi), qolgan qismlarda esa
+ * kamida ikkita umumiy kalit — `mt_height` va `mt_weight`.
+ */
+const GLOBAL_MORPHS = ['mt_height', 'mt_weight'];
+
 function checkMorphs(file, scene) {
   let checked = 0;
 
@@ -88,7 +102,8 @@ function checkMorphs(file, scene) {
       return;
     }
 
-    for (const name of MORPH_NAMES) {
+    const required = child.name === 'body_torso' ? MORPH_NAMES : GLOBAL_MORPHS;
+    for (const name of required) {
       if (dictionary[name] === undefined) fail(file, `${child.name} da "${name}" yo'q`);
     }
   });
@@ -103,7 +118,22 @@ for (const gender of manifest.bodies) {
   const names = collectNames(gltf.scene);
 
   for (const part of REQUIRED_BODY_PARTS) {
-    if (!names.has(part)) fail(file, `mesh yo'q: ${part}`);
+    if (names.has(part)) continue;
+
+    /*
+     * `body_neck` ixtiyoriy. Past poligonli modelda bo'yin uchun alohida
+     * verteks bo'lmaydi — ular bosh yoki gavdaga tegishli bo'lib qoladi va
+     * `adopt.mjs` bo'sh qism yasamaydi.
+     *
+     * Zarari yo'q: ilovaning `BODY_SLOT` xaritasida bo'yin yo'q va hozirgi
+     * kiyimlarning birortasi uni yashirmaydi. Faqat sharf/marjon qo'shilsa
+     * kerak bo'ladi — o'shanda modelni qayta ko'rish kerak.
+     */
+    if (part === 'body_neck') {
+      console.log(`  ℹ️  ${file}: body_neck yo'q (past poligonli modelda normal)`);
+      continue;
+    }
+    fail(file, `mesh yo'q: ${part}`);
   }
   for (const socket of REQUIRED_SOCKETS) {
     if (!names.has(socket)) fail(file, `socket yo'q: ${socket}`);
@@ -129,8 +159,9 @@ for (const gender of manifest.bodies) {
     }
   });
 
-  if (skinned !== REQUIRED_BODY_PARTS.length) {
-    fail(file, `skinned mesh soni ${skinned}, kutilgani ${REQUIRED_BODY_PARTS.length}`);
+  // Bo'yin ixtiyoriy bo'lgani uchun 14 ham, 15 ham to'g'ri
+  if (skinned < REQUIRED_BODY_PARTS.length - 1) {
+    fail(file, `skinned mesh soni ${skinned}, kamida ${REQUIRED_BODY_PARTS.length - 1} bo'lishi kerak`);
   }
   if (bones < 20) fail(file, `suyak soni juda kam: ${bones}`);
 

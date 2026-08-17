@@ -1,71 +1,30 @@
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HologramFigure } from '../../src/components/ai/HologramFigure';
 import { Icon, type IconName } from '../../src/components/Icon';
 import { Button } from '../../src/components/ui';
-import {
-  MOODS,
-  OCCASIONS,
-  STYLES,
-  useAiFlowStore,
-  type Mood,
-  type Occasion,
-  type StyleName,
-} from '../../src/store/aiFlowStore';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 
 /**
  * AI Designer — oqimning kirish ekrani.
  *
- * Uchta tanlov (holat, uslub, kayfiyat) shu yerda yig'iladi va
- * `aiFlowStore` da saqlanadi. Kartani bosish keyingi qiymatga o'tkazadi:
- * to'liq ro'yxat modal ochishdan ko'ra tezroq va bu yerda variantlar kam.
+ * Butun ekran bitta gologramma rasmiga qurilgan: unda tadbir/uslub/kayfiyat
+ * kartalari va kiyim plitkalari ham bor, shuning uchun ular alohida
+ * chizilmaydi.
  *
- * ⚠️ Bu tanlovlar hozircha serverga yuborilmaydi — AI tavsiyasi uchun
- * endpoint yo'q. Ular kiyim tanlashda filtr sifatida ishlatiladi.
+ * ⚠️ TANLOV ENDI BU YERDA YO'Q. Ilgari uchta bosiladigan karta bor edi,
+ * lekin ular rasmdagilar bilan takrorlanardi. Hozir `aiFlowStore` dagi
+ * qiymatlar SUKUT bo'yicha qoladi (`Kundalik`, `Smart Casual`, `Ishonchli`)
+ * va ular komplekt nomida hamda kiyim filtrida ishlatiladi.
+ *
+ * Foydalanuvchiga tanlash imkonini qaytarish kerak bo'lsa — uni avatar
+ * oqimiga qadam qilib qo'shish mantiqiyroq, bu ekranni yana to'ldirmasdan.
+ *
+ * ⚠️ Scroll yo'q: hamma narsa bitta ekranga sig'adi, rasm esa qolgan bo'sh
+ * joyni egallab kichrayadi.
  */
-
-/** Keyingi qiymatga aylantirib o'tadi — oxiridan boshiga qaytadi */
-function cycle<T>(list: readonly T[], current: T): T {
-  const index = list.indexOf(current);
-  return list[(index + 1) % list.length] as T;
-}
-
-function ChoiceCard({
-  label,
-  value,
-  icon,
-  onPress,
-}: {
-  label: string;
-  value: string;
-  icon: IconName;
-  onPress: () => void;
-}): JSX.Element {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${label}: ${value}`}
-      onPress={onPress}
-      style={({ pressed }) => [styles.choice, pressed && styles.choicePressed]}
-    >
-      <View style={styles.choiceText}>
-        <Text style={styles.choiceLabel}>{label}</Text>
-        <Text style={styles.choiceValue} numberOfLines={1}>
-          {value}
-        </Text>
-      </View>
-      <View style={styles.choiceIcon}>
-        <Icon name={icon} size={15} color={colors.accent} />
-      </View>
-    </Pressable>
-  );
-}
-
-/** O'ng ustundagi bezak plitkalari — nima kiyintirish mumkinligini eslatadi */
-const GARMENT_TILES: IconName[] = ['slotOuter', 'slotBottom', 'slotFeet', 'slotHead'];
 
 const HOW_IT_WORKS: Array<{ icon: IconName; title: string }> = [
   { icon: 'looks', title: 'Tanlovingizni aytasiz' },
@@ -77,21 +36,15 @@ export default function AiDesigner(): JSX.Element {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const occasion = useAiFlowStore((state) => state.occasion);
-  const style = useAiFlowStore((state) => state.style);
-  const mood = useAiFlowStore((state) => state.mood);
-  const setOccasion = useAiFlowStore((state) => state.setOccasion);
-  const setStyle = useAiFlowStore((state) => state.setStyle);
-  const setMood = useAiFlowStore((state) => state.setMood);
-
   return (
     <View style={styles.root}>
-      <ScrollView
-        contentContainerStyle={[
+      {/* Scroll yo'q: hamma narsa bitta ekranga sig'adi, rasm esa qolgan
+          bo'sh joyni egallab kichrayadi */}
+      <View
+        style={[
           styles.content,
           { paddingTop: insets.top + spacing.sm, paddingBottom: insets.bottom + spacing.lg },
         ]}
-        showsVerticalScrollIndicator={false}
       >
         <Pressable
           accessibilityRole="button"
@@ -111,43 +64,13 @@ export default function AiDesigner(): JSX.Element {
           Uslubingiz, kayfiyatingiz yoki tadbir haqida ayting — AI siz uchun mos komplekt yasaydi.
         </Text>
 
-        {/* Gologramma va uning ikki yonidagi kartalar */}
-        <View style={styles.stage}>
-          <View style={styles.choices}>
-            <ChoiceCard
-              label="TADBIR"
-              value={occasion}
-              icon="orders"
-              onPress={() => setOccasion(cycle<Occasion>(OCCASIONS, occasion))}
-            />
-            <ChoiceCard
-              label="USLUB"
-              value={style}
-              icon="dress"
-              onPress={() => setStyle(cycle<StyleName>(STYLES, style))}
-            />
-            <ChoiceCard
-              label="KAYFIYAT"
-              value={mood}
-              icon="premium"
-              onPress={() => setMood(cycle<Mood>(MOODS, mood))}
-            />
-          </View>
-
-          <View style={styles.figure}>
-            <HologramFigure size={150} />
-          </View>
-
-          <View style={styles.tiles}>
-            {GARMENT_TILES.map((icon) => (
-              <View key={icon} style={styles.tile}>
-                <Icon name={icon} size={22} color={colors.accent} />
-              </View>
-            ))}
-          </View>
+        {/*
+          Gologramma to'liq ko'rsatiladi — rasm ichida kartalar va kiyim
+          plitkalari ham bor, shuning uchun ular alohida chizilmaydi.
+        */}
+        <View style={styles.figure}>
+          <HologramFigure />
         </View>
-
-        <Text style={styles.hint}>Kartani bosib o‘zgartiring</Text>
 
         {/* Qanday ishlaydi */}
         <View style={styles.howCard}>
@@ -169,14 +92,19 @@ export default function AiDesigner(): JSX.Element {
         <View style={styles.cta}>
           <Button title="AI komplekt yasasin" onPress={() => router.push('/ai/avatar')} />
         </View>
-      </ScrollView>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
-  content: { paddingHorizontal: spacing.md, gap: spacing.xs },
+  /*
+   * Sof qora — brend foni `#0A0A0F` emas. Sabab: gologramma rasmi shaffof
+   * emas va uning foni `#000000`. Ranglar bir xil bo'lmasa rasm atrofida
+   * to'rtburchak chekka ko'rinadi.
+   */
+  root: { flex: 1, backgroundColor: '#000000' },
+  content: { flex: 1, paddingHorizontal: spacing.md, gap: spacing.xs },
   close: { alignSelf: 'flex-start', padding: spacing.xs, marginBottom: spacing.xs },
 
   title: { ...text.h1, color: colors.text, textAlign: 'center', letterSpacing: 0.5 },
@@ -190,51 +118,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
 
-  stage: {
-    flexDirection: 'row',
+  /*
+   * ⚠️ `flex: 1` SHART. Rasm ham `flex: 1` bilan chiziladi — konteynerda
+   * balandlik bo'lmasa u nolga siqiladi va umuman ko'rinmaydi. Xato jimgina
+   * yuz beradi: rasm yuklanadi, joylashuv "ishlaydi", faqat ekranda hech
+   * narsa yo'q.
+   *
+   * Manfiy chekka — `content` dagi yon bo'shliqni bekor qiladi, shunda
+   * gologramma ekran chetidan chetiga to'liq yoyiladi.
+   */
+  figure: {
+    flex: 1,
     alignItems: 'center',
-    justifyContent: 'space-between',
     marginTop: spacing.sm,
+    marginHorizontal: -spacing.md,
   },
-  figure: { flex: 1, alignItems: 'center' },
-  choices: { gap: spacing.sm, width: 104 },
-  choice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingVertical: spacing.xs + 2,
-    paddingHorizontal: spacing.sm,
-  },
-  choicePressed: { borderColor: colors.borderAccent, backgroundColor: colors.surface2 },
-  choiceText: { flex: 1 },
-  choiceLabel: { ...text.tiny, color: colors.textDim, letterSpacing: 0.8 },
-  choiceValue: { ...text.small, color: colors.text },
-  choiceIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: radius.sm,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  tiles: { gap: spacing.sm, width: 52 },
-  tile: {
-    width: 52,
-    height: 52,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  hint: { ...text.tiny, color: colors.textDim, textAlign: 'center', marginTop: spacing.xs },
 
   howCard: {
     backgroundColor: colors.surface,

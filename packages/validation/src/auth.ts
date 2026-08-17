@@ -99,6 +99,11 @@ export const updateProfileSchema = z
     locale: z.enum(['uz', 'ru', 'en', 'ar']).optional(),
     /** Profil surati. `null` — suratni olib tashlash. */
     avatarUrl: z.string().url('Havola noto`g`ri').max(500).nullable().optional(),
+    /**
+     * Yuz skanerida olingan surat — 3D avatarning boshiga tekstura bo'lib
+     * tushadi. `null` — olib tashlash (avatar neytral yuzga qaytadi).
+     */
+    faceTextureUrl: z.string().url('Havola noto`g`ri').max(500).nullable().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, { message: 'O`zgartirish uchun maydon yo`q' });
 

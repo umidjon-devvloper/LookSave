@@ -114,6 +114,26 @@
       "hasMorphs": true
     },
     {
+      "key": "watch-steel",
+      "file": "watch-steel-v1.glb",
+      "slot": "wrist",
+      "title": "Qo‘l soati",
+      "colorName": "Kumush",
+      "colorHex": "#C9CCD4",
+      "hideBodyParts": [],
+      "hasMorphs": true
+    },
+    {
+      "key": "watch-gold",
+      "file": "watch-gold-v1.glb",
+      "slot": "wrist",
+      "title": "Qo‘l soati",
+      "colorName": "Oltin",
+      "colorHex": "#C9A227",
+      "hideBodyParts": [],
+      "hasMorphs": true
+    },
+    {
       "key": "cap-black",
       "file": "cap-black-v1.glb",
       "slot": "head",

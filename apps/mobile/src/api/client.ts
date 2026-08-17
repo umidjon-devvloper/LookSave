@@ -19,9 +19,49 @@ const REFRESH_KEY = 'looksave.refresh';
  * serverga `10.0.2.2` orqali murojaat qilinadi. iOS simulyatorida
  * `localhost` ishlaydi. Haqiqiy quridmada kompyuterning LAN IP'si kerak.
  */
+/**
+ * Ishlab chiqishda API xosti METRO XOSTIDAN olinadi.
+ *
+ * ⚠️ NEGA: Wi-Fi almashganda kompyuterning IP'si o'zgaradi va `.env` dagi
+ * manzil eskiradi. Buni sezish qiyin — ilova ochiladi, ekranlar chiziladi,
+ * faqat har bir so'rov javobsiz qoladi va hamma joyda "yuklanmoqda" turadi.
+ * Bu uch marta takrorlandi.
+ *
+ * Metro manzili esa har doim to'g'ri: ilova aynan o'sha yerdan JS oladi,
+ * ya'ni u ishlayotgan bo'lsa xost ham to'g'ri. Shundan portni almashtirib
+ * API manzilini yig'amiz va `.env` dagi IP eskirsa ham ish davom etadi.
+ *
+ * Ishlab chiqarishda bunday qilinmaydi: u yerda `EXPO_PUBLIC_API_URL`
+ * haqiqiy domenni ko'rsatadi va Metro umuman yo'q.
+ */
+function devHostFromMetro(configured: string): string | null {
+  if (!__DEV__) return null;
+
+  // `hostUri` — `192.168.1.10:8081` ko'rinishida
+  const hostUri = Constants.expoConfig?.hostUri;
+  const metroHost = typeof hostUri === 'string' ? hostUri.split(':')[0] : null;
+  if (!metroHost) return null;
+
+  try {
+    const url = new URL(configured);
+    // Faqat lokal manzillar almashtiriladi — haqiqiy domenga tegilmaydi
+    if (!/^\d+\.\d+\.\d+\.\d+$/.test(url.hostname) && url.hostname !== 'localhost') {
+      return null;
+    }
+    if (url.hostname === metroHost) return null;
+
+    url.hostname = metroHost;
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return null;
+  }
+}
+
 function apiUrl(): string {
   const fromEnv = process.env['EXPO_PUBLIC_API_URL'];
-  if (typeof fromEnv === 'string' && fromEnv.length > 0) return fromEnv;
+  if (typeof fromEnv === 'string' && fromEnv.length > 0) {
+    return devHostFromMetro(fromEnv) ?? fromEnv;
+  }
 
   const fromConfig = Constants.expoConfig?.extra?.['apiUrl'];
   return typeof fromConfig === 'string' ? fromConfig : 'https://api.looksave.app';

@@ -1,10 +1,13 @@
 import * as FileSystem from 'expo-file-system';
+import { loadTextureAsync } from 'expo-three';
 import type * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 import { CACHE_BUDGET_MB, ModelCache, pickModelUrl, type Quality, type TryonItem } from './core';
 import { patchNavigatorUserAgent } from './glCompat';
+import { fabricNormal } from './textures';
+import { Mesh } from 'three';
 
 // GLTFLoader yaratilishidan OLDIN — aks holda birinchi parse yiqiladi
 patchNavigatorUserAgent();
@@ -242,11 +245,51 @@ export function clearClipCache(): void {
   clipCache.clear();
 }
 
+/**
+ * Yuz suratini boshga tekstura qilib yuklaydi.
+ *
+ * ⚠️ three'ning `TextureLoader` i TO'G'RIDAN-TO'G'RI ISHLAMAYDI: u brauzer
+ * `Image` obyektiga tayanadi, React Native'da esa u yo'q. `expo-three` shu
+ * bo'shliqni to'ldiradi — RN'ning o'z rasm quvuridan foydalanadi.
+ *
+ * ⚠️ `flipY = false` SHART: glTF UV koordinatalari yuqoridan pastga
+ * hisoblanadi, three esa sukut bo'yicha rasmni ag'daradi. Ag'darilsa yuz
+ * teskari tushadi va buni faqat ko'z bilan sezish mumkin.
+ */
+export async function loadFaceTexture(url: string): Promise<THREE.Texture> {
+  const texture = (await loadTextureAsync({ asset: url })) as THREE.Texture;
+
+  texture.flipY = false;
+  texture.needsUpdate = true;
+
+  return texture;
+}
+
 export async function loadGarment(item: TryonItem, quality: Quality): Promise<THREE.Group | null> {
   const url = pickModelUrl(item, quality);
   if (!url) return null;
 
   const { scene } = await loadModel(`${item.variantId}:${quality}`, url, item.fileSizeBytes ?? 0);
+
+  /*
+   * Mato relyefi — barcha kiyim shu funksiyadan o'tadi, shuning uchun
+   * shu yerda beriladi. Modelga singdirilmaydi: relyef takrorlanuvchi va
+   * mayda, uni har GLB ichida saqlash faylni bekorga kattalashtirardi.
+   *
+   * Material NUSXALANADI: kesh bitta modelni bir necha marta qaytaradi va
+   * materialni joyida o'zgartirish keshdagi asl nusxaga ham ta'sir qilardi.
+   */
+  const normalMap = fabricNormal();
+  scene.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    if (!mesh.isMesh) return;
+
+    const material = (mesh.material as THREE.MeshStandardMaterial).clone();
+    material.normalMap = normalMap;
+    material.needsUpdate = true;
+    mesh.material = material;
+  });
+
   return scene;
 }
 
@@ -290,6 +333,96 @@ export function clearCache(): void {
  * kerak (04-3d-pipeline §3: `mt_height`, `mt_weight`, …). Aks holda
  * kiyim tanaga mos kelmaydi.
  */
+/**
+ * Shape key va skinning'ni VERTEKSLARGA SINGDIRADI, keyin ularni o'chiradi.
+ *
+ * ⚠️ NEGA MAJBURIY: `three` skelet va shape key ma'lumotini FLOAT TEKSTURA
+ * orqali shaderga uzatadi. `expo-gl` da esa `EXT_color_buffer_float`
+ * kengaytmasi yo'q — logda shu yozuv chiqadi:
+ *
+ *   THREE.WebGLRenderer: EXT_color_buffer_float extension not supported
+ *
+ * Natijada skinned mesh'lar umuman chizilmaydi. Xato berilmaydi, model
+ * yuklanadi, kadrlar sanaladi — faqat ekran bo'sh qoladi. Buni topish
+ * uchun bir necha kun ketdi.
+ *
+ * YECHIM: hisob-kitobni bir marta protsessorda bajarib, natijani oddiy
+ * pozitsiyaga yozamiz. Shundan keyin mesh oddiy (skinsiz, morphsiz) bo'lib
+ * qoladi va hech qanday float tekstura kerak emas.
+ *
+ * ⚠️ NARXI: animatsiya imkoni yo'qoladi — suyaklar endi vertekslarga
+ * ta'sir qilmaydi. Hozircha yo'qotish emas: klip'lar baribir yo'q va
+ * avatar tinch turadi. Animatsiya kerak bo'lganda `expo-gl` ni float
+ * tekstura qo'llab-quvvatlaydigan versiyaga ko'tarish kerak bo'ladi.
+ *
+ * O'lchamlar esa SAQLANADI: shape key qiymatlari shu yerda qo'llanadi,
+ * ya'ni bo'y va ko'krak baribir tanaga ta'sir qiladi.
+ */
+export function bakeForExpoGl(root: THREE.Object3D, morphs: Record<string, number>): void {
+  const replacements: Array<{ from: THREE.Mesh; to: THREE.Mesh }> = [];
+
+  root.traverse((child) => {
+    const mesh = child as THREE.SkinnedMesh;
+    if (!mesh.isMesh) return;
+
+    const geometry = mesh.geometry;
+    const position = geometry.attributes.position as THREE.BufferAttribute;
+    const targets = geometry.morphAttributes.position;
+
+    // 1. Shape key'larni pozitsiyaga qo'shamiz
+    if (targets && mesh.morphTargetDictionary) {
+      const relative = geometry.morphTargetsRelative;
+
+      for (const [name, value] of Object.entries(morphs)) {
+        const index = mesh.morphTargetDictionary[`mt_${name}`];
+        if (index === undefined) continue;
+
+        const target = targets[index];
+        if (!target) continue;
+
+        for (let i = 0; i < position.count; i++) {
+          const dx = relative ? target.getX(i) : target.getX(i) - position.getX(i);
+          const dy = relative ? target.getY(i) : target.getY(i) - position.getY(i);
+          const dz = relative ? target.getZ(i) : target.getZ(i) - position.getZ(i);
+
+          position.setXYZ(
+            i,
+            position.getX(i) + dx * value,
+            position.getY(i) + dy * value,
+            position.getZ(i) + dz * value,
+          );
+        }
+      }
+
+      position.needsUpdate = true;
+      delete geometry.morphAttributes.position;
+      mesh.morphTargetDictionary = undefined;
+      mesh.morphTargetInfluences = undefined;
+    }
+
+    // 2. Teri og'irliklari — bind pozada skinning birlik almashtirish,
+    //    ya'ni vertekslar joyida qoladi. Shuning uchun ularni shunchaki
+    //    olib tashlaymiz.
+    geometry.deleteAttribute('skinIndex');
+    geometry.deleteAttribute('skinWeight');
+    geometry.computeVertexNormals();
+
+    if (mesh.isSkinnedMesh) {
+      const plain = new Mesh(geometry, mesh.material);
+      plain.name = mesh.name;
+      plain.userData = mesh.userData;
+      plain.frustumCulled = false;
+      replacements.push({ from: mesh, to: plain });
+    }
+  });
+
+  // Almashtirish alohida: `traverse` ichida daraxtni o'zgartirib bo'lmaydi
+  for (const { from, to } of replacements) {
+    from.parent?.add(to);
+    from.removeFromParent();
+  }
+}
+
 export function applyMorphs(root: THREE.Object3D, morphs: Record<string, number>): void {
   root.traverse((child) => {
     const mesh = child as THREE.Mesh;

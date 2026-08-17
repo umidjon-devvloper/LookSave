@@ -1,0 +1,16 @@
+diff --git a/node_modules/expo-localization/ios/LocalizationModule.swift b/node_modules/expo-localization/ios/LocalizationModule.swift
+index 73b2b9d..3af3c43 100644
+--- a/node_modules/expo-localization/ios/LocalizationModule.swift
++++ b/node_modules/expo-localization/ios/LocalizationModule.swift
+@@ -123,6 +123,11 @@ public class LocalizationModule: Module {
+       return "roc"
+     case .iso8601:
+       return "iso8601"
++    default:
++      // iOS 26 SDK Calendar.Identifier ga yangi turlar qo'shdi — ularsiz
++      // `switch` to'liq emas deb build to'xtaydi. Noma'lum taqvim uchun
++      // gregorian eng xavfsiz zaxira.
++      return "gregory"
+     }
+   }
+ 

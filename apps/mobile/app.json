@@ -6,7 +6,8 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
+    "_comment_newArch": "expo-gl yangi arxitekturada (Fabric/bridgeless) sirtini ekranga ulay olmaydi: kontekst yaratiladi, bufer to'g'ri o'lchamda, kadrlar chiziladi — lekin ekran bo'sh qoladi. Shu sabab eski arxitektura. Qaytarishdan oldin expo-gl yangilanганini tekshiring.",
+    "newArchEnabled": false,
     "backgroundColor": "#0A0A0F",
     "assetBundlePatterns": ["**/*"],
     "ios": {

@@ -19,6 +19,8 @@ export const images = {
   /** "LS" belgisi — qora foni shaffofga aylantirilgan (sarlavha va splash uchun) */
   logoMark: require('../../assets/logo-mark.png') as ImageSourcePropType,
   heroHome: require('../../assets/hero-home.png') as ImageSourcePropType,
+  /** AI Designer kirish ekranidagi gologramma — markaziy figura kesib olinadi */
+  aiHologram: require('../../assets/3d-person.png') as ImageSourcePropType,
   heroMarket: require('../../assets/hero-market.png') as ImageSourcePropType,
   collectionMen: require('../../assets/collection-men.png') as ImageSourcePropType,
   collectionWomen: require('../../assets/collection-women.png') as ImageSourcePropType,

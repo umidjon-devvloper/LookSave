@@ -323,6 +323,8 @@ export const updateProfile = (input: {
   gender?: 'male' | 'female';
   locale?: string;
   avatarUrl?: string | null;
+  /** Yuz skaneridagi surat — 3D avatar boshiga tekstura bo'lib tushadi */
+  faceTextureUrl?: string | null;
 }): Promise<FullProfile> => api<FullProfile>('/profile', { method: 'PATCH', body: input });
 
 interface PresignResult {

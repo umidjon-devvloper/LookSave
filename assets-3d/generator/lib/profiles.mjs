@@ -1,3 +1,7 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 /**
  * Tana profillari — tana ham, kiyim ham SHU YERDAN oladi.
  *
@@ -47,6 +51,26 @@ export const LIMB_RADIUS = {
   calf: 0.064,
   ankle: 0.032,
 };
+
+/**
+ * Haqiqiy tanadan o'lchangan profil (`extract-profile.mjs` yozadi).
+ *
+ * Bo'lsa — kiyim shundan quriladi. Bo'lmasa protsedural jadvalga
+ * qaytiladi, ya'ni generator tana modeli bo'lmasa ham ishlayveradi.
+ *
+ * ⚠️ Bu `export/` dagi build natijasini o'qiydi. Odатда kutubxona build
+ * chiqishiga bog'liq bo'lmasligi kerak, lekin bu yerda ataylab: tana
+ * o'zgarganda kiyim ham o'zgarishi SHART va ikkalasini qo'lda sinxron
+ * ushlab turish — aynan botib qolishga olib kelgan xato edi.
+ */
+export function measuredTorsoKeys() {
+  const file = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'export', 'body-profile.json');
+  if (!existsSync(file)) return null;
+
+  const { keys } = JSON.parse(readFileSync(file, 'utf8'));
+  // Juda kichik kesimlar — mesh uchidagi yakka nuqtalar, ular profilni buzadi
+  return keys.filter(([, rx]) => rx > 0.08);
+}
 
 export function torsoKeys(shape) {
   const { shoulders, chest, waist, hips } = shape;
