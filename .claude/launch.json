@@ -1,0 +1,34 @@
+{
+  "version": "0.0.1",
+  "_comment": [
+    "Brauzerda ochiladigan uchta ilova (docs/12-tz.md, IP-06).",
+    "Uchalasi bir vaqtda ishlashi kerak — portlar shuning uchun qattiq belgilangan",
+    "va vite.config.ts dagi qiymatlar bilan bir xil.",
+    "",
+    "Har biri /v1 ni http://127.0.0.1:3000 ga proksilaydi, ya'ni CORS kerak emas.",
+    "Avval backendni ko'taring:  ./scripts/dev-up.sh",
+    "",
+    "Mobil ilova bu yerda YO'Q — u brauzerda ochilmaydi.",
+    "Simulyator uchun: ./scripts/sim.sh"
+  ],
+  "configurations": [
+    {
+      "name": "looksave-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--workspace", "@looksave/web"],
+      "port": 5175
+    },
+    {
+      "name": "looksave-store-panel",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--workspace", "@looksave/store-panel"],
+      "port": 5173
+    },
+    {
+      "name": "looksave-admin-panel",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--workspace", "@looksave/admin-panel"],
+      "port": 5174
+    }
+  ]
+}

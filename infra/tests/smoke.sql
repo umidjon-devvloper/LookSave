@@ -5,19 +5,25 @@
 --     psql -U looksave -d looksave -f - < tests/smoke.sql
 --
 -- Talab: migratsiyalar 001-008 qo'llangan bo'lsin.
+--
+-- ⚠️ FIKSTURA RAQAMLARI +998999000xxx — ATAYLAB "REZERV" DIAPAZON.
+-- Ilgari bu yerda +998900000001 turardi va u haqiqiy akkaunt bilan
+-- to'qnashdi (users.phone UNIQUE): smoke shu bazada hech qachon
+-- o'tmasdi, chunki BEGIN dagi birinchi INSERT yiqilardi. Bu diapazonni
+-- haqiqiy akkaunt uchun ISHLATMANG.
 
 \set ON_ERROR_STOP on
 BEGIN;
 
 -- ── Tayyorgarlik ──
 INSERT INTO users (id, phone, full_name, role, country, gender) VALUES
-  ('00000000-dead-0000-0000-000000000001','+998900000001','Test Sotuvchi','store_owner','UZ','male'),
-  ('00000000-dead-0000-0000-000000000002','+998900000002','Test Mijoz','customer','UZ','male');
+  ('00000000-dead-0000-0000-000000000001','+998999000001','Test Sotuvchi','store_owner','UZ','male'),
+  ('00000000-dead-0000-0000-000000000002','+998999000002','Test Mijoz','customer','UZ','male');
 
 INSERT INTO stores (id, owner_id, name, slug, location, address, city, country, phone, currency, status)
 VALUES ('00000000-dead-0000-0000-000000000010','00000000-dead-0000-0000-000000000001',
         'Smoke Store','smoke-store', ST_MakePoint(69.2041, 41.2756)::geography,
-        'Test manzil','Toshkent','UZ','+998900000001','UZS','active');
+        'Test manzil','Toshkent','UZ','+998999000001','UZS','active');
 
 INSERT INTO products (id, store_id, category_id, title, slot, gender, base_price, currency, status)
 SELECT '00000000-dead-0000-0000-000000000020','00000000-dead-0000-0000-000000000010', c.id,
@@ -49,7 +55,7 @@ SET LOCAL app.channel    = 'app';
 INSERT INTO orders (id, user_id, store_id, delivery_type, contact_name, contact_phone,
                     address, subtotal, delivery_fee, total, currency)
 VALUES ('00000000-dead-0000-0000-000000000040','00000000-dead-0000-0000-000000000002',
-        '00000000-dead-0000-0000-000000000010','delivery','Test Mijoz','+998900000002',
+        '00000000-dead-0000-0000-000000000010','delivery','Test Mijoz','+998999000002',
         '{"text":"Bunyodkor 12","lat":41.2756,"lng":69.2041}', '199000.00','15000.00','214000.00','UZS');
 
 SELECT CASE WHEN order_number ~ '^LS-\d{6}-\d{4}$' THEN 'OK  ' ELSE 'XATO' END AS natija,
@@ -87,7 +93,7 @@ BEGIN
     INSERT INTO orders (user_id, store_id, delivery_type, contact_name, contact_phone,
                         address, subtotal, total, currency)
     VALUES ('00000000-dead-0000-0000-000000000002','00000000-dead-0000-0000-000000000010',
-            'delivery','X','+998900000002','{"text":"koordinatasiz"}','1.00','1.00','UZS');
+            'delivery','X','+998999000002','{"text":"koordinatasiz"}','1.00','1.00','UZS');
     RAISE EXCEPTION 'XATO: koordinatasiz delivery o''tib ketdi';
   EXCEPTION WHEN check_violation THEN
     RAISE NOTICE 'OK   4a koordinatasiz delivery rad etildi';
@@ -97,15 +103,15 @@ END $$;
 -- ── 5) Qora ro'yxat eskalatsiyasi (3 do'kon → global) ──
 INSERT INTO stores (owner_id,name,slug,location,address,city,country,phone,currency,status)
 SELECT '00000000-dead-0000-0000-000000000001','Smoke '||i,'smoke-'||i,
-       ST_MakePoint(69.2+i*0.01, 41.3)::geography,'a','Toshkent','UZ','+998900000001','UZS','active'
+       ST_MakePoint(69.2+i*0.01, 41.3)::geography,'a','Toshkent','UZ','+998999000001','UZS','active'
 FROM generate_series(1,3) i;
 
 INSERT INTO order_blocklist (store_id, phone, reason, created_by)
-SELECT id, '+998900000099', 'smoke', 'store' FROM stores WHERE slug LIKE 'smoke-%';
+SELECT id, '+998999000099', 'smoke', 'store' FROM stores WHERE slug LIKE 'smoke-%';
 
 SELECT CASE WHEN count(*) = 1 THEN 'OK  ' ELSE 'XATO' END AS natija,
        '5a 3 do''kon bloklagach global blok yaratildi' AS test
-FROM order_blocklist WHERE phone='+998900000099' AND store_id IS NULL;
+FROM order_blocklist WHERE phone='+998999000099' AND store_id IS NULL;
 
 -- ── 6) Geo index (yaqin do'konlar) ──
 SELECT CASE WHEN count(*) >= 1 THEN 'OK  ' ELSE 'XATO' END AS natija,

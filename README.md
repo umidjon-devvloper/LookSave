@@ -10,21 +10,22 @@ AI fashion marketplace — yaqin atrofdagi kiyim do'konlari, 3D avatarda kiyib k
 
 Loyihaning yagona haqiqat manbai — [`docs/`](./docs) katalogi. Kod hujjatga zid bo'lsa, hujjat to'g'ri.
 
-| #   | Fayl                                            | Nima haqida                               |
-| --- | ----------------------------------------------- | ----------------------------------------- |
-| 00  | [00-README.md](./docs/00-README.md)             | Qarorlar (K-01…K-17), ko'lam, kelishuvlar |
-| 01  | [01-arxitektura.md](./docs/01-arxitektura.md)   | Texnik arxitektura, DB sxemasi, 3D tizimi |
-| 02  | [02-database.md](./docs/02-database.md)         | Migratsiyalar, indexlar, seed data        |
-| 03  | [03-api-spec.md](./docs/03-api-spec.md)         | Endpointlar, xato kodlari                 |
-| 04  | [04-3d-pipeline.md](./docs/04-3d-pipeline.md)   | Blender qadamlari, eksport, QA            |
-| 05  | [05-mobile.md](./docs/05-mobile.md)             | Ekran spetsifikatsiyasi                   |
-| 06  | [06-dizayn.md](./docs/06-dizayn.md)             | Rang, tipografika, komponentlar           |
-| 07  | [07-web-panels.md](./docs/07-web-panels.md)     | Do'kon kabineti, admin panel              |
-| 08  | [08-deployment.md](./docs/08-deployment.md)     | Docker, VPS, backup, CI/CD                |
-| 09  | [09-integrations.md](./docs/09-integrations.md) | Telegram, SMS, Gemini, Maps, R2           |
-| 10  | [10-roadmap.md](./docs/10-roadmap.md)           | Fazalar, sprintlar, risklar               |
-| 11  | [11-deck-audit.md](./docs/11-deck-audit.md)     | Deck ↔ kod solishtiruvi                   |
-| 12  | [12-tz.md](./docs/12-tz.md)                     | Kamchiliklar reyestri, ish paketlari      |
+| #   | Fayl                                            | Nima haqida                                |
+| --- | ----------------------------------------------- | ------------------------------------------ |
+| 00  | [00-README.md](./docs/00-README.md)             | Qarorlar (K-01…K-17), ko'lam, kelishuvlar  |
+| 01  | [01-arxitektura.md](./docs/01-arxitektura.md)   | Texnik arxitektura, DB sxemasi, 3D tizimi  |
+| 02  | [02-database.md](./docs/02-database.md)         | Migratsiyalar, indexlar, seed data         |
+| 03  | [03-api-spec.md](./docs/03-api-spec.md)         | Endpointlar, xato kodlari                  |
+| 04  | [04-3d-pipeline.md](./docs/04-3d-pipeline.md)   | Blender qadamlari, eksport, QA             |
+| 05  | [05-mobile.md](./docs/05-mobile.md)             | Ekran spetsifikatsiyasi                    |
+| 06  | [06-dizayn.md](./docs/06-dizayn.md)             | Rang, tipografika, komponentlar            |
+| 07  | [07-web-panels.md](./docs/07-web-panels.md)     | Do'kon kabineti, admin panel               |
+| 08  | [08-deployment.md](./docs/08-deployment.md)     | Docker, VPS, backup, CI/CD                 |
+| 09  | [09-integrations.md](./docs/09-integrations.md) | Telegram, SMS, Gemini, Maps, R2            |
+| 10  | [10-roadmap.md](./docs/10-roadmap.md)           | Fazalar, sprintlar, risklar                |
+| 11  | [11-deck-audit.md](./docs/11-deck-audit.md)     | Deck ↔ kod solishtiruvi                    |
+| 12  | [12-tz.md](./docs/12-tz.md)                     | Kamchiliklar reyestri, ish paketlari       |
+| 14  | [14-test.md](./docs/14-test.md)                 | Lokal ishga tushirish, simulyator, qurilma |
 
 ---
 
