@@ -45,7 +45,7 @@ looksave/
 │   ├── docker-compose.yml
 │   ├── Caddyfile
 │   └── migrations/        ← 001…008.sql
-├── assets-3d/             ← Blender manba fayllari (git-lfs)
+├── assets-3d/             ← 3D modellar, generator, base mesh'lar
 └── blender_scripts/       ← QA, rig shabloni, morph ko'chirish
 ```
 
@@ -64,12 +64,11 @@ har bosqichda kutilayotgan xatolar va ularning yechimi bilan.
 
 ## Boshlash
 
-Talab: **Node 20** (`.nvmrc`), npm 10+, Docker (baza uchun), `git-lfs`.
+Talab: **Node 20** (`.nvmrc`), npm 10+, Docker (baza uchun).
 
 ```bash
 nvm use
 npm install
-git lfs install && git lfs pull
 
 npm run check        # format + lint + typecheck
 ```
@@ -99,7 +98,7 @@ Batafsil: [`docs/00-README.md` §7](./docs/00-README.md).
 
 - Branch: `main` (stable) · `dev` · `feat/*` · `fix/*`
 - Commit: `feat: add nearby stores endpoint`
-- 3D fayllar — `git-lfs`
+- 3D fayllar — oddiy git (LFS ishlatilmaydi). **25 MB dan katta fayl qo'yilmaydi** — `.gitattributes` ga qarang
 
 ---
 

@@ -1,20 +1,23 @@
 # assets-3d
 
-Blender manba fayllari (`.blend`) va eksport qilingan `.glb` modellar.
-**Barchasi `git-lfs` orqali saqlanadi** — `.gitattributes` ga qarang.
+Eksport qilingan `.glb` modellar va ularni yasaydigan generator.
 
 Ish tartibi va eksport sozlamalari: [`docs/04-3d-pipeline.md`](../docs/04-3d-pipeline.md)
 
-Klon qilgandan keyin:
+Klon qilgandan keyin qo'shimcha qadam **kerak emas** — hamma narsa oddiy
+git'da. Modellarni qayta yasash:
 
 ```bash
-git lfs install
-git lfs pull
+node generator/build.mjs
 ```
 
-⚠️ `git lfs pull` qilinmasa `.blend` va tekstura fayllari 130 baytli
-matn ko'rsatkichi bo'lib ochiladi. Blender "faylni o'qib bo'lmadi"
-deydi — sabab shu, fayl buzilgan emas.
+⚠️ **git-lfs ISHLATILMAYDI** (D-37). Ilgari `.gitattributes` uni talab
+qilardi, lekin LFS hech qachon o'rnatilmagan va git filtrni jim
+e'tiborsiz qoldirardi — ya'ni `git lfs pull` hech narsa qilmasdi.
+
+⚠️ **25 MB dan katta fayl repoga qo'yilmaydi.** `.blend` manba fayllari
+og'ir, shuning uchun ular bu yerda emas — bulutda yoki tashqi diskda
+saqlanadi. Repoda faqat eksport natijasi turadi.
 
 ---
 

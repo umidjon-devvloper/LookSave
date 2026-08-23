@@ -7,18 +7,26 @@
 *.md          text eol=lf
 Caddyfile     text eol=lf
 
-# ── git-lfs: 3D va og'ir binar fayllar (00-README §7) ──
-*.blend       filter=lfs diff=lfs merge=lfs -text
-*.glb         filter=lfs diff=lfs merge=lfs -text
-*.gltf        filter=lfs diff=lfs merge=lfs -text
-*.fbx         filter=lfs diff=lfs merge=lfs -text
-*.ktx2        filter=lfs diff=lfs merge=lfs -text
-*.bin         filter=lfs diff=lfs merge=lfs -text
-
-# Teksturalar (faqat assets-3d ichida — UI ikonkalari LFS'ga tushmasin)
-assets-3d/**/*.png   filter=lfs diff=lfs merge=lfs -text
-assets-3d/**/*.jpg   filter=lfs diff=lfs merge=lfs -text
-assets-3d/**/*.webp  filter=lfs diff=lfs merge=lfs -text
+# ── git-lfs ISHLATILMAYDI (D-37, 2026-08-23) ──
+#
+# Ilgari bu yerda `*.glb`, `*.fbx`, `*.blend` uchun `filter=lfs` qatorlari
+# bor edi, LEKIN git-lfs hech qachon o'rnatilmagan. `filter.lfs.*`
+# konfiguratsiyasisiz git bu atributni JIM e'tiborsiz qoldiradi — ya'ni
+# 23 ta binar fayl (~10 MB) allaqachon oddiy blob bo'lib tarixda yotibdi.
+# Hujjat esa `git lfs pull` ni talab qilardi va u hech narsa qilmasdi.
+#
+# Qaror: LFS umuman ishlatilmaydi. Sabab — modellar `assets-3d/generator/`
+# dan qayta yasaladi, ya'ni ular manba emas, chiqish. 10 MB oddiy git uchun
+# muammo emas, LFS esa har klonda qo'shimcha qadam va chalkashlik qo'shadi.
+#
+# ⚠️ BUNING O'RNIGA QOIDA: repoga 25 MB dan katta fayl QO'YILMAYDI.
+# GitHub 50 MB da ogohlantiradi, 100 MB da butunlay rad etadi va push
+# yiqilganda sababi darhol tushunarli bo'lmaydi.
+#   • Eksport GLB (< 2 MB)     → repoda, oddiy blob
+#   • `.blend` manba fayllari  → repoga TUSHMAYDI (bulut / tashqi disk)
+#   • Teksturalar              → `assets-3d/source/`, WebP, 1024px gacha
 
 # Diff'da shovqin qilmasin
 package-lock.json    -diff linguist-generated
+*.glb                -diff
+*.fbx                -diff

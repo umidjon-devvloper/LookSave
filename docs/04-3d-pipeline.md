@@ -212,7 +212,7 @@ assets-3d/
 │   ├── skeleton_mixamo.blend
 │   └── animations/
 │       ├── idle.glb  turn.glb  walk.glb  run.glb  sit.glb
-├── source/                       # Blender manba fayllari (git-lfs)
+├── source/                       # Blender manba fayllari (repoda emas)
 │   └── nike_air-max-90/
 │       ├── model.blend
 │       ├── textures/
@@ -226,7 +226,9 @@ assets-3d/
         └── thumb.webp
 ```
 
-`source/` — `git-lfs` da. `.blend` fayllar og'ir, oddiy git ularni ko'tarmaydi.
+⚠️ `source/` dagi `.blend` fayllar **repoga tushmaydi** (D-37): git-lfs
+ishlatilmaydi va og'ir binar fayl tarixni shishiradi. Ular bulutda yoki
+tashqi diskda saqlanadi. Repoda faqat `export/` va teksturalar turadi.
 
 ---
 

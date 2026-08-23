@@ -13,9 +13,11 @@ nike_air-max-90/
 └── refs/                 do'kondan olingan fotolar (4-8 ta)
 ```
 
-`.blend` va tekstura fayllari **git-lfs** da (`.gitattributes`). Klondan
-keyin `git lfs pull` qilinmasa, bu fayllar 130 baytli ko'rsatkich bo'lib
-ochiladi va Blender ularni ocholmaydi.
+⚠️ `.blend` fayllar **repoga tushmaydi** (D-37): git-lfs ishlatilmaydi va
+og'ir binar fayl oddiy git'ni shishiradi. Ular bulutda yoki tashqi diskda
+saqlanadi, repoda esa faqat eksport natijasi (`../export/*.glb`) turadi.
+
+Teksturalar bu yerda qoladi — WebP, 1024px gacha, ya'ni yengil.
 
 ## refs/ — nega saqlanadi
 

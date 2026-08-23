@@ -131,7 +131,7 @@ looksave/
 │   ├── docker-compose.yml
 │   ├── Caddyfile
 │   └── migrations/
-└── assets-3d/             ← Blender manba fayllari (git-lfs)
+└── assets-3d/             ← 3D modellar, generator, base mesh'lar
 ```
 
 **Muhim:** `packages/validation` — Zod sxemalari mobil ilova va serverda **bir xil** ishlatiladi. Shunda validatsiya qoidalari ikki joyda ajralib ketmaydi.
@@ -160,7 +160,8 @@ looksave/
 
 - Branch: `main` (stable), `dev`, `feat/*`, `fix/*`
 - Commit: `feat: add nearby stores endpoint`
-- 3D fayllar — `git-lfs`
+- 3D fayllar — oddiy git (LFS ishlatilmaydi, D-37). **25 MB dan katta fayl qo'yilmaydi**
+- `.blend` manba fayllari repoga tushmaydi — bulut yoki tashqi diskda
 
 ---
 
