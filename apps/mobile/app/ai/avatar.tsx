@@ -504,6 +504,42 @@ function FrameCorner({ position }: { position: 'tl' | 'tr' | 'bl' | 'br' }): JSX
   return <View style={[styles.corner, styles[`corner_${position}`]]} />;
 }
 
+/**
+ * Yuz surati bilan NIMA BO'LISHI — bandma-band.
+ *
+ * ⚠️ BU MATN ANIQ BO'LISHI SHART. Ilgari bu yerda "surat faqat sizning
+ * profilingizga saqlanadi va boshqa hech kimga ko'rinmaydi" deb yozilgan
+ * edi va u IKKI JIHATDAN NOTO'G'RI edi: surat tashqi AI xizmatiga
+ * yuboriladi va ochiq manzilda saqlanadi. Ya'ni foydalanuvchiga yolg'on
+ * aytilardi (12-tz.md D-42).
+ *
+ * Qoida: bu yerda faqat BIZ TEKSHIRA OLADIGAN narsa yoziladi. Tashqi
+ * xizmat suratni qancha saqlashini biz nazorat qilmaymiz — shuning
+ * uchun u haqda va'da berilmaydi, faqat fakt aytiladi.
+ */
+const FACE_CONSENT: Array<{ icon: IconName; title: string; hint: string }> = [
+  {
+    icon: 'profile',
+    title: 'Nima uchun kerak',
+    hint: 'Avatar sizga o‘xshashi uchun — yuzingizsiz u begona odam bo‘ladi',
+  },
+  {
+    icon: 'premium',
+    title: 'Tashqi AI xizmatiga yuboriladi',
+    hint: 'Avatarni yasash uchun surat hamkor xizmatga uzatiladi. Uni biz emas, o‘sha xizmat qayta ishlaydi',
+  },
+  {
+    icon: 'looks',
+    title: 'Serverimizda saqlanadi',
+    hint: 'Manzil tasodifiy va hech qayerda ko‘rsatilmaydi, lekin havolani bilgan odam ochа oladi',
+  },
+  {
+    icon: 'trash',
+    title: 'Istalgan vaqtda o‘chirasiz',
+    hint: 'Profil → Yuz surati → O‘chirish. Akkaunt o‘chirilganda ham surat butunlay o‘chadi',
+  },
+];
+
 function FaceStep({
   onDone,
   onError,
@@ -513,7 +549,49 @@ function FaceStep({
 }): JSX.Element {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanning, setScanning] = useState(false);
+  /*
+   * ⚠️ KAMERA RUXSATI ROZILIK EMAS. Tizim so'rovi "kameraga kirishga
+   * ruxsatmi?" deb so'raydi — "suratni tashqi xizmatga yuborishga
+   * rozimisiz?" deb emas. Ikkinchisi alohida va OLDIN so'raladi.
+   */
+  const [consented, setConsented] = useState(false);
   const camera = useRef<CameraView>(null);
+
+  if (!consented) {
+    return (
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Yuz skaneri</Text>
+        <Text style={styles.cardHint}>
+          Davom etishdan oldin surat bilan nima bo‘lishini o‘qing.
+        </Text>
+
+        <View style={styles.consentList}>
+          {FACE_CONSENT.map((item) => (
+            <View key={item.title} style={styles.consentRow}>
+              <View style={styles.consentIcon}>
+                <Icon name={item.icon} size={16} color={colors.accent} />
+              </View>
+              <View style={styles.consentText}>
+                <Text style={styles.consentTitle}>{item.title}</Text>
+                <Text style={styles.consentHint}>{item.hint}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        <Button title="Roziman, davom etamiz" onPress={() => setConsented(true)} />
+
+        {/*
+          ⚠️ O'TKAZIB YUBORISH HAR DOIM OCHIQ. Yuz surati majburiy emas:
+          usiz ham avatar yasaladi (o'lchovlardan) va kiyintirish ishlaydi.
+          Rad etgan odam ilovadan chiqib ketmasligi kerak.
+        */}
+        <Pressable onPress={onDone} style={styles.skip}>
+          <Text style={styles.skipText}>Yuz surati kerak emas — o‘tkazib yuborish</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   if (!permission) return <Loading />;
 
@@ -522,8 +600,7 @@ function FaceStep({
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Yuz skaneri</Text>
         <Text style={styles.cardHint}>
-          Avatarga yuzingizni qo‘shish uchun kameraga ruxsat kerak. Surat faqat sizning
-          profilingizga saqlanadi va boshqa hech kimga ko‘rinmaydi.
+          Avatarga yuzingizni qo‘shish uchun kameraga ruxsat kerak.
         </Text>
         <Button title="Kameraga ruxsat berish" onPress={() => void requestPermission()} />
         <Pressable onPress={onDone} style={styles.skip}>
@@ -1297,6 +1374,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tipText: { ...text.tiny, color: colors.textDim, textAlign: 'center', fontSize: 9 },
+
+  consentList: { gap: spacing.sm, marginVertical: spacing.md },
+  consentRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
+  consentIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primarySoft,
+  },
+  consentText: { flex: 1 },
+  consentTitle: { ...text.small, color: colors.text, fontWeight: '600' },
+  consentHint: { ...text.tiny, color: colors.textMuted, marginTop: 2 },
 
   skip: { alignSelf: 'center', padding: spacing.sm },
   skipText: { ...text.small, color: colors.textDim, textDecorationLine: 'underline' },

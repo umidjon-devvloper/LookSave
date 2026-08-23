@@ -174,6 +174,22 @@ export default function Profile(): JSX.Element {
           />
 
           {/*
+            Yuz surati — ko'rish va o'chirish.
+
+            ⚠️ QATOR HAR DOIM KO'RINADI, surat bor-yo'qligidan qat'i nazar.
+            Skanerdagi rozilik matni "istalgan vaqtda o'chirasiz" deb
+            va'da beradi (12-tz.md D-42); qatorni yashirsak, o'sha yo'lni
+            surat yuklagan odam ham topolmay qolardi.
+          */}
+          <Row
+            icon="camera"
+            label="Yuz surati"
+            hint={profile.data?.faceTextureUrl ? 'Ko`rish va o`chirish' : 'Qo`shilmagan'}
+            onPress={() => router.push('/settings/face-photo')}
+            isRTL={isRTL}
+          />
+
+          {/*
             Sotuvchi bo'limi HAR DOIM ko'rinadi — do'koni bor odamga panel,
             yo'q odamga esa taklif. Uni yashirsak, ilovada do'kon ochish
             mumkinligini hech kim bilmay qolardi.

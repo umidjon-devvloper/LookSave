@@ -3,6 +3,7 @@ import type { MeasurementsInput, UpdateProfileInput } from '@looksave/validation
 
 import { env } from '../config/env';
 import { pool } from '../db/pool';
+import { deleteByUrl } from '../integrations/r2';
 import { ApiError } from '../http/api-error';
 import {
   computeMorphTargets,
@@ -110,10 +111,47 @@ export async function updateProfile(userId: string, input: UpdateProfileInput): 
    * tugaganini bildiradi. `null` berilsa holat `none` ga qaytadi.
    */
   if (input.faceTextureUrl !== undefined) {
+    /*
+     * ⚠️ ESKI SURAT R2 DAN HAM O'CHIRILADI.
+     *
+     * Ilgari faqat bazadagi havola almashardi va fayl bucketda qolib
+     * ketardi — ochiq manzilda, muddatsiz. Ya'ni "yuz suratini
+     * o'chirish" hech narsani o'chirmasdi.
+     *
+     * Eski manzil ALMASHTIRISHDAN OLDIN o'qiladi: `UPDATE` dan keyin u
+     * yo'qoladi va qaysi faylni o'chirish kerakligi bilinmay qoladi.
+     */
+    const { rows } = await pool.query<{ face_texture_url: string | null }>(
+      `SELECT face_texture_url FROM profiles WHERE user_id = $1`,
+      [userId],
+    );
+    const previous = rows[0]?.face_texture_url ?? null;
+
     await pool.query(
       `UPDATE profiles SET face_texture_url = $2, face_scan_status = $3 WHERE user_id = $1`,
       [userId, input.faceTextureUrl, input.faceTextureUrl === null ? 'none' : 'ready'],
     );
+
+    /*
+     * ⚠️ FAYL BOSHQA JOYDA ISHLATILMAYOTGANINI TEKSHIRAMIZ.
+     *
+     * Yuz skaneri BITTA suratni ikkala maydonga yozadi (`users.avatar_url`
+     * va `profiles.face_texture_url`). Tekshirmasdan o'chirsak, foydalanuvchi
+     * yuz suratini olib tashlaganda profil surati ham buzilardi — havola
+     * qoladi, fayl esa yo'q.
+     *
+     * `users` yangilanishi YUQORIDA bajarilgan, ya'ni bu tekshiruv allaqachon
+     * yangi holatni ko'radi: ikkalasi birga tozalansa, bu yerda `avatar_url`
+     * bo'sh bo'ladi va fayl o'chiriladi.
+     */
+    if (previous && previous !== input.faceTextureUrl) {
+      const { rows: refs } = await pool.query<{ count: string }>(
+        `SELECT COUNT(*) AS count FROM users WHERE id = $1 AND avatar_url = $2`,
+        [userId, previous],
+      );
+
+      if (Number(refs[0]?.count ?? 0) === 0) await deleteByUrl(previous);
+    }
   }
 
   // Jins o'zgarsa morph'lar qayta hisoblanadi: ayol va erkak tanasi

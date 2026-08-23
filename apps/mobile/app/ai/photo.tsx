@@ -199,6 +199,21 @@ export default function BodyPhotoScreen(): JSX.Element {
       </View>
 
       <View style={[styles.actions, { paddingBottom: insets.bottom + spacing.md }]}>
+        {/*
+          ⚠️ SURAT TASHQI XIZMATGA KETADI — buni tugma bosilishidan OLDIN
+          aytish shart. Ilgari bu ekranda maxfiylik haqida bir og'iz ham
+          yo'q edi, holbuki to'liq bo'yli surat yuz suratidan ham ko'proq
+          ma'lumot beradi (12-tz.md D-42).
+
+          Matn qisqa: uzun huquqiy paragrafni hech kim o'qimaydi va u
+          hech narsani o'zgartirmaydi. Muhimi ikkita fakt — qayerga
+          ketadi va qanday o'chiriladi.
+        */}
+        <Text style={styles.privacy}>
+          Surat kiyintirish uchun tashqi AI xizmatiga yuboriladi va serverimizda saqlanadi. Uni
+          Profil → Yuz surati bo‘limida o‘chirishingiz mumkin.
+        </Text>
+
         <Button
           title={shown ? 'Boshqa surat olish' : 'Surat olish'}
           onPress={() => void pick('camera')}
@@ -238,6 +253,7 @@ const styles = StyleSheet.create({
   headerTitle: { ...text.h3, color: colors.text, flex: 1, textAlign: 'center' },
 
   content: { flex: 1, paddingHorizontal: spacing.md, gap: spacing.md },
+  privacy: { ...text.tiny, color: colors.textDim, textAlign: 'center', marginBottom: spacing.xs },
 
   frame: {
     flex: 1,

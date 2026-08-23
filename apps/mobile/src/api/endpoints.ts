@@ -325,7 +325,13 @@ export const updateProfile = (input: {
   gender?: 'male' | 'female';
   locale?: string;
   avatarUrl?: string | null;
-  /** Yuz skaneridagi surat — 3D avatar boshiga tekstura bo'lib tushadi */
+  /**
+   * Yuz skaneridagi surat. Asosiy vazifasi — AI avatar yasashda
+   * o'xshashlikni belgilash (`face_reference`).
+   *
+   * ⚠️ 3D avatarga ham tekstura sifatida qo'llanadi, LEKIN bosh mesh'ida
+   * yuz UV joylashuvi yo'q va natija dog' bo'lib chiqadi (12-tz.md D-41).
+   */
   faceTextureUrl?: string | null;
 }): Promise<FullProfile> => api<FullProfile>('/profile', { method: 'PATCH', body: input });
 

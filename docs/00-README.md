@@ -60,7 +60,7 @@ Bu qarorlar muhokama qilinib, sabablari bilan qabul qilindi. O'zgartirish uchun 
 | K-05 | **Places API ishlatilmaydi** | Do'konlar bizning bazamizda. Qidiruv PostGIS'da. Bu eng qimmat SKU'ni butunlay chetlab o'tadi |
 | K-06 | **3D asset, generatsiya emas** | Svayp uchun generatsiya sekin (3-10 s) va kiyimning aslini buzadi. Asset — 0.2 s va 100% barqaror |
 | K-07 | **Mato fizikasi yo'q** | Cloth simulation telefonni qotiradi. Skinning + 2-3 qo'shimcha suyak yetarli |
-| K-08 | **Face scan qurilmada** | MediaPipe / ARKit. GPU serveri kerak emas → $0 |
+| ~~K-08~~ | ~~Face scan qurilmada~~ → **K-08a: yuz surati serverda qayta ishlanadi** | ⚠️ **O'zgardi (2026-08-24).** Asl qaror MediaPipe/ARKit ni nazarda tutgan, lekin amalda AI kiyintirish yo'li tanlandi: selfi tashqi provayderga (`FASHN`) `face_reference` sifatida yuboriladi. Oqibatlari: (1) bu **$0 emas** — har avatar kredit turadi; (2) surat qurilmadan chiqadi, ya'ni rozilik va o'chirish yo'li majburiy (12-tz.md D-42) |
 | K-09 | **Stilizatsiyalangan realistik avatar** | To'liq fotorealistik "uncanny valley" xavfi + telefonni qiynaydi |
 | K-10 | **MVP'da onlayn to'lov yo'q** | 3-4 hafta ish + yuridik shaxs + litsenziya. Buyurtma = sotuvchiga so'rov, hisob-kitob offline |
 | K-11 | **Telegram bot — sotuvchi uchun asosiy kanal** | Do'kon egasi web panel oldida o'tirmaydi, Telegram doim ochiq. Bepul, bir zumda |
@@ -175,7 +175,15 @@ looksave/
 
 **Google Cloud'da budget alert qo'ying.** $10 va $50 da. Standart holatda qattiq chegara yo'q — trafik oshsa yoki bot kirsa, sezmasdan katta hisob chiqadi.
 
-**Bepul tarifga shaxsiy ma'lumot yuborilmaydi.** Gemini free tier so'rovlari model o'qitishda ishlatilishi mumkin. LLM'ga faqat: tadbir turi, kayfiyat, byudjet, mahsulot ro'yxati.
+**LLM'ga shaxsiy ma'lumot yuborilmaydi.** Gemini free tier so'rovlari model o'qitishda ishlatilishi mumkin. LLM'ga faqat: tadbir turi, kayfiyat, byudjet, mahsulot ro'yxati.
+
+**⚠️ Yuz va gavda surati esa TASHQI XIZMATGA YUBORILADI.** Bu LLM emas, kiyintirish provayderi (`FASHN`) va usiz AI avatar ishlamaydi. Shuning uchun uchta narsa majburiy va ular bajarilgan (D-42):
+
+1. **Rozilik surat olinishidan oldin** — kamera ruxsati rozilik hisoblanmaydi
+2. **Matn haqiqatni aytadi** — «hech kimga ko'rinmaydi» degan da'vo olib tashlandi
+3. **O'chirish yo'li ishlaydi** — Profil → Yuz surati. Baza ham, R2 dagi fayl ham o'chadi
+
+Provayder suratni qancha saqlashini biz nazorat qilmaymiz — shuning uchun bu haqda **va'da berilmaydi**, faqat fakt aytiladi.
 
 **Brend logolari.** Nike, Gucci, Zara — shartnomasiz ishlatilmaydi. Deckda ham "target brands" deb belgilash kerak.
 

@@ -14,7 +14,7 @@
       "bundleIdentifier": "com.umidjon.umidjon",
       "supportsTablet": false,
       "infoPlist": {
-        "NSCameraUsageDescription": "Avatar yaratish uchun kameraga ruxsat kerak",
+        "NSCameraUsageDescription": "Avatar yasash uchun yuzingiz va gavdangiz suratini olamiz. Surat serverimizda saqlanadi va avatarni yasash uchun tashqi AI xizmatiga yuboriladi. Uni istalgan vaqtda ilovadan o'chirishingiz mumkin.",
         "NSLocationWhenInUseUsageDescription": "Yaqin atrofdagi do'konlarni ko'rsatish uchun",
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -34,7 +34,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Avatar uchun yuzingizni skanerlash — rasm faqat sizning profilingizga saqlanadi"
+          "cameraPermission": "Avatar yasash uchun yuzingizni skanerlaymiz. Surat serverimizda saqlanadi va tashqi AI xizmatiga yuboriladi; uni istalgan vaqtda o'chirishingiz mumkin."
         }
       ],
       [

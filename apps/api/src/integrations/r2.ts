@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { extname } from 'node:path';
 
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import type { PresignInput } from '@looksave/validation';
 
 import { env } from '../config/env';
 import { ApiError } from '../http/api-error';
+import { logger } from '../logger';
 
 /**
  * Cloudflare R2 — imzolangan yuklash havolasi (09-integrations §4.2).
@@ -140,6 +141,59 @@ export async function uploadObject(input: {
   );
 
   return `${env().CDN_BASE_URL}/${input.key}`;
+}
+
+/**
+ * Obyektni R2 dan butunlay o'chirish.
+ *
+ * ⚠️ NEGA KERAK: ilgari hech qayerda o'chirish yo'q edi. Foydalanuvchi
+ * yuz suratini olib tashlaganda yoki akkauntini o'chirganda bazadagi
+ * havola tozalanardi, LEKIN faylning o'zi bucketda qolib ketardi va
+ * ochiq manzilda o'qilaveradi. Ya'ni "o'chirdim" degan tugma
+ * ma'lumotni o'chirmasdi.
+ *
+ * ⚠️ YO'QLIGI XATO EMAS. Fayl allaqachon o'chirilgan bo'lishi mumkin
+ * (takroriy chaqiruv, qo'lda tozalash). S3 `DeleteObject` yo'q obyekt
+ * uchun ham muvaffaqiyat qaytaradi — biz ham shu mantiqni saqlaymiz:
+ * maqsad "fayl yo'q bo'lsin", "men uni o'chirdim" emas.
+ */
+export async function deleteObject(key: string): Promise<void> {
+  await r2().send(new DeleteObjectCommand({ Bucket: env().R2_BUCKET_ASSETS, Key: key }));
+}
+
+/**
+ * CDN havolasidan bucket kalitini ajratib olish.
+ *
+ * Bazada to'liq manzil saqlanadi (`https://cdn…/avatar/uuid.jpg`), R2 esa
+ * kalit kutadi (`avatar/uuid.jpg`). Boshqa domendan kelgan havola uchun
+ * `null` qaytadi — begona saytdagi faylni o'chirishga urinmaymiz.
+ */
+export function keyFromCdnUrl(url: string): string | null {
+  if (!isOwnCdnUrl(url)) return null;
+  const key = url.slice(`${env().CDN_BASE_URL}/`.length);
+  // So'rov qismi bo'lsa kesiladi — kalitda `?` bo'lmaydi
+  return key.split('?')[0] || null;
+}
+
+/**
+ * Havola bo'yicha o'chirish — chaqiruvchi kalitni bilishi shart emas.
+ *
+ * Xato YUTILADI va faqat logga yoziladi. Sabab: bu doim biror asosiy
+ * amalning yonida turadi (profil yangilash, akkaunt anonimlashtirish).
+ * R2 javob bermagani uchun butun amal yiqilsa, foydalanuvchi "o'chirib
+ * bo'lmadi" degan xato oladi — holbuki bazadagi havola allaqachon
+ * tozalangan va u uchun ma'lumot ko'rinmaydi.
+ */
+export async function deleteByUrl(url: string | null | undefined): Promise<void> {
+  if (!url) return;
+  const key = keyFromCdnUrl(url);
+  if (!key) return;
+
+  try {
+    await deleteObject(key);
+  } catch (error) {
+    logger.warn({ err: error, key }, 'R2 obyektini o`chirib bo`lmadi');
+  }
 }
 
 /**

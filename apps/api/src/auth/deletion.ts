@@ -1,4 +1,5 @@
 import { pool } from '../db/pool';
+import { deleteByUrl } from '../integrations/r2';
 
 /**
  * Akkauntni o'chirish (03-api-spec §5, App Store talabi).
@@ -118,12 +119,63 @@ export async function deletionState(userId: string): Promise<DeletionState> {
   };
 }
 
-/** Cron chaqiradi. Migratsiyadagi funksiya ishni bazada bajaradi. */
+/**
+ * Cron chaqiradi. Migratsiyadagi funksiya bazani tozalaydi, bu yerda esa
+ * R2 dagi FAYLLAR o'chiriladi.
+ *
+ * ⚠️ MANZILLAR OLDIN O'QILADI. `anonymize_due_accounts()` ularni `NULL`
+ * ga aylantiradi — keyin qaysi faylni o'chirish kerakligi bilinmay
+ * qoladi va foydalanuvchining yuzi bucketda muddatsiz qolaverardi.
+ *
+ * ⚠️ FAQAT HAQIQATAN ANONIMLASHTIRILGANLARNIKI. Funksiya `SKIP LOCKED`
+ * ishlatadi, ya'ni tanlangan qatorlarning bir qismi boshqa jarayon
+ * qo'lida bo'lishi va bu safar o'tkazib yuborilishi mumkin. Ularning
+ * fayllarini o'chirsak — hali tirik akkauntning surati yo'q bo'lardi.
+ * Shuning uchun chaqiruvdan keyin `anonymized_at` qayta tekshiriladi.
+ */
 export async function anonymizeDueAccounts(graceDays = GRACE_DAYS): Promise<number> {
+  const { rows: candidates } = await pool.query<{
+    id: string;
+    urls: string[];
+  }>(
+    `SELECT u.id,
+            ARRAY_REMOVE(ARRAY[
+              u.avatar_url, p.face_texture_url, p.avatar_image_url,
+              p.avatar_cutout_url, p.body_photo_url
+            ], NULL)
+            || COALESCE((SELECT ARRAY_AGG(value) FROM jsonb_each_text(COALESCE(p.avatar_angles, '{}'::jsonb))), '{}')
+            || COALESCE((SELECT ARRAY_AGG(x) FROM (
+                 SELECT UNNEST(ARRAY_REMOVE(ARRAY[r.result_url, r.cutout_url], NULL)) AS x
+                   FROM tryon_renders r WHERE r.user_id = u.id
+               ) s), '{}') AS urls
+       FROM users u
+       LEFT JOIN profiles p ON p.user_id = u.id
+      WHERE u.deletion_requested_at IS NOT NULL
+        AND u.anonymized_at IS NULL
+        AND u.deletion_requested_at < now() - make_interval(days => $1)`,
+    [graceDays],
+  );
+
   const { rows } = await pool.query<{ anonymize_due_accounts: number }>(
     `SELECT anonymize_due_accounts($1) AS anonymize_due_accounts`,
     [graceDays],
   );
+  const affected = rows[0]?.anonymize_due_accounts ?? 0;
 
-  return rows[0]?.anonymize_due_accounts ?? 0;
+  if (candidates.length > 0) {
+    const ids = candidates.map((row) => row.id);
+    const { rows: done } = await pool.query<{ id: string }>(
+      `SELECT id FROM users WHERE id = ANY($1::uuid[]) AND anonymized_at IS NOT NULL`,
+      [ids],
+    );
+    const anonymized = new Set(done.map((row) => row.id));
+
+    for (const candidate of candidates) {
+      if (!anonymized.has(candidate.id)) continue;
+      // Ketma-ket: o'chirish kamdan-kam bo'ladi va R2 ni bo'g'ishning ma'nosi yo'q
+      for (const url of candidate.urls) await deleteByUrl(url);
+    }
+  }
+
+  return affected;
 }
