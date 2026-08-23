@@ -10,7 +10,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Slot } from '@looksave/validation';
 import type * as THREE from 'three';
@@ -25,7 +24,8 @@ import { missingMeasurementFor, recommendSize } from '../../src/sizing';
 import { useAiFlowStore } from '../../src/store/aiFlowStore';
 import { money } from '../../src/theme/format';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
-import { AvatarScene, type AvatarConfig } from '../../src/three/AvatarScene';
+import { AvatarView, type AvatarConfig } from '../../src/three/AvatarView';
+import type { Scene3DHandle } from '../../src/three/Scene3D';
 import { nextIndex, SlotState, type Quality, type TryonItem } from '../../src/three/core';
 import {
   bakeForExpoGl,
@@ -44,7 +44,7 @@ import {
  * xohlagan slotni bosadi va svayp qiladi. Bu yerda esa boshqarilgan yo'l:
  * ustki kiyim → pastki → oyoq → … → komplektni saqlash. Ikkalasini bitta
  * komponentga siqish har bir shartni ikki xil rejim uchun tekshirishga
- * olib kelardi. 3D mantiq (`SlotState`, `loadGarment`, `AvatarScene`)
+ * olib kelardi. 3D mantiq (`SlotState`, `loadGarment`, `AvatarView`)
  * ikkalasida bir xil — u `src/three/` da, takrorlanmaydi.
  *
  * ⚠️ Kiyim modellari (`glb_url`) hali bo'sh — ro'yxatlar bo'sh keladi va
@@ -109,27 +109,37 @@ export default function Dressing(): JSX.Element {
   const styleName = useAiFlowStore((state) => state.style);
 
   const [stepIndex, setStepIndex] = useState(0);
-  const [rotation, setRotation] = useState(0);
-  const [zoom, setZoom] = useState(1);
   const [quality, setQuality] = useState<Quality>('medium');
   const [bodyReady, setBodyReady] = useState(false);
   const [placeholder, setPlaceholder] = useState(false);
   const [equipping, setEquipping] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  /** GL holati — sahna bo'sh bo'lganda sababni ekranda ko'rsatish uchun */
-  const [glInfo, setGlInfo] = useState<string | null>(null);
+  /**
+   * O'rtacha FPS — faqat DEV'da ekranga chiqadi.
+   *
+   * ⚠️ NEGA EKRANGA: 12-tz.md IP-01 qabul mezoni "qurilmada ≥30 FPS"
+   * deydi va buni tekshirishning boshqa yo'li yo'q — loglar telefon
+   * Metro'dan uzilsa yo'qoladi, ekran esa qoladi.
+   */
+  const [fps, setFps] = useState<number | null>(null);
   const [, forceRender] = useState(0);
 
   /** Slot mantiqi `core.ts` da testlangan — bu yerda faqat ishlatiladi */
   const slots = useMemo(() => new SlotState(), []);
 
   /*
-   * `AvatarScene` ga beriladigan chaqiruvlar BARQAROR bo'lishi kerak.
+   * `AvatarView` ga beriladigan chaqiruvlar BARQAROR bo'lishi kerak.
    * Inline funksiya har renderda yangi bo'ladi va sahnani qayta qurishga
    * majbur qiladi — bir marta cheksiz qayta yuklashga olib kelgan.
    */
   const handleBodyReady = useCallback(() => setBodyReady(true), []);
   const handlePlaceholder = useCallback(() => setPlaceholder(true), []);
+  /*
+   * Kamera `Scene3D` ichida yashaydi: barmoq bilan aylantirish va zoom
+   * `PanResponder` da, tugmalar esa shu ref orqali. Ilgari bular
+   * `useState` edi va har barmoq harakatida BUTUN ekran qayta chizilardi.
+   */
+  const stage = useRef<Scene3DHandle>(null);
   const models = useRef(new Map<string, THREE.Group | null>()).current;
 
   const step = DRESS_STEPS[stepIndex];
@@ -280,31 +290,17 @@ export default function Dressing(): JSX.Element {
     onError: () => setNotice('Komplekt saqlanmadi — kamida bitta kiyim tanlang'),
   });
 
-  /**
-   * Svayp — mahsulotni almashtirish, sekin surish — avatarni aylantirish.
+  /*
+   * ⚠️ ISHORALAR ENDI BU YERDA EMAS. Ilgari `react-native-gesture-handler`
+   * bilan uchta ishora (svayp, aylantirish, chimdish) shu ekranda
+   * tuzilardi va `Gesture.Race` bilan poygaga qo'yilardi.
    *
-   * Ikkalasi ham gorizontal harakat, shuning uchun ular TEZLIK bilan
-   * ajratiladi: keskin surish (300 dan tez) mahsulotni almashtiradi,
-   * sekin surish avatarni aylantiradi. `activeOffsetX` esa vertikal
-   * aralashuvni to'sadi — aks holda ro'yxatni aylantirganda avatar
-   * ham qimirlab ketardi.
+   * Endi ularning hammasi `Scene3D` ichidagi `PanResponder` da: aylantirish
+   * va chimdish sahnaga bevosita ta'sir qiladi (React holatiga tegmasdan),
+   * svayp esa `onSwipe` orqali qaytadi. Sabab — har barmoq harakatida
+   * `setState` chaqirilishi butun daraxtni qayta chizardi va bu 3D
+   * sahnada eng qimmat narsa.
    */
-  const swipe = Gesture.Pan()
-    .activeOffsetX([-20, 20])
-    .onEnd((event) => {
-      if (Math.abs(event.velocityX) < 300) return;
-      move(event.velocityX < 0 ? 1 : -1);
-    })
-    .runOnJS(true);
-
-  const rotate = Gesture.Pan()
-    .activeOffsetY([-20, 20])
-    .onChange((event) => setRotation((value) => value + event.changeX * 0.01))
-    .runOnJS(true);
-
-  const pinch = Gesture.Pinch()
-    .onChange((event) => setZoom((value) => Math.min(2.2, Math.max(0.7, value * event.scale))))
-    .runOnJS(true);
 
   if (authStatus !== 'signedIn') {
     return (
@@ -323,7 +319,7 @@ export default function Dressing(): JSX.Element {
   const chosenCount = DRESS_STEPS.filter((item) => slots.get(item.slot)).length;
 
   return (
-    <GestureHandlerRootView style={styles.root}>
+    <View style={styles.root}>
       {/* Sarlavha */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.xs }]}>
         <Pressable
@@ -360,44 +356,35 @@ export default function Dressing(): JSX.Element {
 
       {/* 3D sahna */}
       <View style={styles.scene}>
-        <GestureDetector gesture={Gesture.Race(swipe, Gesture.Simultaneous(rotate, pinch))}>
-          <View style={StyleSheet.absoluteFill}>
-            <AvatarScene
-              config={config.data}
-              equipped={models}
-              hiddenParts={slots.hiddenBodyParts()}
-              rotation={rotation}
-              zoom={zoom}
-              quality={quality}
-              onQualityChange={setQuality}
-              onBodyReady={handleBodyReady}
-              onError={setNotice}
-              onPlaceholder={handlePlaceholder}
-              onDiagnostics={setGlInfo}
-            />
-          </View>
-        </GestureDetector>
+        <View style={StyleSheet.absoluteFill}>
+          <AvatarView
+            ref={stage}
+            config={config.data}
+            equipped={models}
+            hiddenParts={slots.hiddenBodyParts()}
+            quality={quality}
+            onQualityChange={setQuality}
+            onBodyReady={handleBodyReady}
+            onError={setNotice}
+            onPlaceholder={handlePlaceholder}
+            onSwipe={move}
+            onFps={setFps}
+          />
+        </View>
 
         {/* Chapdagi boshqaruv — mockupdagidek */}
         <View style={styles.controls}>
           <ControlButton
             icon="rotate"
             label="Aylantirish"
-            onPress={() => setRotation((value) => value + Math.PI / 6)}
+            onPress={() => stage.current?.rotateBy(Math.PI / 6)}
           />
           <ControlButton
             icon="zoom"
             label="Yaqinlashtirish"
-            onPress={() => setZoom((value) => (value >= 2 ? 0.8 : value + 0.35))}
+            onPress={() => stage.current?.zoomBy(1.3)}
           />
-          <ControlButton
-            icon="reset"
-            label="Qayta"
-            onPress={() => {
-              setRotation(0);
-              setZoom(1);
-            }}
-          />
+          <ControlButton icon="reset" label="Qayta" onPress={() => stage.current?.reset()} />
         </View>
 
         {/* O'ngda — yechish */}
@@ -418,11 +405,15 @@ export default function Dressing(): JSX.Element {
           </View>
         ) : null}
 
-        {/* GL tashxisi — sahna bo'sh bo'lsa sabab shu yerda ko'rinadi.
-            Qator umuman chiqmasa: GL konteksti yaratilmagan. */}
-        <View style={styles.glBadge} pointerEvents="none">
-          <Text style={styles.glBadgeText}>{glInfo ?? 'GL: kontekst yaratilmadi'}</Text>
-        </View>
+        {/* FPS — faqat DEV'da. Qator umuman chiqmasa: sahna chizmayapti,
+            ya'ni GL konteksti yaratilmagan yoki kadr tsikli ishlamayapti. */}
+        {__DEV__ ? (
+          <View style={styles.glBadge} pointerEvents="none">
+            <Text style={styles.glBadgeText}>
+              {fps === null ? 'FPS: —' : `${Math.round(fps)} FPS · ${quality}`}
+            </Text>
+          </View>
+        ) : null}
 
         {!bodyReady ? (
           <View style={styles.overlay}>
@@ -538,7 +529,7 @@ export default function Dressing(): JSX.Element {
           />
         )}
       </View>
-    </GestureHandlerRootView>
+    </View>
   );
 }
 

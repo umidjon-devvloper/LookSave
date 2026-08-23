@@ -9,7 +9,7 @@ import * as THREE from 'three';
  * xotira tozalash — hammasi sinovsiz qoladi. Bu shakl shu zanjirni hozir
  * qurilmada tekshirish imkonini beradi.
  *
- * GLB paydo bo'lgan zahoti bu almashadi: `AvatarScene` avval haqiqiy modelni
+ * GLB paydo bo'lgan zahoti bu almashadi: `AvatarView` avval haqiqiy modelni
  * yuklaydi, faqat u yiqilsa shu yerga tushadi.
  *
  * ⚠️ Bu O'LCHOV EMAS. Proporsiyalar ko'zga chiroyli ko'rinishi uchun tanlangan,
@@ -19,7 +19,7 @@ import * as THREE from 'three';
  * ya'ni o'lchamlarni o'zgartirish namuna avatarda ko'rinmaydi.
  */
 
-/** Nomlar `AvatarScene.BODY_SLOT` bilan bir xil bo'lishi shart. */
+/** Nomlar `AvatarView.BODY_SLOT` bilan bir xil bo'lishi shart. */
 const PART_SLOT: Record<string, string> = {
   body_head: 'head',
   body_torso: 'top',

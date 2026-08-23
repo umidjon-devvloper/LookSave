@@ -1,4 +1,4 @@
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import type { GestureResponderEvent } from 'react-native';
 
@@ -15,12 +15,15 @@ import { colors, radius, text } from '../../src/theme/tokens';
  */
 
 /**
- * Markaziy tugma — AI Designer oqimiga kirish.
+ * Markaziy tugma — 3D kiyib ko'rish (deck 05-slayd).
  *
- * NEGA TABGA EMAS, `/ai` MARSHRUTIGA: oqim to'liq ekran bo'lishi kerak
- * (tab qatorisiz). Shuning uchun tugma tab almashtirmaydi, ildiz `Stack`
- * ustiga yangi ekran ochadi. Try-On tabi o'z joyida qoladi va oqim oxirida
- * o'sha yerga olib boriladi.
+ * ⚠️ ILGARI `/ai` GA OLIB BORARDI. Sabab: Try-On ekranidagi 3D sahna
+ * qurilmada chizilmasdi va tugma buzuq ekranga tushirardi. Qobiq
+ * almashtirilgach (`AvatarView`) tugma o'z vazifasiga qaytdi.
+ *
+ * Q-1 qarori (12-tz.md §3): 3D va AI — raqobatchi emas. 3D tez va bepul
+ * (svayp, hamma slot), AI esa yakuniy realistik surat. Shuning uchun
+ * markaziy tugma 3D ga kiradi, AI esa o'sha ekrandan chaqiriladi.
  *
  * iOS'da rangli soya nurlanish beradi; Android'da `elevation` faqat qora soya
  * chizadi (06-dizayn.md §5), shuning uchun u yerda chegara bilan cheklanamiz.
@@ -54,7 +57,6 @@ function AiButton({
 
 export default function TabsLayout(): JSX.Element {
   const t = useI18n((state) => state.t);
-  const router = useRouter();
 
   return (
     <Tabs
@@ -104,9 +106,9 @@ export default function TabsLayout(): JSX.Element {
           tabBarButton: (props) => (
             <AiButton
               focused={props.accessibilityState?.selected ?? false}
-              // Tabga o'tmaymiz — AI oqimi tab qatori ustidan ochiladi
-              onPress={() => router.push('/ai')}
-              label="AI Designer"
+              // Oddiy tab o'tishi — ekran tab qatori bilan birga ko'rinadi
+              onPress={props.onPress}
+              label="Kiyib ko'rish"
             />
           ),
         }}

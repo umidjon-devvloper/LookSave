@@ -19,6 +19,7 @@ import {
 import * as THREE from 'three';
 
 import { FpsMonitor } from './core';
+import { patchShaderLogs } from './glCompat';
 
 /**
  * three.js sahnasi uchun qobiq (spetsifikatsiya §4.2, §4.4, §4.5).
@@ -70,6 +71,13 @@ const TARGET = new THREE.Vector3(0, 1.0, 0);
 const ROTATE_SPEED = 0.008;
 const TILT_SPEED = 0.005;
 
+/*
+ * Svayp chegarasi — px/ms. `dressing.tsx` da bu 300 px/s edi
+ * (`react-native-gesture-handler` shu birlikda beradi), `PanResponder`
+ * esa px/ms da beradi — ya'ni bir xil qiymat.
+ */
+const SWIPE_VELOCITY = 0.3;
+
 export interface SceneContext {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
@@ -81,6 +89,19 @@ export interface SceneContext {
 export interface Scene3DHandle {
   /** Kamerani boshlang'ich holatga qaytaradi (§4.5 dagi Reset). */
   reset(): void;
+  /**
+   * Avatarni burchakka buradi (radian). Ekrandagi "Aylantirish" tugmasi
+   * uchun — barmoq bilan surish `PanResponder` orqali ishlaydi.
+   */
+  rotateBy(radians: number): void;
+  /**
+   * Kamerani yaqinlashtiradi/uzoqlashtiradi. `factor > 1` — yaqinroq.
+   *
+   * ⚠️ Radius bilan TESKARI: kamera yaqinlashishi radiusning kamayishi.
+   * Chaqiruvchi buni bilishi shart emas — "zoom" so'zi kutilgan tomonga
+   * ishlaydi.
+   */
+  zoomBy(factor: number): void;
 }
 
 export interface Scene3DProps {
@@ -94,13 +115,18 @@ export interface Scene3DProps {
   /** O'rtacha FPS (60 kadr oynasi). Sifatni pasaytirish qaroriga asos. */
   onFps?: (fps: number) => void;
   onError?: (error: Error) => void;
+  /**
+   * Keskin gorizontal svayp. `1` — chapga (keyingisi), `-1` — o'ngga.
+   * Berilmasa svayp umuman aniqlanmaydi va harakat faqat aylantiradi.
+   */
+  onSwipe?: (direction: 1 | -1) => void;
   style?: StyleProp<ViewStyle>;
   /** Sahna ustidagi qatlam — tugmalar, o'lchovlar. */
   children?: ReactNode;
 }
 
 export const Scene3D = forwardRef<Scene3DHandle, Scene3DProps>(function Scene3D(
-  { onReady, onFrame, onFps, onError, style, children },
+  { onReady, onFrame, onFps, onError, onSwipe, style, children },
   ref,
 ) {
   /*
@@ -122,7 +148,29 @@ export const Scene3D = forwardRef<Scene3DHandle, Scene3DProps>(function Scene3D(
     spherical.current.set(START_RADIUS, START_PHI, START_THETA);
   }, []);
 
-  useImperativeHandle(ref, () => ({ reset }), [reset]);
+  const rotateBy = useCallback((radians: number) => {
+    spherical.current.theta += radians;
+  }, []);
+
+  const zoomBy = useCallback((factor: number) => {
+    if (factor <= 0) return;
+    spherical.current.radius = THREE.MathUtils.clamp(
+      spherical.current.radius / factor,
+      MIN_RADIUS,
+      MAX_RADIUS,
+    );
+  }, []);
+
+  useImperativeHandle(ref, () => ({ reset, rotateBy, zoomBy }), [reset, rotateBy, zoomBy]);
+
+  /*
+   * Svayp chaqiruvi ref orqali: u ekranda inline funksiya sifatida
+   * beriladi va har renderda yangilanadi. `PanResponder` esa bir marta
+   * (`useMemo`) yasaladi — bog'liqlikka qo'shilsa har renderda qayta
+   * yaratilar va harakat o'rtasida ishorani yo'qotardi.
+   */
+  const swipeRef = useRef(onSwipe);
+  swipeRef.current = onSwipe;
 
   const responder = useMemo(
     () =>
@@ -191,8 +239,31 @@ export const Scene3D = forwardRef<Scene3DHandle, Scene3DProps>(function Scene3D(
           );
         },
 
-        onPanResponderRelease: () => {
+        /*
+         * Svayp — mahsulotni almashtirish, sekin surish — aylantirish.
+         *
+         * Ikkalasi ham gorizontal harakat, shuning uchun ular TEZLIK
+         * bilan ajratiladi (dizayn `dressing.tsx` dan olingan: 300 px/s).
+         * `PanResponder` tezlikni px/ms da beradi — shuning uchun 0.3.
+         *
+         * ⚠️ AYLANISH QAYTARILADI. Barmoq harakati davomida sahna
+         * allaqachon burilgan bo'ladi; svayp deb qaror qilinsa, u
+         * boshlang'ich burchakka qaytariladi — aks holda bitta keskin
+         * harakat HAM kiyimni almashtirar, HAM avatarni burar edi.
+         */
+        onPanResponderRelease: (_event, gesture) => {
+          const wasPinch = pinchStart.current !== null;
           pinchStart.current = null;
+
+          if (wasPinch || !swipeRef.current) return;
+          if (Math.abs(gesture.vx) < SWIPE_VELOCITY) return;
+          // Vertikal harakat ustun bo'lsa — bu ro'yxatni aylantirish, svayp emas
+          if (Math.abs(gesture.dx) < Math.abs(gesture.dy)) return;
+
+          spherical.current.theta = gestureStart.current.theta;
+          spherical.current.phi = gestureStart.current.phi;
+
+          swipeRef.current(gesture.vx < 0 ? 1 : -1);
         },
       }),
     [],
@@ -238,6 +309,19 @@ export const Scene3D = forwardRef<Scene3DHandle, Scene3DProps>(function Scene3D(
          * Shuning uchun to'liq buferga chiziladi; agar FPS §7 dagi 30 dan
          * tushsa, yechim render target orqali kichikroq chizib kattalashtirish.
          */
+        /*
+         * ⚠️ BIRINCHI KADRDAN OLDIN BO'LISHI SHART. `expo-gl` yangi
+         * arxitekturada `getShaderInfoLog` ni `undefined` qaytaradi, three
+         * esa unga `.trim()` chaqiradi. Xato `onFirstUse` ichida otiladi,
+         * ya'ni shader dasturi "tayyor" deb belgilanmaydi va three har
+         * kadrda qayta urinadi — sahna umuman chizilmaydi.
+         *
+         * Hozir `app.json` da eski arxitektura (`newArchEnabled: false`)
+         * va muammo ko'rinmaydi. Bu chaqiruv yangi arxitekturaga
+         * o'tilganda himoya bo'lib qoladi — narxi nol.
+         */
+        patchShaderLogs(renderer);
+
         renderer.setSize(width, height, false);
         renderer.shadowMap.enabled = false; // §10: real soya yo'q
 
@@ -246,20 +330,37 @@ export const Scene3D = forwardRef<Scene3DHandle, Scene3DProps>(function Scene3D(
 
         const camera = new THREE.PerspectiveCamera(32, width / height, 0.1, 20);
 
-        // §4.4 — qora fon, oq asosiy nur, binafsha rim light
-        scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+        /*
+         * Studiya yorug'ligi — uch nuqtali sxema (§4.4).
+         *
+         * ⚠️ AMBIENT PAST. U hamma tomondan bir xil yoritadi, ya'ni soya
+         * hosil qilmaydi — kuchli bo'lsa hajm yo'qoladi va model yassi,
+         * plastmassa bo'lib ko'rinadi.
+         *
+         * ⚠️ ORQA CHIROQ (rim) ENG MUHIMI. Fon qora, maneken ham to'q
+         * rangda — ularsiz siluet fonga singib ketadi. Orqadan tushgan
+         * yorug'lik gavda chekkasida yorug' chiziq hosil qiladi va
+         * figurani fondan ajratadi. Portret suratkashligining asosiy usuli.
+         */
+        scene.add(new THREE.AmbientLight(0xffffff, 0.25));
 
-        const key = new THREE.DirectionalLight(0xffffff, 1.1);
-        key.position.set(2, 4, 3);
+        // Asosiy — old chapdan, biroz iliq
+        const key = new THREE.DirectionalLight(0xfff4e8, 2.2);
+        key.position.set(2.5, 3.5, 3);
         scene.add(key);
 
-        const rim = new THREE.DirectionalLight(0x8b5cf6, 2.2);
-        rim.position.set(-3, 2, -2);
+        // To'ldiruvchi — o'ngdan, sovuqroq va zaif: soyani yumshatadi
+        const fill = new THREE.DirectionalLight(0xdce4ff, 0.7);
+        fill.position.set(-3, 1.5, 2);
+        scene.add(fill);
+
+        // Orqa (rim) — siluetni fondan ajratadi
+        const rim = new THREE.DirectionalLight(0xc7b4ff, 1.8);
+        rim.position.set(-1.5, 2.5, -3.5);
         scene.add(rim);
 
-        const fill = new THREE.PointLight(0xa855f7, 1.5, 3);
-        fill.position.set(0, 0.1, 1.2);
-        scene.add(fill);
+        // Pastdan zaif qaytish — iyak va son ostidagi qoraliklarni ochadi
+        scene.add(new THREE.HemisphereLight(0x2a2438, 0x0a0a0f, 0.4));
 
         const context: SceneContext = { scene, camera, renderer, size: { width, height } };
 
