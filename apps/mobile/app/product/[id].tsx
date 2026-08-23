@@ -241,11 +241,7 @@ export default function Product(): JSX.Element {
 
           <View style={styles.actions}>
             {canTryOn ? (
-              <Button
-                title={t.product.tryOn}
-                variant="ghost"
-                onPress={() => router.push('/ai')}
-              />
+              <Button title={t.product.tryOn} variant="ghost" onPress={() => router.push('/ai')} />
             ) : null}
             <Button
               title={size === null ? t.product.selectSize : t.product.addToCart}

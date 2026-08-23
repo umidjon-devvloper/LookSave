@@ -1,4 +1,8 @@
-import { bodyPhotoSchema, renderRequestSchema, renderStatusQuerySchema } from '@looksave/validation';
+import {
+  bodyPhotoSchema,
+  renderRequestSchema,
+  renderStatusQuerySchema,
+} from '@looksave/validation';
 import { describe, expect, it } from 'vitest';
 
 import { categoryForSlot } from '../integrations/fashn';

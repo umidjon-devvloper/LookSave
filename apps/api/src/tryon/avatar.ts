@@ -183,7 +183,13 @@ export async function requestAvatar(userId: string): Promise<AvatarDto> {
 /** Profil qatori bo'lmasligi mumkin — shuning uchun `INSERT ... ON CONFLICT`. */
 async function save(
   userId: string,
-  input: { status: AvatarStatus; jobId?: string | null; hash?: string; error?: string | null; url?: string },
+  input: {
+    status: AvatarStatus;
+    jobId?: string | null;
+    hash?: string;
+    error?: string | null;
+    url?: string;
+  },
 ): Promise<void> {
   await pool.query(
     `INSERT INTO profiles (user_id, avatar_status, avatar_job_id, avatar_source_hash,

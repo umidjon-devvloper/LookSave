@@ -12,14 +12,14 @@ npm run build --workspace @looksave/web   # dist/
 
 Har bir bo'lim deckning slaydiga mos keladi (`docs/11-deck-audit.md` §2):
 
-| Bo'lim | Slayd |
-|---|---|
-| `Hero` | 01 — EXPLORE. SHOP. ELEVATE. |
-| `Problem` | 02 — The Problem |
-| `HowItWorks` | 03 — Create Your Avatar |
-| `TryOn` | 04–05 — Avatar & Fit Data, Virtual Try-On Flow |
-| `Marketplace` | 07–08 — MEN / WOMEN / LIMITED, Premium Brands |
-| `Stores` | 10 — Business Model, sotuvchi tomoni |
+| Bo'lim        | Slayd                                          |
+| ------------- | ---------------------------------------------- |
+| `Hero`        | 01 — EXPLORE. SHOP. ELEVATE.                   |
+| `Problem`     | 02 — The Problem                               |
+| `HowItWorks`  | 03 — Create Your Avatar                        |
+| `TryOn`       | 04–05 — Avatar & Fit Data, Virtual Try-On Flow |
+| `Marketplace` | 07–08 — MEN / WOMEN / LIMITED, Premium Brands  |
+| `Stores`      | 10 — Business Model, sotuvchi tomoni           |
 
 Yangi bo'lim qo'shilganda shu jadvalga ham yozing — aks holda sayt deckdan
 sekin-asta uzoqlashadi va buni hech kim sezmaydi.

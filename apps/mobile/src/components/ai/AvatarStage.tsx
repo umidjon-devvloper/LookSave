@@ -87,10 +87,7 @@ export function AvatarStage({
           <View key={`h${index}`} style={[styles.gridLine, { top: `${(index + 1) * 7}%` }]} />
         ))}
         {Array.from({ length: 8 }, (_, index) => (
-          <View
-            key={`v${index}`}
-            style={[styles.gridLineV, { left: `${(index + 1) * 12}%` }]}
-          />
+          <View key={`v${index}`} style={[styles.gridLineV, { left: `${(index + 1) * 12}%` }]} />
         ))}
       </View>
 

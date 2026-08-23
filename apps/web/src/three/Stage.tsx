@@ -269,7 +269,8 @@ function Turntable({
     const onUp = (event: PointerEvent): void => {
       dragging.current = false;
       element.style.cursor = 'grab';
-      if (element.hasPointerCapture(event.pointerId)) element.releasePointerCapture(event.pointerId);
+      if (element.hasPointerCapture(event.pointerId))
+        element.releasePointerCapture(event.pointerId);
     };
 
     element.addEventListener('pointerdown', onDown);
@@ -415,11 +416,7 @@ export function ModelStage({
         <KeyLight quality={quality} />
 
         <Suspense fallback={null}>
-          <Turntable
-            autoRotate={autoRotate}
-            interactive={interactive}
-            initialAngle={initialAngle}
-          >
+          <Turntable autoRotate={autoRotate} interactive={interactive} initialAngle={initialAngle}>
             {children}
           </Turntable>
           <SignalReady onReady={markReady} />

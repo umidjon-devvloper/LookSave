@@ -1,9 +1,3 @@
-/* eslint-disable @typescript-eslint/no-require-imports --
- * React Native'da lokal rasm `require()` bilan ulanadi: Metro shu chaqiruvni
- * ko'rib faylni bundle'ga qo'shadi va o'lchamini oldindan biladi. `import`
- * bilan yozilsa TypeScript `.png` modulini tanimaydi. Bu — RN'ning standart
- * usuli, shuning uchun qoida faqat shu faylda o'chirilgan.
- */
 import type { ImageSourcePropType } from 'react-native';
 
 /**

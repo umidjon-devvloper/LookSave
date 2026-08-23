@@ -1,7 +1,6 @@
 import { Asset } from 'expo-asset';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import type * as THREE from 'three';
 
 import { Scene3D, type Scene3DHandle, type SceneContext } from '../src/three/Scene3D';
 import { bakeForExpoGl, disposeObject, loadModel } from '../src/three/loader';
@@ -74,17 +73,13 @@ export default function GlModel(): JSX.Element {
       </Scene3D>
 
       <View style={styles.bar}>
-        <Text style={styles.fps}>
-          {fps === null ? 'FPS —' : `FPS ${Math.round(fps)}`}
-        </Text>
+        <Text style={styles.fps}>{fps === null ? 'FPS —' : `FPS ${Math.round(fps)}`}</Text>
         <Pressable style={styles.button} onPress={() => stage.current?.reset()}>
           <Text style={styles.buttonText}>Boshlang'ich holat</Text>
         </Pressable>
       </View>
 
-      <Text style={styles.help}>
-        Bir barmoq — aylantirish · Ikki barmoq — yaqinlashtirish
-      </Text>
+      <Text style={styles.help}>Bir barmoq — aylantirish · Ikki barmoq — yaqinlashtirish</Text>
     </View>
   );
 }
@@ -115,5 +110,13 @@ const styles = StyleSheet.create({
   },
   buttonText: { color: '#C084FC', fontSize: 13, fontWeight: '600' },
 
-  help: { position: 'absolute', left: 0, right: 0, bottom: 22, color: '#5A5A62', fontSize: 11, textAlign: 'center' },
+  help: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 22,
+    color: '#5A5A62',
+    fontSize: 11,
+    textAlign: 'center',
+  },
 });

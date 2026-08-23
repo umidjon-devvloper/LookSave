@@ -31,6 +31,22 @@ export default tseslint.config(
   },
 
   {
+    // Mobil ilovadagi to'plamga kiritilgan aktivlar (GLB, rasm, shrift).
+    //
+    // Metro ularni FAQAT literal `require('./x.glb')` orqali topadi: yo'l
+    // build paytida statik tahlil qilinadi va faylga raqamli id beriladi.
+    // `import` bu yerda ishlamaydi — Metro uni modul deb qaraydi va GLB ni
+    // JavaScript sifatida parse qilishga urinadi.
+    //
+    // Ya'ni bu qoidani buzish emas, platforma talabi. Faqat mobil ilovaga
+    // tegishli — API va panellarda qoida kuchida qoladi.
+    files: ['apps/mobile/**/*.ts', 'apps/mobile/**/*.tsx'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+
+  {
     // Yig'ish skriptlari — Node muhitida yuguradi, brauzerda emas
     files: ['**/scripts/*.mjs', '**/*.config.mjs'],
     languageOptions: {

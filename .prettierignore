@@ -12,3 +12,7 @@ assets-3d
 # (`assets-3d` yuqorida allaqachon bor)
 apps/mobile/assets/models/
 apps/web/public/models/
+
+# Repoga aloqasi yo'q Xcode loyihasi (12-tz.md D-38) — Xcode yasagan JSON,
+# qo'lda formatlanmaydi. Loyihaning o'zi olib tashlanishi kerak.
+umidjon/

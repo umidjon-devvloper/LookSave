@@ -11,14 +11,14 @@ Spetsifikatsiya: [`docs/04-3d-pipeline.md`](../docs/04-3d-pipeline.md)
 
 ## ⚠️ Sinov holati
 
-| Fayl                 | Holat                             |
-| -------------------- | --------------------------------- |
-| `looksave_rules.py`  | ✅ 32 test o'tgan                 |
-| `test_rules.py`      | ✅ `python3 test_rules.py`        |
-| `validate.py`        | ❌ Blender'da ishga tushirilmagan |
-| `rig_template.py`    | ❌ Blender'da ishga tushirilmagan |
+| Fayl                 | Holat                                                        |
+| -------------------- | ------------------------------------------------------------ |
+| `looksave_rules.py`  | ✅ 32 test o'tgan                                            |
+| `test_rules.py`      | ✅ `python3 test_rules.py`                                   |
+| `validate.py`        | ❌ Blender'da ishga tushirilmagan                            |
+| `rig_template.py`    | ❌ Blender'da ishga tushirilmagan                            |
 | `transfer_morphs.py` | ✅ Ishlaydi — 6 kalit ko'chirildi, o'lchov bilan tasdiqlandi |
-| `build_garment.py`   | ✅ Ishlaydi — kiyim 1.5 soniyada yasaladi |
+| `build_garment.py`   | ✅ Ishlaydi — kiyim 1.5 soniyada yasaladi                    |
 
 Qoidalar (nomlar, byudjetlar, tekshiruvlar) testlangan.
 

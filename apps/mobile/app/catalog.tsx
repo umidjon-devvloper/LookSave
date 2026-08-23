@@ -162,9 +162,7 @@ export default function Catalog(): JSX.Element {
               void products.fetchNextPage();
             }
           }}
-          ListFooterComponent={
-            products.isFetchingNextPage ? <SkeletonGrid count={2} /> : null
-          }
+          ListFooterComponent={products.isFetchingNextPage ? <SkeletonGrid count={2} /> : null}
           ListEmptyComponent={
             <Empty
               title={t.home.emptyTitle}

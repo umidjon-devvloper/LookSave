@@ -161,13 +161,7 @@ export function AvatarBuilding({ faceUrl }: { faceUrl: string | null }): JSX.Ele
 
           return (
             <View key={stage.label} style={styles.stageRow}>
-              <View
-                style={[
-                  styles.dot,
-                  passed && styles.dotPassed,
-                  active && styles.dotActive,
-                ]}
-              >
+              <View style={[styles.dot, passed && styles.dotPassed, active && styles.dotActive]}>
                 {passed ? <Icon name="authentic" size={10} color={colors.bg} /> : null}
               </View>
               <Text

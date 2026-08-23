@@ -387,7 +387,14 @@ const ru: Dictionary = {
 };
 
 const en: Dictionary = {
-  common: { retry: 'Try again', cancel: 'Cancel', close: 'Close', loading: 'Loading', somm: 'UZS', notFound: 'Not found' },
+  common: {
+    retry: 'Try again',
+    cancel: 'Cancel',
+    close: 'Close',
+    loading: 'Loading',
+    somm: 'UZS',
+    notFound: 'Not found',
+  },
   auth: {
     signIn: 'Sign in',
     signUp: 'Sign up',
