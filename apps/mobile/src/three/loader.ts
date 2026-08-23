@@ -119,6 +119,13 @@ function cacheName(url: string): string {
  * keshda qoldiradi — ikkinchi marta tarmoqqa chiqilmaydi.
  */
 async function download(url: string): Promise<ArrayBuffer> {
+  /*
+   * `file://` — model allaqachon qurilmada: ilova ichiga joylashtirilgan
+   * yoki oldin yuklab olingan. Uni keshga qayta nusxalash ortiqcha ish va
+   * ortiqcha joy, shuning uchun to'g'ridan-to'g'ri o'qiymiz.
+   */
+  if (url.startsWith('file://')) return readBytes(url);
+
   const target = `${FileSystem.cacheDirectory ?? ''}${cacheName(url)}`;
 
   const info = await FileSystem.getInfoAsync(target);
@@ -149,7 +156,12 @@ async function download(url: string): Promise<ArrayBuffer> {
     if (result.status !== 200) throw new Error(`Model yuklanmadi: HTTP ${result.status}`);
   }
 
-  const base64 = await FileSystem.readAsStringAsync(target, {
+  return readBytes(target);
+}
+
+/** Diskdagi faylni xom baytga aylantiradi. */
+async function readBytes(path: string): Promise<ArrayBuffer> {
+  const base64 = await FileSystem.readAsStringAsync(path, {
     encoding: FileSystem.EncodingType.Base64,
   });
 
@@ -373,9 +385,30 @@ export function bakeForExpoGl(root: THREE.Object3D, morphs: Record<string, numbe
     if (targets && mesh.morphTargetDictionary) {
       const relative = geometry.morphTargetsRelative;
 
-      for (const [name, value] of Object.entries(morphs)) {
-        const index = mesh.morphTargetDictionary[`mt_${name}`];
-        if (index === undefined) continue;
+      /*
+       * ⚠️ MODELDAGI STANDART OG'IRLIKLAR HAM QO'LLANADI — busiz hamma
+       * narsa kichik chiziladi.
+       *
+       * Generator shape key'larni shunday yasaydi: geometriyaning asosi
+       * neytral shakldan BARCHA og'ishlar yig'indisining yarmicha orqaga
+       * suriladi, GLB da esa `weights: [0.5, 0.5, ...]` yoziladi. Ya'ni
+       * to'g'ri o'lchamni ko'rish uchun og'irliklar 0.5 bo'lishi SHART.
+       *
+       * Ilgari bu yerda faqat aniq berilgan qiymatlar qo'llanardi. O'lcham
+       * berilmagan holatda (`{}`) hech narsa qo'llanmay, har bir kiyim va
+       * tananing o'zi ~4 sm kichik chizilardi: kiyim tor bo'lib tanaga
+       * botib ketardi va yuzada teri bilan mato almashib turgan chipor
+       * dog'lar paydo bo'lardi. Xato chiqmaydi — shunchaki hammasi kichik.
+       */
+      const defaults = mesh.morphTargetInfluences ?? [];
+
+      const applied = Object.entries(mesh.morphTargetDictionary).map(([key, index]) => {
+        const override = morphs[key.replace(/^mt_/, '')];
+        return [index, override ?? defaults[index] ?? 0] as const;
+      });
+
+      for (const [index, value] of applied) {
+        if (value === 0) continue;
 
         const target = targets[index];
         if (!target) continue;
@@ -450,8 +483,17 @@ export function applyHiddenParts(body: THREE.Object3D, hidden: string[]): void {
   const hiddenSet = new Set(hidden);
 
   body.traverse((child) => {
-    if (child.name.startsWith('body_')) {
-      child.visible = !hiddenSet.has(child.name);
-    }
+    /*
+     * ⚠️ ICHKI KIYIM HAM BOSHQARILADI. Ilgari faqat `body_` bilan
+     * boshlanadigan nomlar tekshirilardi, shuning uchun shim kiyilganda
+     * ichki kiyim uning ostidan qora bo'lib chiqib turardi: ichki kiyim
+     * Y 0.72…0.97, shim beli esa 0.83 dan boshlanadi.
+     */
+    if (!MANAGED_PART.test(child.name)) return;
+
+    child.visible = !hiddenSet.has(child.name);
   });
 }
+
+/** Ko'rinishi kiyimga qarab boshqariladigan qismlar. */
+const MANAGED_PART = /^(body_|underwear_)/;

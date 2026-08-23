@@ -1,0 +1,21 @@
+{
+  "comment": [
+    "Blender'da QO'LDA modellashtirilgan kiyimlar.",
+    "Generator ularni yasamaydi — faqat manifestga qo'shadi, shunda ilova",
+    "ularni protsedural modellar bilan bir qatorda ko'radi.",
+    "Eksport: blender_scripts/export_garment.py"
+  ],
+  "garments": [
+    {
+      "key": "tshirt-blender",
+      "file": "tshirt-blender-v1.glb",
+      "slot": "top",
+      "title": "Futbolka",
+      "colorName": "Oq",
+      "colorHex": "#EDEDF2",
+      "hideBodyParts": [],
+      "hasMorphs": true,
+      "source": "avatar_bodies.blend → demo_tshirt"
+    }
+  ]
+}

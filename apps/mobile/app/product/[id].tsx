@@ -1,15 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError, api } from '../../src/api/client';
-import { addFavorite, addToCart, removeFavorite } from '../../src/api/endpoints';
+import { addFavorite, addToCart, removeFavorite, supportsAiTryon } from '../../src/api/endpoints';
 import { Icon } from '../../src/components/Icon';
 import { Button, ErrorView, Loading, Screen } from '../../src/components/ui';
 import { useI18n } from '../../src/i18n';
 import { money } from '../../src/theme/format';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
+
+/**
+ * Karusel sahifasining kengligi.
+ *
+ * ⚠️ Modul darajasida bir marta olinadi: `pagingEnabled` ekran kengligiga
+ * to'xtaydi, ya'ni rasm ham AYNAN shuncha bo'lishi kerak. Aks holda har
+ * sahifada siljish orta boradi.
+ */
+const SCREEN_WIDTH = Dimensions.get('window').width;
 
 interface ProductDetail {
   id: string;
@@ -19,6 +28,8 @@ interface ProductDetail {
   oldPrice: string | null;
   currency: string;
   images: string[];
+  /** Kiyim toifasi — AI kiyintirish shu bo'yicha qaror qiladi */
+  slot: string;
   isLimited: boolean;
   brand: { name: string | null } | null;
   store: { id: string; name: string; isOpen: boolean; distanceM: number | null };
@@ -42,6 +53,7 @@ export default function Product(): JSX.Element {
   const [size, setSize] = useState<string | null>(null);
   const [cartError, setCartError] = useState<string | null>(null);
   const [favorite, setFavorite] = useState<boolean | null>(null);
+  const [imageIndex, setImageIndex] = useState(0);
 
   const product = useQuery({
     queryKey: ['product', id],
@@ -89,21 +101,57 @@ export default function Product(): JSX.Element {
 
   if (product.isLoading) return <Loading />;
   if (product.isError || !product.data) {
-    return <ErrorView message={t.errors.generic} onRetry={() => void product.refetch()} />;
+    return <ErrorView error={product.error} onRetry={() => void product.refetch()} />;
   }
 
   const data = product.data;
   const variant = data.variants[variantIndex];
-  const canTryOn = variant?.asset3d?.status === 'ready';
+  /*
+   * ⚠️ SHART 3D EMAS, KIYIM SURATI VA SLOT.
+   *
+   * Ilgari bu `asset3d.status === 'ready'` edi va tugma 3D ekranga olib
+   * borardi — u endi ishlamaydi. Kiyintirish AI orqali bo'ladi va unga
+   * 3D umuman kerak emas: kiyimning oddiy surati yetarli.
+   *
+   * Model faqat kiyim uchun o'qitilgan, shuning uchun oyoq kiyim, soat va
+   * sumkada tugma ko'rsatilmaydi — natija ishonchsiz chiqardi.
+   */
+  const canTryOn = supportsAiTryon(data.slot) && Boolean(data.images[0]);
 
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
-        <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
+        {/*
+          Rasm karuseli.
+
+          ⚠️ KENGLIK EKRANDAN OLINADI, qattiq yozilmaydi. Ilgari u 360
+          piksel edi va bu hech bir zamonaviy iPhone kengligiga to'g'ri
+          kelmasdi: keyingi rasm chetdan ko'rinib turardi, `pagingEnabled`
+          esa EKRAN kengligiga tayanib to'xtardi — natijada har sahifada
+          siljish orta borardi va rasmlar qiyshiq to'xtardi.
+        */}
+        <ScrollView
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={(event) =>
+            setImageIndex(Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH))
+          }
+          scrollEventThrottle={16}
+        >
           {data.images.map((url) => (
             <Image key={url} source={{ uri: url }} style={styles.image} resizeMode="cover" />
           ))}
         </ScrollView>
+
+        {/* Nuqtalar — bir nechta rasm borligini bildiradi */}
+        {data.images.length > 1 ? (
+          <View style={styles.dots}>
+            {data.images.map((url, index) => (
+              <View key={url} style={[styles.dot, index === imageIndex && styles.dotActive]} />
+            ))}
+          </View>
+        ) : null}
 
         <View style={styles.body}>
           <View style={styles.titleRow}>
@@ -196,7 +244,7 @@ export default function Product(): JSX.Element {
               <Button
                 title={t.product.tryOn}
                 variant="ghost"
-                onPress={() => router.push('/tryon')}
+                onPress={() => router.push('/ai')}
               />
             ) : null}
             <Button
@@ -217,7 +265,16 @@ export default function Product(): JSX.Element {
 
 const styles = StyleSheet.create({
   content: { paddingBottom: spacing.xxl },
-  image: { width: 360, aspectRatio: 3 / 4, backgroundColor: colors.surface },
+  image: { width: SCREEN_WIDTH, aspectRatio: 3 / 4, backgroundColor: colors.surface },
+
+  dots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.border },
+  dotActive: { backgroundColor: colors.accent, width: 18 },
   body: { padding: spacing.md, gap: spacing.xs },
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
   brand: { ...text.label, color: colors.textDim },

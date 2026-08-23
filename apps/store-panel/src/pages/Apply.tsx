@@ -74,12 +74,12 @@ export function ApplyPage(): JSX.Element {
 
     return (
       <main className="mx-auto max-w-lg px-4 py-12">
-        <h1 className="text-xl font-bold text-white">{current.name}</h1>
+        <h1 className="text-xl font-bold text-foreground">{current.name}</h1>
         <p className="mt-1 text-sm text-dim">{current.slug}</p>
 
         {text ? (
           <div className="mt-6 rounded-lg border border-border bg-surface p-4">
-            <p className="font-semibold text-white">{text.title}</p>
+            <p className="font-semibold text-foreground">{text.title}</p>
             <p className="mt-2 text-sm text-dim">{text.body}</p>
           </div>
         ) : null}
@@ -103,7 +103,7 @@ export function ApplyPage(): JSX.Element {
 
   return (
     <main className="mx-auto max-w-lg px-4 py-12">
-      <h1 className="text-2xl font-bold text-white">Do`kon ro`yxatdan o`tkazish</h1>
+      <h1 className="text-2xl font-bold text-foreground">Do`kon ro`yxatdan o`tkazish</h1>
       <p className="mt-2 text-sm text-dim">
         Ariza admin tomonidan ko`rib chiqiladi. Komissiya yo`q, ro`yxatdan o`tish bepul.
       </p>
@@ -209,7 +209,7 @@ export function ApplyPage(): JSX.Element {
         <button
           type="submit"
           disabled={submit.isPending || (!form.deliveryEnabled && !form.pickupEnabled)}
-          className="w-full rounded-lg bg-primary px-4 py-3 font-semibold text-white disabled:opacity-50"
+          className="w-full rounded-lg bg-primary px-4 py-3 font-semibold text-foreground disabled:opacity-50"
         >
           {submit.isPending ? 'Yuborilmoqda…' : 'Arizani yuborish'}
         </button>
@@ -239,7 +239,7 @@ function Text({
     <label className="block">
       <span className="text-xs font-semibold uppercase tracking-wide text-dim">{label}</span>
       <input
-        className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-white"
+        className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-foreground"
         value={value}
         placeholder={placeholder}
         required={required}
@@ -264,7 +264,7 @@ function Select({
     <label className="block">
       <span className="text-xs font-semibold uppercase tracking-wide text-dim">{label}</span>
       <select
-        className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-white"
+        className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-foreground"
         value={value}
         onChange={(event) => onChange(event.target.value)}
       >
@@ -288,7 +288,7 @@ function Check({
   onChange: (checked: boolean) => void;
 }): JSX.Element {
   return (
-    <label className="flex items-center gap-2 text-sm text-white">
+    <label className="flex items-center gap-2 text-sm text-foreground">
       <input
         type="checkbox"
         checked={checked}

@@ -3,6 +3,9 @@ import { useState } from 'react';
 
 import { getAssetQueue, updateAsset, type AssetJob, type AssetPublishBody } from '../api/admin';
 import { EmptyState, ErrorState, Spinner } from '../components/Spinner';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const TABS = [
   { value: 'queued', label: 'Navbatda' },
@@ -63,8 +66,8 @@ function Field({
   return (
     <label className="block">
       <span className="label">{label}</span>
-      <input
-        className="field mt-2"
+      <Input
+        className="mt-2"
         type={type}
         value={value}
         placeholder={placeholder}
@@ -219,7 +222,7 @@ function PublishForm({
           onChange={(event) => set({ checklistPassed: event.target.checked })}
         />
         <span>
-          <span className="font-medium text-white">QA ro'yxati to'liq bajarildi</span>
+          <span className="font-medium text-foreground">QA ro'yxati to'liq bajarildi</span>
           <span className="mt-0.5 block text-xs text-dim">
             Belgilanmasa nashr qilib bo'lmaydi. Bitta sifatsiz model butun ilova tajribasini buzadi.
           </span>
@@ -227,12 +230,13 @@ function PublishForm({
       </label>
 
       <div className="flex flex-wrap justify-end gap-2">
-        <button type="button" className="btn-ghost" onClick={onCancel} disabled={busy}>
+        <Button variant="outline" type="button" onClick={onCancel} disabled={busy}>
           Bekor
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="outline"
           type="button"
-          className="btn-ghost"
+
           disabled={busy}
           onClick={() =>
             onSubmit({
@@ -244,10 +248,10 @@ function PublishForm({
           }
         >
           Fotolar yetarli emas
-        </button>
-        <button type="button" className="btn-primary" disabled={busy || !ready} onClick={publish}>
+        </Button>
+        <Button type="button" disabled={busy || !ready} onClick={publish}>
           Nashr qilish
-        </button>
+        </Button>
       </div>
 
       {!ready ? (
@@ -279,27 +283,26 @@ export function AssetsPage(): JSX.Element {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-semibold text-white">3D navbat</h1>
+        <h1 className="text-xl font-semibold text-foreground">3D navbat</h1>
         <p className="mt-1 text-sm text-dim">
           Do'kon so'ragan modellar. Manba fotolar yetarli bo'lsa ishga oling, tayyor bo'lganda QA
           natijasi bilan nashr qiling.
         </p>
       </div>
 
-      <div className="flex gap-1 overflow-x-auto rounded-xl border border-border bg-surface p-1">
-        {TABS.map((item) => (
-          <button
-            key={item.value}
-            type="button"
-            onClick={() => setTab(item.value)}
-            className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition ${
-              tab === item.value ? 'bg-primary text-white' : 'text-muted hover:text-white'
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)}>
+        <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto border border-border bg-surface p-1">
+          {TABS.map((item) => (
+            <TabsTrigger
+              key={item.value}
+              value={item.value}
+              className="whitespace-nowrap rounded-lg px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              {item.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {act.isError ? (
         <p className="text-sm text-danger">
@@ -320,10 +323,10 @@ export function AssetsPage(): JSX.Element {
           <article key={job.id} className="card p-4 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="font-semibold text-white">
+                <h2 className="font-semibold text-foreground">
                   {job.product.title}
                   {job.colorName?.['uz'] ? (
-                    <span className="text-muted"> · {job.colorName['uz']}</span>
+                    <span className="text-muted-foreground"> · {job.colorName['uz']}</span>
                   ) : null}
                 </h2>
                 <p className="text-xs text-dim">
@@ -333,7 +336,7 @@ export function AssetsPage(): JSX.Element {
                     : ''}
                 </p>
               </div>
-              <span className="text-xs text-muted">{job.status}</span>
+              <span className="text-xs text-muted-foreground">{job.status}</span>
             </div>
 
             {job.sourceImages.length > 0 ? (
@@ -368,9 +371,10 @@ export function AssetsPage(): JSX.Element {
 
             <div className="mt-4 flex flex-wrap justify-end gap-2">
               {job.status === 'queued' ? (
-                <button
+                <Button
+                  variant="outline"
                   type="button"
-                  className="btn-ghost"
+
                   disabled={act.isPending}
                   onClick={() =>
                     act.mutate({
@@ -380,17 +384,17 @@ export function AssetsPage(): JSX.Element {
                   }
                 >
                   Ishga olish
-                </button>
+                </Button>
               ) : null}
 
               {job.status !== 'ready' ? (
-                <button
+                <Button
                   type="button"
-                  className="btn-primary"
+
                   onClick={() => setEditing(editing === job.id ? null : job.id)}
                 >
                   {editing === job.id ? 'Yopish' : 'Model yuklash'}
-                </button>
+                </Button>
               ) : null}
             </div>
 

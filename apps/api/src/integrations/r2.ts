@@ -48,6 +48,14 @@ const CACHE_CONTROL: Record<PresignInput['purpose'], string> = {
   face: 'private, max-age=3600',
   // Profil surati almashtirilganda yangi UUID beriladi — eskisi keshda qolsa ham zarari yo'q
   avatar: 'public, max-age=31536000, immutable',
+  /*
+   * To'liq bo'yli surat — `face` bilan bir xil qoidada.
+   *
+   * ⚠️ `private`: bu odamning butun gavdasi va u faqat o'ziga ko'rinishi
+   * kerak. `public` bo'lsa CDN uni chetdagi so'rovga ham berardi — havolani
+   * bilgan har kim ocha olardi.
+   */
+  body: 'private, max-age=3600',
 };
 
 const EXTENSIONS: Record<PresignInput['contentType'], string> = {
@@ -103,6 +111,35 @@ export async function presignUpload(input: PresignInput): Promise<PresignResult>
       'Cache-Control': CACHE_CONTROL[input.purpose],
     },
   };
+}
+
+/**
+ * Faylni SERVER tomonidan yozadi va ochiq havolasini qaytaradi.
+ *
+ * ⚠️ NEGA `presignUpload` YETMAYDI: u brauzer yoki ilova faylni o'zi
+ * yuborishi uchun. Bu yerda esa fayl serverning qo'lida — AI provayderidan
+ * yuklab olingan natija. Uni imzolangan havola bilan qaytadan o'zimizga
+ * yuborish ortiqcha qadam bo'lardi.
+ *
+ * Kesh `immutable`: kalitda tasodifiy UUID bor, ya'ni bu manzildagi rasm
+ * hech qachon o'zgarmaydi.
+ */
+export async function uploadObject(input: {
+  key: string;
+  body: Buffer;
+  contentType: string;
+}): Promise<string> {
+  await r2().send(
+    new PutObjectCommand({
+      Bucket: env().R2_BUCKET_ASSETS,
+      Key: input.key,
+      Body: input.body,
+      ContentType: input.contentType,
+      CacheControl: 'public, max-age=31536000, immutable',
+    }),
+  );
+
+  return `${env().CDN_BASE_URL}/${input.key}`;
 }
 
 /**

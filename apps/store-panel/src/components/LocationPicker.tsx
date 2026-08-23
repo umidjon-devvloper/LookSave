@@ -93,7 +93,7 @@ export function LocationPicker({ value, onChange, hint }: Props): JSX.Element {
       <label className="block">
         <span className="text-xs font-semibold uppercase tracking-wide text-dim">Koordinata</span>
         <input
-          className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 tabular-nums text-white"
+          className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 tabular-nums text-foreground"
           inputMode="decimal"
           value={text}
           onChange={(event) => applyText(event.target.value)}

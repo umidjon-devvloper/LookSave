@@ -35,12 +35,12 @@ export function InvoicesPage(): JSX.Element {
 
   return (
     <div className="max-w-3xl space-y-5">
-      <h1 className="text-xl font-semibold text-white">Hisoblar</h1>
+      <h1 className="text-xl font-semibold text-foreground">Hisoblar</h1>
 
       {/* K-12: Faza 1-2 da komissiya olinmaydi */}
       <div className="card border-primary/30 bg-primary/5 p-4">
-        <p className="text-sm font-medium text-white">Hozircha komissiya olinmaydi</p>
-        <p className="mt-1 text-sm text-muted">
+        <p className="text-sm font-medium text-foreground">Hozircha komissiya olinmaydi</p>
+        <p className="mt-1 text-sm text-muted-foreground">
           LookSave dastlabki bosqichda bepul. Quyidagi raqamlar ma'lumot uchun — do'koningiz ilova
           orqali qancha buyurtma olganini ko'rsatadi.
         </p>
@@ -67,18 +67,18 @@ export function InvoicesPage(): JSX.Element {
             <tbody>
               {invoices.data.map((invoice, index) => (
                 <tr key={invoice.id} className={index % 2 === 0 ? 'bg-surface' : 'bg-surface2'}>
-                  <td className="px-4 py-3 text-white">{periodLabel(invoice.periodStart)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-muted">
+                  <td className="px-4 py-3 text-foreground">{periodLabel(invoice.periodStart)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
                     {invoice.ordersCount}
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-muted">
+                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
                     {money(invoice.grossAmount, invoice.currency)}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">
                     {invoice.isFree ? (
                       <span className="text-success">bepul</span>
                     ) : (
-                      <span className="text-white">
+                      <span className="text-foreground">
                         {money(invoice.commission, invoice.currency)}
                       </span>
                     )}

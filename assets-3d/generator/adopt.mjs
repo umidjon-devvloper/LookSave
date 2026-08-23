@@ -321,11 +321,25 @@ function sectionAt(points, level, tolerance = 0.02) {
   };
 }
 
-/** Barcha tana vertekslari — kesim o'lchash uchun */
+/**
+ * Kesim o'lchash uchun vertekslar — FAQAT GAVDA VA SONLAR.
+ *
+ * ⚠️ QO'LLARNI QO'SHIB BO'LMAYDI. Bind pozasi A-poza: qo'llar pastga qiya
+ * tushadi va kaftlar aynan son balandligida (Y 0.82…0.97) turadi. Barcha
+ * vertekslardan o'lchansa, o'sha balandlikdagi "kesim radiusi" kaftgacha
+ * cho'ziladi (0.20 o'rniga 0.51) va ichki kiyim butun qo'l kengligidagi
+ * yassi plastinkaga aylanadi.
+ *
+ * Xato jim: hech qanday ogohlantirish chiqmaydi, model ham yiqilmaydi —
+ * shunchaki avatar ostida ulkan plastinka paydo bo'ladi.
+ */
+const SECTION_PARTS = new Set(['body_torso', 'body_thigh_L', 'body_thigh_R']);
+
 const bodyPoints = [];
 {
   const position = geometry.attributes.position;
   for (let i = 0; i < position.count; i++) {
+    if (!SECTION_PARTS.has(partOfVertex[i])) continue;
     bodyPoints.push(new THREE.Vector3().fromBufferAttribute(position, i));
   }
 }
@@ -339,13 +353,21 @@ function underwearShell(levels, clearance) {
     keys.push([level, section.rx + clearance, section.rz + clearance, section.cz]);
   }
   if (keys.length < 2) return null;
-  return loft(verticalRings(keys, 3), { radialSegments: 20 });
+
+  /*
+   * Uchlar YOPILMAYDI. Yopqich — markazdan chetga tarqaladigan yassi disk;
+   * u tana ichida qolishi kerak edi, lekin bel va son chizig'ida tanadan
+   * chetga chiqib, gorizontal plastinka bo'lib ko'rinadi.
+   */
+  return loft(verticalRings(keys, 3), { radialSegments: 20, capStart: false, capEnd: false });
 }
 
 const underwearMaterial = new THREE.MeshStandardMaterial({
   color: 0x2b2733,
   roughness: 0.88,
   metalness: 0.02,
+  // Uchlari ochiq naycha — ichki tomoni ham to'g'ri yoritilsin
+  side: THREE.DoubleSide,
 });
 
 const underwear = [];

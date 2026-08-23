@@ -22,11 +22,44 @@ import { addMorphTargets, attachMorphNames, boxAt, capsuleBetween, ellipsoidAt }
  * o'lchamga moslanmagan kiyim tanadan chiqib turadi (04-3d-pipeline §3).
  */
 
-/** Kiyim tanadan shuncha qalinroq — ichkariga botib ketmasligi uchun */
-const CLEARANCE = 0.014;
+/**
+ * Kiyim tanadan shuncha qalinroq — ichkariga botib ketmasligi uchun.
+ *
+ * ⚠️ 0.014 KAM EDI. Tana yuqori aniqlikda (53 000 uchburchak), kiyim esa
+ * silliq naycha — ular bir-biriga juda yaqin kelganda z-fighting boshlanadi
+ * va yuzada teri bilan mato almashib turgan chipor dog'lar paydo bo'ladi.
+ */
+const CLEARANCE = 0.022;
+
+/**
+ * Yoqa o'lchami.
+ *
+ * ⚠️ TORAYISH YELKADAN KEYIN BOSHLANISHI KERAK. Gavda eng keng joyi —
+ * yelka, Y 1.40…1.44 orasida (rx ≈ 0.23). Toraytirish bundan pastda
+ * boshlansa, kiyim o'sha balandlikda tanadan TOR bo'lib qoladi va yelkada
+ * teri chiqib turadi.
+ */
+const COLLAR = { y: 1.45, rx: 0.1, rz: 0.09, cz: -0.095 };
+
+/**
+ * Yoqa, manjet va bel bandi uchun to'qroq tus.
+ *
+ * Haqiqiy kiyimda ular alohida, zichroq to'qilgan bo'lakdan tikiladi va
+ * yorug'likni boshqacha qaytaradi. Bir xil rangda qoldirilsa, ular ko'zga
+ * umuman tashlanmaydi va kiyim "tananing rangli nusxasi" bo'lib qolaveradi.
+ */
+function trimColor(color) {
+  return new THREE.Color(color).multiplyScalar(0.72).getHex();
+}
 
 function fabric(color, roughness = 0.86) {
-  return new THREE.MeshStandardMaterial({ color, roughness, metalness: 0.02 });
+  return new THREE.MeshStandardMaterial({
+    color,
+    roughness,
+    metalness: 0.02,
+    // Uchlari ochiq — yoqa va etak chetidan ichki yuza ko'rinadi
+    side: THREE.DoubleSide,
+  });
 }
 
 function part(name, geometry, material) {
@@ -42,11 +75,46 @@ function part(name, geometry, material) {
  * Ilgari bu yerda o'z raqamlari bor edi va tana kengaygач kiyim unga
  * botib qolgan edi. Endi bitta manba: tana o'zgarsa kiyim ham o'zgaradi.
  */
-function torsoShell({ from, to, extra }) {
+function torsoShell({ from, to, extra, collar = false }) {
   // Haqiqiy tana o'lchovi bo'lsa o'shandan, bo'lmasa protsedural jadvaldan
   const base = measuredTorsoKeys() ?? torsoKeys(SHAPE.male);
   const keys = shellKeys(base, { from, to, extra: CLEARANCE + extra });
-  return loft(verticalRings(keys, 3), { radialSegments: 22 });
+
+  if (collar) {
+    /*
+     * ⚠️ YELKA CHIZIG'I. Loft — naycha, va uning yuqori halqasi tana
+     * profilidan olinadi: ko'krak balandligida u rx ≈ 0.22 bo'ladi. Yopqichsiz
+     * qoldirilsa, kiyimda ko'krak kengligidagi ulkan teshik ochiladi va
+     * futbolka yelkadan tushib turgandek ko'rinadi.
+     *
+     * Shuning uchun yuqorida ikkita qo'shimcha halqa: biri oraliq, ikkinchisi
+     * bo'yin o'lchamida. Ular birgalikda yelka chizig'ini yasaydi.
+     */
+    const [topY, topRx, topRz, topCz] = keys[keys.length - 1];
+
+    keys.push([
+      (topY + COLLAR.y) / 2,
+      (topRx + COLLAR.rx) / 2,
+      (topRz + COLLAR.rz) / 2,
+      (topCz + COLLAR.cz) / 2,
+    ]);
+    keys.push([COLLAR.y, COLLAR.rx, COLLAR.rz, COLLAR.cz]);
+  }
+
+  /*
+   * ⚠️ UCHLARI YOPILMAYDI. Yopqich — halqa markazidan tarqaladigan yassi
+   * disk. Bo'yin chizig'ida u yelka ustida ochiq osmonda qoladi va gorizontal
+   * plastinka bo'lib ko'rinadi; etakda ham xuddi shunday.
+   *
+   * Kiyim tanaga kiydiriladi, ya'ni ichi hech qachon ko'rinmaydi — yopqich
+   * kerak emas. Material esa ikki tomonlama: yoqa va etak chetida ichki
+   * yuza ko'rinib qoladi.
+   */
+  return loft(verticalRings(keys, 3), {
+    radialSegments: 22,
+    capStart: false,
+    capEnd: false,
+  });
 }
 
 /** Yeng — yelkadan berilgan nuqtagacha */
@@ -58,104 +126,292 @@ function sleeve(at, side, { toBone, radius }) {
 
 const BUILDERS = {
   /** Futbolka — qisqa yeng */
-  tshirt(at, color) {
+  tshirt(at, color, shell) {
     const material = fabric(color);
+    const trim = fabric(trimColor(color), 0.9);
     const group = new THREE.Group();
 
-    group.add(part('tshirt_body', torsoShell({ from: 1.0, to: 1.43, extra: 0.014 }), material));
+    group.add(
+      part('tshirt_body', shell(['body_torso'], { from: 0.99, to: 1.46, offset: CLEARANCE, thickness: 0.004 }), material),
+    );
 
     for (const side of [1, -1]) {
+      const suffix = side > 0 ? 'L' : 'R';
       const arm = at(side > 0 ? 'LeftArm' : 'RightArm');
       const fore = at(side > 0 ? 'LeftForeArm' : 'RightForeArm');
-      // Qisqa yeng — yelkadan bilakning 45% igacha
-      const end = arm.clone().lerp(fore, 0.45);
-      const geometry = capsuleBetween(
-        arm.toArray(),
-        end.toArray(),
-        LIMB_RADIUS.deltoid + CLEARANCE + 0.006,
-        12,
+
+      /*
+       * ⚠️ KESISH SUYAK BO'YLAB, BALANDLIK BO'YICHA EMAS. Qo'l A-pozada
+       * ~45° qiya turadi: balandlik bo'yicha kesilsa yeng qiyshiq qirqiladi.
+       * Suyak kesmasidagi ulush esa pozaga bog'liq emas.
+       *
+       * ⚠️ `fromT` YELKA QALPOG'INI TO'LIQ QAMRASHI KERAK. Deltasimon mushak
+       * gavdadan tashqariga bo'rtib chiqadi, ya'ni u futbolka gavdasining
+       * qobig'idan (gavdadan 22 mm) TASHQARIDA qoladi. Yeng u yergacha
+       * yetmasa, yelka bilan yeng orasida teri chiziq bo'lib ko'rinadi —
+       * aynan shu nuqson uzoq vaqt "kiyim yirtilgan" bo'lib tuyulgan.
+       * -0.9 da qirqish yelka bo'g'imidan yuqorida qoladi va butun qalpoq
+       * yopiladi. Qo'ltiq ostidagi ortiqcha qism gavda ichida qoladi,
+       * shuning uchun ko'rinmaydi.
+       *
+       * ⚠️ OFFSET GAVDANIKIDAN KATTAROQ. Ikkalasi bir xil masofada bo'lsa,
+       * yelkada ular kesishib qoladi va bir xil chuqurlikdagi ikki yuza
+       * shtrixli naqsh (z-fighting) beradi.
+       */
+      const geometry = shell([`body_upperArm_${suffix}`], {
+        axis: { start: arm.toArray(), end: fore.toArray(), fromT: -0.9, toT: 0.55 },
+        offset: CLEARANCE + 0.005,
+        thickness: 0.004,
+      });
+
+      group.add(part(`tshirt_sleeve_${suffix}`, geometry, material));
+
+      // Manjet — yeng uchida, biroz tashqariroqda va to'qroq
+      group.add(
+        part(
+          `tshirt_cuff_${suffix}`,
+          shell([`body_upperArm_${suffix}`], {
+            axis: { start: arm.toArray(), end: fore.toArray(), fromT: 0.46, toT: 0.55 },
+            offset: CLEARANCE + 0.009,
+            thickness: 0.005,
+          }),
+          trim,
+        ),
       );
-      group.add(part(side > 0 ? 'tshirt_sleeve_L' : 'tshirt_sleeve_R', geometry, material));
     }
+
+    /*
+     * Yoqa — bo'yin ATROFIDAGI halqa.
+     *
+     * ⚠️ BALANDLIK BILAN AJRATIB BO'LMAYDI. Y 1.43…1.46 da `body_torso`
+     * bo'yin emas, YELKA: eni ±0.22. Balandlik bo'yicha olingan "yoqa"
+     * yelkadan yelkagacha cho'zilgan plastinka bo'lib chiqadi.
+     *
+     * `body_neck` ham yaramaydi — u bo'yinning faqat ORQA qismi
+     * (Z −0.13…−0.02), oldi gavdaga tegishli.
+     *
+     * Shuning uchun gavda va bo'yin birga olinadi, lekin bo'yin o'qidan
+     * 9 sm ichidagi qismi — bu haqiqiy yoqa chizig'i.
+     */
+    group.add(
+      part(
+        'tshirt_collar',
+        shell(['body_torso', 'body_neck'], {
+          from: 1.4,
+          to: 1.47,
+          around: { x: 0, z: -0.075, radius: 0.09 },
+          /*
+           * ⚠️ GAVDA QOBIG'IDAN TASHQARIDA. Ilgari 0.016 edi, ya'ni
+           * `CLEARANCE` (0.022) dan KICHIK — yoqa futbolka gavdasining
+           * ICHIDA qolardi va gavda uning ustidan chiqib, bo'yin atrofida
+           * shtrixli naqsh berardi.
+           */
+          offset: CLEARANCE + 0.004,
+          thickness: 0.006,
+        }),
+        trim,
+      ),
+    );
 
     return group;
   },
 
   /** Kurtka — uzun yeng, gavdasi kengroq */
-  jacket(at, color) {
+  jacket(at, color, shell) {
     const material = fabric(color, 0.72);
+    const trim = fabric(trimColor(color), 0.8);
     const group = new THREE.Group();
 
-    group.add(part('jacket_body', torsoShell({ from: 0.92, to: 1.44, extra: 0.024 }), material));
+    group.add(
+      part('jacket_body', shell(['body_torso'], { from: 0.90, to: 1.46, offset: CLEARANCE + 0.014, thickness: 0.007 }), material),
+    );
 
     for (const side of [1, -1]) {
-      const geometry = sleeve(at, side, {
-        toBone: 'Hand',
-        radius: LIMB_RADIUS.deltoid + CLEARANCE + 0.016,
+      const suffix = side > 0 ? 'L' : 'R';
+      const arm = at(side > 0 ? 'LeftArm' : 'RightArm');
+      const hand = at(side > 0 ? 'LeftHand' : 'RightHand');
+
+      const geometry = shell([`body_upperArm_${suffix}`, `body_forearm_${suffix}`], {
+        axis: { start: arm.toArray(), end: hand.toArray(), fromT: -0.45, toT: 0.97 },
+        offset: CLEARANCE + 0.021,
+        thickness: 0.007,
       });
-      group.add(part(side > 0 ? 'jacket_sleeve_L' : 'jacket_sleeve_R', geometry, material));
+
+      group.add(part(`jacket_sleeve_${suffix}`, geometry, material));
+
+      // Manjet — kaft oldida
+      group.add(
+        part(
+          `jacket_cuff_${suffix}`,
+          shell([`body_forearm_${suffix}`], {
+            axis: { start: arm.toArray(), end: hand.toArray(), fromT: 0.86, toT: 0.97 },
+            offset: CLEARANCE + 0.026,
+            thickness: 0.007,
+          }),
+          trim,
+        ),
+      );
     }
+
+    // Yoqa — kurtkada balandroq va qalinroq
+    group.add(
+      part(
+        'jacket_collar',
+        shell(['body_torso', 'body_neck'], {
+          from: 1.4,
+          to: 1.485,
+          around: { x: 0, z: -0.075, radius: 0.098 },
+          offset: 0.023,
+          thickness: 0.009,
+        }),
+        trim,
+      ),
+    );
 
     return group;
   },
 
   /** Shim — beldan to'piqqacha */
-  pants(at, color) {
+  pants(at, color, shell) {
     const material = fabric(color, 0.9);
+    const trim = fabric(trimColor(color), 0.85);
     const group = new THREE.Group();
 
-    // Bel qismi — tana profilining chanoq bo'lagi
+    /*
+     * Bel — gavdaning pastki bo'lagidan. Ichki kiyim Y 0.72 dan boshlanadi,
+     * shuning uchun shim undan pastroqda tugashi kerak, aks holda ichki kiyim
+     * shim ostidan chiqib turadi.
+     */
     group.add(
-      part('pants_waist', torsoShell({ from: 0.83, to: 1.05, extra: CLEARANCE * 0.5 }), material),
+      /*
+       * ⚠️ OFFSET FUTBOLKANIKIDAN KATTA. Ikkalasi ham `body_torso` dan
+       * yasaladi va Y 0.99…1.04 da UST-USTIGA tushadi. Bir xil masofada
+       * bo'lsa ikki yuza aynan bir joyda yotadi va bel atrofida shtrixli
+       * naqsh (z-fighting) paydo bo'ladi — ekranda mato yirtilganday.
+       * Shim ko'ylak ustidan kiyiladi, shuning uchun u tashqarida.
+       */
+      /*
+       * ⚠️ SON MESH'I HAM QO'SHILADI. O'lchandi: `body_thigh_L` eni x=0.192,
+       * `body_torso` esa atigi x=0.154 — ya'ni son gavdadan KENGROQ. Faqat
+       * gavdadan yasalgan qobiq songa yetmaydi va teri chanoq atrofida
+       * shimdan chiqib turadi.
+       */
+      part(
+        'pants_waist',
+        shell(['body_torso', 'body_thigh_L', 'body_thigh_R'], {
+          from: 0.83,
+          to: 1.04,
+          /*
+           * ⚠️ SHTANINADAN JUDA UZOQ HAM BO'LMASIN. 14 mm sinab ko'rildi:
+           * bel qobig'i shimdan ajralib, ustidan kiyilgan alohida shortik
+           * bo'lib ko'rina boshladi. 5 mm — chok ko'rinmaydigan, ayni paytda
+           * qatlamlar bir-biriga yopishmaydigan oraliq.
+           */
+          offset: CLEARANCE + 0.005,
+          thickness: 0.005,
+        }),
+        material,
+      ),
+    );
+
+    // Bel bandi — shimning eng yuqorisida, biroz qalinroq
+    group.add(
+      part(
+        'pants_waistband',
+        shell(['body_torso'], {
+          from: 1.005,
+          to: 1.045,
+          offset: CLEARANCE + 0.011,
+          thickness: 0.007,
+        }),
+        trim,
+      ),
     );
 
     for (const side of [1, -1]) {
-      const up = at(side > 0 ? 'LeftUpLeg' : 'RightUpLeg');
-      const knee = at(side > 0 ? 'LeftLeg' : 'RightLeg');
-      const ankle = at(side > 0 ? 'LeftFoot' : 'RightFoot');
+      const suffix = side > 0 ? 'L' : 'R';
 
-      const thigh = capsuleBetween(
-        up.toArray(),
-        knee.toArray(),
-        LIMB_RADIUS.thigh + CLEARANCE + 0.008,
-        14,
+      /*
+       * Oyoq tik turadi, shuning uchun balandlik bo'yicha kesish yetarli —
+       * yengdagi kabi suyak o'qi kerak emas.
+       *
+       * Pastki chegara 0.13: to'piq ochiq qoladi, krossovka o'sha yerdan
+       * boshlanadi. Shimni oyoq panjasigacha tushirsak, u krossovka ichida
+       * ko'rinib qolardi.
+       */
+      group.add(
+        part(
+          `pants_leg_${suffix}`,
+          /*
+           * Tizzada son va boldir mesh'lari ustma-ust tushadi va ularning
+           * yopiq uchlari (cap) qobiqda kichik burma hosil qiladi. Qo'shimcha
+           * 3 mm o'sha burmani teridan uzoqroqqa olib chiqadi.
+           */
+          shell([`body_thigh_${suffix}`, `body_calf_${suffix}`], {
+            from: 0.13,
+            to: 1.0,
+            offset: CLEARANCE + 0.003,
+            thickness: 0.005,
+            /*
+             * ⚠️ BU YERDA `smooth` ISHLATILMAYDI. Sinab ko'rildi: silliqlash
+             * son va boldir qobig'ini kichraytiradi va ular tizzada bir-biridan
+             * uzilib, aylana teshik bo'lib ochiladi. Silliqlash faqat poyabzalda
+             * o'rinli — u yerda maqsad barmoqlar orasini to'ldirish.
+             */
+          }),
+          material,
+        ),
       );
-      const calf = capsuleBetween(
-        knee.toArray(),
-        [ankle.x, ankle.y + 0.03, ankle.z],
-        LIMB_RADIUS.calf + CLEARANCE + 0.006,
-        14,
-      );
-
-      group.add(part(side > 0 ? 'pants_thigh_L' : 'pants_thigh_R', thigh, material));
-      group.add(part(side > 0 ? 'pants_calf_L' : 'pants_calf_R', calf, material));
     }
 
     return group;
   },
 
-  /** Krossovka — taglik va ustki qism */
-  sneakers(at, color) {
+  /** Krossovka — oyoq sirtidan ustki qism va taglik */
+  sneakers(at, color, shell) {
     const upper = fabric(color, 0.6);
     const sole = fabric(0x1b1724, 0.95);
     const group = new THREE.Group();
 
     for (const side of [1, -1]) {
-      const foot = at(side > 0 ? 'LeftFoot' : 'RightFoot');
       const suffix = side > 0 ? 'L' : 'R';
+      const foot = at(side > 0 ? 'LeftFoot' : 'RightFoot');
+
+      /*
+       * Ustki qism oyoq panjasining o'z sirtidan. Ilgari u ellipsoid edi va
+       * panja undan chiqib turardi — shuning uchun panjani yashirishga to'g'ri
+       * kelardi, bu esa to'piqda yirtiq chet qoldirardi.
+       *
+       * Pastdan 0.022 dan boshlanadi: undan pastini taglik qoplaydi.
+       */
+      group.add(
+        part(
+          `sneaker_upper_${suffix}`,
+          /*
+           * ⚠️ `smooth` OLIB TASHLANMASIN. Barmoqlar orasidagi ariq surish
+           * masofasidan tor — silliqlashsiz siljigan sirt o'zi bilan
+           * kesishadi va krossovka uchli parchalarga bo'linib ketadi.
+           */
+          shell([`body_foot_${suffix}`], {
+            from: 0.022,
+            /*
+             * Silliqlash sirtni ozgina kichraytiradi (Laplas qisqarishi),
+             * shuning uchun surish masofasi shunga yarasha kattaroq —
+             * aks holda barmoq uchi krossovka oldidan chiqib turadi.
+             */
+            offset: 0.026,
+            thickness: 0.006,
+            smooth: 6,
+          }),
+          upper,
+        ),
+      );
 
       group.add(
         part(
           `sneaker_sole_${suffix}`,
-          boxAt([foot.x, 0.017, foot.z + 0.05], [0.104, 0.034, 0.253]),
+          boxAt([foot.x, 0.019, foot.z + 0.05], [0.108, 0.038, 0.257]),
           sole,
-        ),
-      );
-      group.add(
-        part(
-          `sneaker_upper_${suffix}`,
-          ellipsoidAt([foot.x, 0.058, foot.z + 0.035], [0.05, 0.042, 0.115], 12),
-          upper,
         ),
       );
     }
@@ -194,15 +450,24 @@ const BUILDERS = {
   },
 
   /** Kepka — gumbaz va kozirek */
-  cap(at, color) {
+  cap(at, color, shell) {
     const material = fabric(color, 0.7);
     const group = new THREE.Group();
     const head = at('Head');
 
-    const dome = ellipsoidAt([0, head.y + 0.095, 0.008], [0.094, 0.078, 0.1], 16);
-    group.add(part('cap_dome', dome, material));
+    /*
+     * Gumbaz KALLANING O'Z SIRTIDAN. Ilgari u ellipsoid edi va bosh unga
+     * sig'masdi: kepka yuzni yopib qo'yardi. Bosh sirtidan olingan gumbaz
+     * esa kallaning shaklini aynan takrorlaydi.
+     *
+     * 1.56 — chakka chizig'i: bundan pastda quloq va yuz boshlanadi.
+     */
+    group.add(
+      part('cap_dome', shell(['body_head'], { from: 1.56, offset: 0.012, thickness: 0.005 }), material),
+    );
 
-    const visor = boxAt([0, head.y + 0.072, 0.115], [0.15, 0.014, 0.11]);
+    // Kozirek — old tomonga, chakka balandligida
+    const visor = boxAt([0, 1.565, 0.11], [0.15, 0.014, 0.11]);
     group.add(part('cap_visor', visor, material));
 
     return group;
@@ -212,6 +477,15 @@ const BUILDERS = {
 /**
  * Katalog — nima yasaladi. `hideBodyParts` `assets_3d` jadvaliga tushadi
  * va ilova shu nomlarni yashiradi (04-3d-pipeline §2).
+ *
+ * ⚠️ TANA QISMI FAQAT TO'LIQ QOPLANSA YASHIRILADI. Ilgari futbolka butun
+ * `body_torso` ni yashirardi, lekin gavda Y 0.83…1.46, futbolka esa
+ * Y 0.97…1.39 — ya'ni bo'yin ostida va son ustida ochiq teshik qolardi va
+ * qo'shni qismlarning chetlari tishli yirtiq bo'lib ko'rinardi.
+ *
+ * Kiyim tanadan `CLEARANCE` qadar kengroq yasaladi, shuning uchun tanani
+ * yashirmasa ham u kiyim ichida qoladi. Yagona istisno — oyoq kiyim:
+ * krossovka juda past poligonli va panja undan chiqib turadi.
  */
 export const CATALOG = [
   {
@@ -222,7 +496,7 @@ export const CATALOG = [
     colorName: 'Oq',
     colorHex: '#F2F2F5',
     color: 0xf2f2f5,
-    hideBodyParts: ['body_torso'],
+    hideBodyParts: [],
   },
   {
     key: 'tshirt-black',
@@ -232,7 +506,7 @@ export const CATALOG = [
     colorName: 'Qora',
     colorHex: '#1C1A22',
     color: 0x1c1a22,
-    hideBodyParts: ['body_torso'],
+    hideBodyParts: [],
   },
   {
     key: 'tshirt-violet',
@@ -242,7 +516,7 @@ export const CATALOG = [
     colorName: 'Binafsha',
     colorHex: '#8B5CF6',
     color: 0x8b5cf6,
-    hideBodyParts: ['body_torso'],
+    hideBodyParts: [],
   },
   {
     key: 'jacket-denim',
@@ -252,13 +526,7 @@ export const CATALOG = [
     colorName: "Ko'k",
     colorHex: '#3B5A8C',
     color: 0x3b5a8c,
-    hideBodyParts: [
-      'body_torso',
-      'body_upperArm_L',
-      'body_upperArm_R',
-      'body_forearm_L',
-      'body_forearm_R',
-    ],
+    hideBodyParts: [],
   },
   {
     key: 'pants-graphite',
@@ -268,7 +536,7 @@ export const CATALOG = [
     colorName: 'Grafit',
     colorHex: '#3A3746',
     color: 0x3a3746,
-    hideBodyParts: ['body_thigh_L', 'body_thigh_R', 'body_calf_L', 'body_calf_R'],
+    hideBodyParts: ['underwear_briefs'],
   },
   {
     key: 'pants-beige',
@@ -278,7 +546,7 @@ export const CATALOG = [
     colorName: 'Bej',
     colorHex: '#C8B79A',
     color: 0xc8b79a,
-    hideBodyParts: ['body_thigh_L', 'body_thigh_R', 'body_calf_L', 'body_calf_R'],
+    hideBodyParts: ['underwear_briefs'],
   },
   {
     key: 'sneakers-white',
@@ -288,7 +556,7 @@ export const CATALOG = [
     colorName: 'Oq',
     colorHex: '#EDEDF2',
     color: 0xededf2,
-    hideBodyParts: ['body_foot_L', 'body_foot_R'],
+    hideBodyParts: [],
   },
   {
     key: 'sneakers-black',
@@ -298,7 +566,7 @@ export const CATALOG = [
     colorName: 'Qora',
     colorHex: '#201D28',
     color: 0x201d28,
-    hideBodyParts: ['body_foot_L', 'body_foot_R'],
+    hideBodyParts: [],
   },
   {
     key: 'watch-steel',
@@ -344,11 +612,16 @@ export const CATALOG = [
   },
 ];
 
-export function buildGarment(spec, at) {
+/**
+ * `shell({ from, to, offset })` — gavda qobig'ini tananing o'z sirtidan
+ * qaytaradi (`bodyShell.mjs`). Faqat ustki kiyimlarga kerak; qo'l va oyoq
+ * kapsulalari suyak o'rinlaridan yasaladi.
+ */
+export function buildGarment(spec, at, shell) {
   const build = BUILDERS[spec.builder];
   if (!build) throw new Error(`Noma'lum kiyim turi: ${spec.builder}`);
 
-  const group = build(at, spec.color);
+  const group = build(at, spec.color, shell);
   group.name = spec.key;
   return group;
 }

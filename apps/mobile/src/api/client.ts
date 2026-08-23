@@ -1,6 +1,7 @@
 import type { ApiFailure, ApiSuccess, ErrorCode } from '@looksave/shared-types';
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
+import { NativeModules } from 'react-native';
 
 /**
  * API mijozi.
@@ -20,16 +21,49 @@ const REFRESH_KEY = 'looksave.refresh';
  * `localhost` ishlaydi. Haqiqiy quridmada kompyuterning LAN IP'si kerak.
  */
 /**
+ * Metro serverining xostini topadi.
+ *
+ * ⚠️ IKKI MANBA KERAK, VA TARTIB MUHIM:
+ *
+ *   `Constants.expoConfig.hostUri` — Expo Go'da ishlaydi, chunki u yerda
+ *   konfiguratsiya dev-serverdan manifest bilan keladi va `hostUri` shu
+ *   manifestda bo'ladi.
+ *
+ *   `SourceCode.scriptURL` — dev-client (bizniki) uchun. Bu yerda
+ *   `expoConfig` build paytida ilovaga singdirilgan `app.json` dan olinadi
+ *   va unda `hostUri` UMUMAN YO'Q. Faqat `hostUri` ga tayangan tekshiruv
+ *   jimgina `null` qaytaradi va eskirgan `.env` manzili ishlatiladi —
+ *   natijada har bir so'rov javobsiz qoladi.
+ *
+ * `scriptURL` — bundle olingan haqiqiy manzil
+ * (`http://192.168.1.10:8081/index.bundle?...`). Ilova ishlayotgan bo'lsa
+ * u har doim to'g'ri: JS aynan o'sha yerdan kelgan.
+ */
+function metroHost(): string | null {
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (typeof hostUri === 'string' && hostUri.length > 0) {
+    const host = hostUri.split(':')[0];
+    if (host) return host;
+  }
+
+  const scriptURL = (NativeModules['SourceCode'] as { scriptURL?: string } | undefined)?.scriptURL;
+  if (typeof scriptURL === 'string' && scriptURL.length > 0) {
+    try {
+      return new URL(scriptURL).hostname;
+    } catch {
+      /* noto'g'ri manzil — pastda `null` qaytadi */
+    }
+  }
+
+  return null;
+}
+
+/**
  * Ishlab chiqishda API xosti METRO XOSTIDAN olinadi.
  *
  * ⚠️ NEGA: Wi-Fi almashganda kompyuterning IP'si o'zgaradi va `.env` dagi
  * manzil eskiradi. Buni sezish qiyin — ilova ochiladi, ekranlar chiziladi,
- * faqat har bir so'rov javobsiz qoladi va hamma joyda "yuklanmoqda" turadi.
- * Bu uch marta takrorlandi.
- *
- * Metro manzili esa har doim to'g'ri: ilova aynan o'sha yerdan JS oladi,
- * ya'ni u ishlayotgan bo'lsa xost ham to'g'ri. Shundan portni almashtirib
- * API manzilini yig'amiz va `.env` dagi IP eskirsa ham ish davom etadi.
+ * faqat har bir so'rov javobsiz qoladi. Bu bir necha marta takrorlandi.
  *
  * Ishlab chiqarishda bunday qilinmaydi: u yerda `EXPO_PUBLIC_API_URL`
  * haqiqiy domenni ko'rsatadi va Metro umuman yo'q.
@@ -37,10 +71,8 @@ const REFRESH_KEY = 'looksave.refresh';
 function devHostFromMetro(configured: string): string | null {
   if (!__DEV__) return null;
 
-  // `hostUri` — `192.168.1.10:8081` ko'rinishida
-  const hostUri = Constants.expoConfig?.hostUri;
-  const metroHost = typeof hostUri === 'string' ? hostUri.split(':')[0] : null;
-  if (!metroHost) return null;
+  const host = metroHost();
+  if (!host) return null;
 
   try {
     const url = new URL(configured);
@@ -48,9 +80,9 @@ function devHostFromMetro(configured: string): string | null {
     if (!/^\d+\.\d+\.\d+\.\d+$/.test(url.hostname) && url.hostname !== 'localhost') {
       return null;
     }
-    if (url.hostname === metroHost) return null;
+    if (url.hostname === host) return null;
 
-    url.hostname = metroHost;
+    url.hostname = host;
     return url.toString().replace(/\/$/, '');
   } catch {
     return null;
@@ -153,6 +185,20 @@ function refreshOnce(): Promise<boolean> {
   });
   return refreshing;
 }
+
+/**
+ * Access tokenni MAJBURAN yangilaydi.
+ *
+ * ⚠️ NEGA KERAK: rol va do'kon ro'yxati (`storeIds`) TOKEN ICHIDA yozilgan
+ * va u o'zgarmaydi. Foydalanuvchi do'kon arizasini yuborganda bazada
+ * `store_owner` bo'ladi, lekin qo'lidagi token hali `customer` deb turadi —
+ * natijada panelga kirganda 403 chiqadi va sabab umuman tushunarsiz
+ * bo'ladi ("ariza qabul qilindi, lekin panel ochilmayapti").
+ *
+ * Odatda yangilash 401 dan keyin o'zi ishlaydi. Bu yerda esa 401 kutilmaydi:
+ * huquq allaqachon berilgan, faqat token eskirgan.
+ */
+export const refreshSession = refreshOnce;
 
 export interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';

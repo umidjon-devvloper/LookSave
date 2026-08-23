@@ -65,6 +65,43 @@ export const favoriteQuerySchema = z.object({
   cursor: cursorSchema.optional(),
 });
 
+// ── AI kiyintirish ──
+
+/** Bitta kiyimni kiyintirishni so'rash. */
+export const renderRequestSchema = z.object({
+  variantId: z.string().uuid(),
+  /** Ko'rish burchagi — har biri alohida natija va alohida to'lov */
+  angle: z.enum(['front', 'side', 'back']).default('front'),
+});
+
+/**
+ * Gallereya uchun ko'p variantning holati.
+ *
+ * ⚠️ CHEGARA BOR: bir so'rovda 50 tagacha. Bu `IN` so'rovining o'lchamini
+ * va javob hajmini ushlab turadi — ilova baribir svayp oynasidan ko'pini
+ * bir vaqtda ko'rsatmaydi.
+ */
+export const renderStatusQuerySchema = z.object({
+  angle: z.enum(['front', 'side', 'back']).default('front'),
+  variantIds: z
+    .string()
+    .transform((value) => value.split(',').filter((id) => id.length > 0))
+    .pipe(z.array(z.string().uuid()).max(50)),
+});
+
+/**
+ * To'liq bo'yli surat manzili.
+ *
+ * ⚠️ Manzil FAQAT o'z CDN'imizdan bo'lishi kerak — tekshiruv marshrutda.
+ * Aks holda chetdagi manzil berilib, AI provayderiga bizning nomimizdan
+ * begona rasm yuborilardi.
+ */
+export const bodyPhotoSchema = z.object({
+  url: z.string().url().max(500),
+});
+
 export type TryonSlotQuery = z.output<typeof tryonSlotQuerySchema>;
 export type CreateLookInput = z.output<typeof createLookSchema>;
 export type TryonEventInput = z.output<typeof tryonEventSchema>;
+export type RenderRequestInput = z.output<typeof renderRequestSchema>;
+export type BodyPhotoInput = z.output<typeof bodyPhotoSchema>;

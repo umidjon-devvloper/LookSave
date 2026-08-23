@@ -7,3 +7,8 @@ docs
 infra/migrations
 assets-3d
 .expo
+
+# Generator chiqishi — qo'lda tahrirlanmaydi, har qurishda qayta yoziladi
+# (`assets-3d` yuqorida allaqachon bor)
+apps/mobile/assets/models/
+apps/web/public/models/

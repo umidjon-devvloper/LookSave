@@ -16,7 +16,7 @@ function Stat({
   return (
     <div className="card p-4">
       <p className="label">{label}</p>
-      <p className="mt-2 text-2xl font-bold text-white">{value}</p>
+      <p className="mt-2 text-2xl font-bold text-foreground">{value}</p>
       {hint ? <p className="mt-1 text-xs text-dim">{hint}</p> : null}
     </div>
   );
@@ -67,7 +67,7 @@ export function OverviewPage(): JSX.Element {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-white">Umumiy holat</h1>
+      <h1 className="text-xl font-semibold text-foreground">Umumiy holat</h1>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Stat
@@ -91,7 +91,7 @@ export function OverviewPage(): JSX.Element {
       </div>
 
       <section className="card p-5">
-        <h2 className="text-sm font-semibold text-white">Diqqat talab qiladi</h2>
+        <h2 className="text-sm font-semibold text-foreground">Diqqat talab qiladi</h2>
         {attention.length === 0 ? (
           <p className="mt-3 text-sm text-dim">
             Hozircha hammasi joyida. Yangi do'kon yoki mahsulot kelganda shu yerda ko'rinadi.

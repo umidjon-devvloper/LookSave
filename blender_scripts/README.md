@@ -17,13 +17,22 @@ Spetsifikatsiya: [`docs/04-3d-pipeline.md`](../docs/04-3d-pipeline.md)
 | `test_rules.py`      | ✅ `python3 test_rules.py`        |
 | `validate.py`        | ❌ Blender'da ishga tushirilmagan |
 | `rig_template.py`    | ❌ Blender'da ishga tushirilmagan |
-| `transfer_morphs.py` | ❌ Blender'da ishga tushirilmagan |
+| `transfer_morphs.py` | ✅ Ishlaydi — 6 kalit ko'chirildi, o'lchov bilan tasdiqlandi |
+| `build_garment.py`   | ✅ Ishlaydi — kiyim 1.5 soniyada yasaladi |
 
-Qoidalar (nomlar, byudjetlar, tekshiruvlar) testlangan. `bpy` chaqiruvlari
-esa yo'q — men Blender'ni ishga tushira olmayman. Birinchi ishga
-tushirishda API farqi chiqishi mumkin, ayniqsa `surfacedeform_bind` va
-`modifier_apply_as_shapekey` da (bu operatorlar Blender versiyalari
-orasida argumentlarini o'zgartirgan).
+Qoidalar (nomlar, byudjetlar, tekshiruvlar) testlangan.
+
+⚠️ Bu yerda ilgari "men Blender'ni ishga tushira olmayman" deb yozilgan edi.
+Bu **eskirgan**: Blender 5.2 o'rnatildi va oynasiz rejimda ishlaydi —
+
+    /Applications/Blender.app/Contents/MacOS/Blender --background --python <skript>
+
+`transfer_morphs.py` haqiqiy ma'lumotda sinaldi: `body_torso` dan mato
+simulyatsiyasi qilingan futbolkaga 6 ta kalit ko'chirildi va ular to'g'ri
+ishlashi o'lchandi — `mt_weight` kenglikni +4.6 sm, `mt_height` balandlikni
++4.6 sm o'zgartiradi, ya'ni har biri o'z o'qiga.
+
+`surfacedeform_bind` Blender 5.2 da muammosiz ishladi.
 
 Test fayl bilan sinang, ishlayotgan `.blend` bilan emas.
 

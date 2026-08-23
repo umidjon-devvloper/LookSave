@@ -17,6 +17,7 @@ import { storePanelRouter } from './routes/store';
 import { storesRouter } from './routes/stores';
 import { telegramRouter } from './routes/telegram';
 import { tryonRouter } from './routes/tryon';
+import { waitlistRouter } from './routes/waitlist';
 import { v1Router } from './routes/v1';
 import { globalLimiter } from './http/rate-limit';
 import { optionalAuth } from './http/auth-middleware';
@@ -79,6 +80,8 @@ export function createApp(): Express {
   // optionalAuth oldin turadi: auth qilingan foydalanuvchiga kengroq limit.
   app.use('/v1', optionalAuth, globalLimiter);
   app.use('/v1/auth', authRouter);
+  // Ochiq forma — token talab qilinmaydi (tanishtiruv sayti)
+  app.use('/v1', waitlistRouter);
   app.use('/v1', profileRouter);
   app.use('/v1', telegramRouter);
   app.use('/v1', adminRouter);

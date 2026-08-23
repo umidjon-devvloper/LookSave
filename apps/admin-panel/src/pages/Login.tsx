@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 
 import { ApiClientError } from '../api/client';
 import { useAuth } from '../hooks/useAuth';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 export function LoginPage(): JSX.Element {
   const { signIn } = useAuth();
@@ -32,18 +34,18 @@ export function LoginPage(): JSX.Element {
   }
 
   return (
-    <main className="flex min-h-full items-center justify-center bg-bg px-4 py-12">
+    <main className="flex min-h-full items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-sm">
-        <p className="text-center text-sm font-semibold uppercase tracking-wordmark text-accent">
+        <p className="text-center text-sm font-semibold uppercase tracking-wordmark text-brand">
           LookSave
         </p>
-        <h1 className="mt-6 text-center text-2xl font-bold text-white">Admin panel</h1>
+        <h1 className="mt-6 text-center text-2xl font-bold text-foreground">Admin panel</h1>
 
         <form onSubmit={(event) => void submit(event)} className="card mt-8 space-y-4 p-5">
           <label className="block">
             <span className="label">Telefon</span>
-            <input
-              className="field mt-2"
+            <Input
+              className="mt-2"
               type="tel"
               autoComplete="username"
               value={phone}
@@ -54,8 +56,8 @@ export function LoginPage(): JSX.Element {
 
           <label className="block">
             <span className="label">Parol</span>
-            <input
-              className="field mt-2"
+            <Input
+              className="mt-2"
               type="password"
               autoComplete="current-password"
               value={password}
@@ -70,9 +72,9 @@ export function LoginPage(): JSX.Element {
             </p>
           ) : null}
 
-          <button type="submit" className="btn-primary w-full" disabled={busy}>
+          <Button type="submit" className="w-full" disabled={busy}>
             {busy ? 'Kirilmoqda…' : 'Kirish'}
-          </button>
+          </Button>
         </form>
       </div>
     </main>

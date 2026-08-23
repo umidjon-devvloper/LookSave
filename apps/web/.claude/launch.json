@@ -1,0 +1,10 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "looksave-web",
+      "url": "http://localhost:5175",
+      "port": 5175
+    }
+  ]
+}

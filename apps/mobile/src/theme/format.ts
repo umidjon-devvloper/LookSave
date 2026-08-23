@@ -5,9 +5,21 @@ export function money(amount: string, currency: string): string {
   return currency === 'UZS' ? `${grouped} so'm` : `${grouped} ${currency}`;
 }
 
-/** Masofa: 850 m · 3.2 km */
+/**
+ * Masofa: 850 m · 3.2 km
+ *
+ * ⚠️ JUDA UZOQ MASOFA UMUMAN KO'RSATILMAYDI. Foydalanuvchi joylashuvga
+ * ruxsat bermasa yoki qurilma boshqa mamlakatda bo'lsa, kartada
+ * "11170.2 km" kabi raqam chiqadi. Bu foydasiz va ilova buzuqdek
+ * ko'rinadi — bunday holatda masofa yozilmagani yaxshiroq.
+ *
+ * Chegara 300 km: O'zbekiston ichidagi eng uzoq masofa ham bundan kichik,
+ * ya'ni haqiqiy foydali qiymatlar hech qachon yo'qolmaydi.
+ */
+const MAX_USEFUL_DISTANCE_M = 300_000;
+
 export function distance(meters: number | null): string {
-  if (meters === null) return '';
+  if (meters === null || meters > MAX_USEFUL_DISTANCE_M) return '';
   if (meters < 1000) return `${meters} m`;
   return `${(meters / 1000).toFixed(1)} km`;
 }

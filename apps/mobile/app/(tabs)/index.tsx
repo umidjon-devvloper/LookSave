@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -8,7 +8,8 @@ import { getBrands, getProducts, type ProductCard } from '../../src/api/endpoint
 import { Icon } from '../../src/components/Icon';
 import { Hero } from '../../src/components/home/Hero';
 import { BrandRow, SectionHeader } from '../../src/components/home/Sections';
-import { ErrorView, Loading, Screen } from '../../src/components/ui';
+import { ErrorView, Screen } from '../../src/components/ui';
+import { SkeletonGrid } from '../../src/components/Skeleton';
 import { rtlStyles, useI18n } from '../../src/i18n';
 import { useLocationStore } from '../../src/store/locationStore';
 import { useSplashLanding } from '../../src/store/splashTargetStore';
@@ -77,17 +78,26 @@ export default function Home(): JSX.Element {
 
   const brands = useQuery({ queryKey: ['brands'], queryFn: getBrands });
 
-  const products = useQuery({
+  /* Sahifalash — katalogdagidek. Ilgari faqat birinchi 20 ta kelardi. */
+  const products = useInfiniteQuery({
     queryKey: ['products', 'home', coords.lat, coords.lng],
-    queryFn: () => getProducts({ sort: 'nearest', lat: coords.lat, lng: coords.lng }),
+    queryFn: ({ pageParam }) =>
+      getProducts({
+        sort: 'nearest',
+        lat: coords.lat,
+        lng: coords.lng,
+        ...(pageParam ? { cursor: pageParam } : {}),
+      }),
+    initialPageParam: '',
+    getNextPageParam: (last) => (last.hasMore ? (last.nextCursor ?? undefined) : undefined),
   });
 
-  if (products.isLoading) return <Loading />;
+  if (products.isLoading) return <SkeletonGrid count={4} />;
   if (products.isError) {
-    return <ErrorView message={t.errors.generic} onRetry={() => void products.refetch()} />;
+    return <ErrorView error={products.error} onRetry={() => void products.refetch()} />;
   }
 
-  const items = products.data?.items ?? [];
+  const items = products.data?.pages.flatMap((page) => page.items) ?? [];
 
   return (
     <Screen>
@@ -98,6 +108,19 @@ export default function Home(): JSX.Element {
         columnWrapperStyle={styles.column}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        // Ro'yxat unumdorligi — ekrandan chiqqan kartalar bo'shatiladi
+        removeClippedSubviews
+        initialNumToRender={6}
+        maxToRenderPerBatch={8}
+        windowSize={7}
+        onEndReachedThreshold={0.6}
+        onEndReached={() => {
+          // ⚠️ `isFetchingNextPage` usiz bitta scrollda bir necha marta chaqiriladi
+          if (products.hasNextPage && !products.isFetchingNextPage) {
+            void products.fetchNextPage();
+          }
+        }}
+        ListFooterComponent={products.isFetchingNextPage ? <SkeletonGrid count={2} /> : null}
         ListHeaderComponent={
           <View style={styles.header}>
             <Hero

@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { getGlobalBlocks, getUsers, removeBlock, unrestrictUser } from '../api/admin';
 import { EmptyState, ErrorState, Spinner } from '../components/Spinner';
 import { phone as formatPhone } from '../lib/format';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 export function ModerationPage(): JSX.Element {
   const [search, setSearch] = useState('');
@@ -26,7 +28,7 @@ export function ModerationPage(): JSX.Element {
     <div className="space-y-8">
       <section className="space-y-4">
         <div>
-          <h1 className="text-xl font-semibold text-white">Global bloklar</h1>
+          <h1 className="text-xl font-semibold text-foreground">Global bloklar</h1>
           <p className="mt-1 text-sm text-dim">
             Uch do'kon bir raqamni bloklasa, u avtomatik barcha do'konlarda bloklanadi. Uchala
             do'kon ham xato qilishi mumkin — sabablarni ko'rib qaror qiling.
@@ -44,21 +46,22 @@ export function ModerationPage(): JSX.Element {
             <article key={block.id} className="card p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="font-medium text-white">{formatPhone(block.phone)}</p>
+                  <p className="font-medium text-foreground">{formatPhone(block.phone)}</p>
                   <p className="text-xs text-danger">{block.reason}</p>
                 </div>
-                <button
+                <Button
+                  variant="outline"
                   type="button"
-                  className="btn-ghost"
+
                   disabled={unblock.isPending}
                   onClick={() => unblock.mutate(block.id)}
                 >
                   Blokni bekor qilish
-                </button>
+                </Button>
               </div>
 
               {block.storeReasons.length > 0 ? (
-                <ul className="mt-3 space-y-1 border-t border-border pt-3 text-xs text-muted">
+                <ul className="mt-3 space-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
                   {block.storeReasons.map((item, index) => (
                     <li key={`${item.store}-${index}`}>
                       {item.store} — “{item.reason}”
@@ -74,14 +77,14 @@ export function ModerationPage(): JSX.Element {
       <section className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-white">Cheklangan foydalanuvchilar</h2>
+            <h2 className="text-lg font-semibold text-foreground">Cheklangan foydalanuvchilar</h2>
             <p className="mt-1 text-sm text-dim">
               Cheklov `user_trust` bo'yicha avtomatik qo'yiladi: uch marta bekor qilingan yoki
               javobsiz buyurtma.
             </p>
           </div>
-          <input
-            className="field sm:w-56"
+          <Input
+            className="sm:w-56"
             placeholder="Telefon yoki ism"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -106,14 +109,14 @@ export function ModerationPage(): JSX.Element {
                 {users.data.map((user, index) => (
                   <tr key={user.id} className={index % 2 === 0 ? 'bg-surface' : 'bg-surface2'}>
                     <td className="px-4 py-3">
-                      <p className="text-white">{user.fullName ?? '—'}</p>
+                      <p className="text-foreground">{user.fullName ?? '—'}</p>
                       <p className="text-xs text-dim">{formatPhone(user.phone)}</p>
                     </td>
-                    <td className="px-4 py-3 text-xs text-muted">
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
                       {user.trust.completed} yakun · {user.trust.cancelled} bekor ·{' '}
                       {user.trust.noshow} kelmadi
                     </td>
-                    <td className="px-4 py-3 text-xs text-muted">
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
                       {user.trust.note ?? '—'}
                       {user.trust.restrictedUntil ? (
                         <span className="block text-dim">
@@ -122,14 +125,16 @@ export function ModerationPage(): JSX.Element {
                       ) : null}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
+                      <Button
+                        variant="link"
+                        size="sm"
                         type="button"
-                        className="text-sm text-accent hover:underline"
+                        className="h-auto p-0 text-sm text-brand hover:underline"
                         disabled={unrestrict.isPending}
                         onClick={() => unrestrict.mutate(user.id)}
                       >
                         Cheklovni olib tashlash
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 ))}

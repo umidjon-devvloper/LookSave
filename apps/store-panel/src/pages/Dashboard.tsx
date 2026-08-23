@@ -20,7 +20,7 @@ function Stat({
     <div className="card p-4">
       <p className="label">{label}</p>
       <p
-        className={`mt-2 text-2xl font-bold ${tone === 'warning' ? 'text-warning' : 'text-white'}`}
+        className={`mt-2 text-2xl font-bold ${tone === 'warning' ? 'text-warning' : 'text-foreground'}`}
       >
         {value}
       </p>
@@ -52,7 +52,7 @@ export function DashboardPage(): JSX.Element {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-white">Bosh sahifa</h1>
+      <h1 className="text-xl font-semibold text-foreground">Bosh sahifa</h1>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Stat
@@ -69,7 +69,7 @@ export function DashboardPage(): JSX.Element {
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="card p-4">
           <p className="label">Javob tezligi</p>
-          <p className="mt-2 text-2xl font-bold text-white">
+          <p className="mt-2 text-2xl font-bold text-foreground">
             {data.avgResponseMin === null ? '—' : `${data.avgResponseMin} daqiqa`}
           </p>
           <p className={`mt-1 text-xs font-medium ${grade.className}`}>{grade.text}</p>
@@ -80,7 +80,7 @@ export function DashboardPage(): JSX.Element {
 
         <div className="card p-4">
           <p className="label">Tasdiqlash foizi</p>
-          <p className="mt-2 text-2xl font-bold text-white">
+          <p className="mt-2 text-2xl font-bold text-foreground">
             {data.confirmRate === null ? '—' : `${Math.round(data.confirmRate * 100)}%`}
           </p>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface2">
@@ -105,7 +105,7 @@ export function DashboardPage(): JSX.Element {
 
       {data.topProducts.length > 0 ? (
         <section className="card overflow-hidden">
-          <h2 className="border-b border-border px-4 py-3 text-sm font-semibold text-white">
+          <h2 className="border-b border-border px-4 py-3 text-sm font-semibold text-foreground">
             Ko'p buyurtma qilingan
           </h2>
           <table className="w-full text-sm">
@@ -119,11 +119,11 @@ export function DashboardPage(): JSX.Element {
             <tbody>
               {data.topProducts.map((product, index) => (
                 <tr key={product.id} className={index % 2 === 0 ? 'bg-surface' : 'bg-surface2'}>
-                  <td className="px-4 py-2.5 text-white">{product.title}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-muted">
+                  <td className="px-4 py-2.5 text-foreground">{product.title}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
                     {product.orders}
                   </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-muted">
+                  <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
                     {product.tryons}
                   </td>
                 </tr>

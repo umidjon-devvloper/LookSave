@@ -19,7 +19,7 @@ function Stat({
   return (
     <div className="card p-4">
       <p className="label">{label}</p>
-      <p className="mt-2 text-2xl font-bold text-white">{value}</p>
+      <p className="mt-2 text-2xl font-bold text-foreground">{value}</p>
       {hint ? <p className="mt-1 text-xs text-dim">{hint}</p> : null}
     </div>
   );
@@ -47,7 +47,7 @@ function DailyChart({ daily }: { daily: Analytics['daily'] }): JSX.Element {
             className="group relative flex-1 rounded-t bg-primary/30 transition hover:bg-primary"
             style={{ height: `${Math.max(2, (day.orders / max) * 100)}%` }}
           >
-            <span className="pointer-events-none absolute bottom-full left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded bg-surface2 px-2 py-1 text-[11px] text-white group-hover:block">
+            <span className="pointer-events-none absolute bottom-full left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded bg-surface2 px-2 py-1 text-[11px] text-foreground group-hover:block">
               {day.day} · {day.orders} ta
             </span>
           </div>
@@ -66,7 +66,7 @@ function DailyChart({ daily }: { daily: Analytics['daily'] }): JSX.Element {
 function conversionTone(value: number | null): string {
   if (value === null) return 'text-dim';
   if (value >= 5) return 'text-success';
-  if (value >= 2) return 'text-muted';
+  if (value >= 2) return 'text-muted-foreground';
   return 'text-warning';
 }
 
@@ -88,7 +88,7 @@ export function AnalyticsPage(): JSX.Element {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-white">Statistika</h1>
+        <h1 className="text-xl font-semibold text-foreground">Statistika</h1>
 
         <div className="flex gap-1 rounded-xl border border-border bg-surface p-1">
           {PERIODS.map((period) => (
@@ -97,7 +97,9 @@ export function AnalyticsPage(): JSX.Element {
               type="button"
               onClick={() => setDays(period)}
               className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-                days === period ? 'bg-primary text-white' : 'text-muted hover:text-white'
+                days === period
+                  ? 'bg-primary text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               {period} kun
@@ -138,7 +140,7 @@ export function AnalyticsPage(): JSX.Element {
         />
       ) : (
         <section className="card overflow-x-auto">
-          <h2 className="border-b border-border px-4 py-3 text-sm font-semibold text-white">
+          <h2 className="border-b border-border px-4 py-3 text-sm font-semibold text-foreground">
             Mahsulotlar
           </h2>
           <table className="w-full min-w-[560px] text-sm">
@@ -154,14 +156,14 @@ export function AnalyticsPage(): JSX.Element {
             <tbody>
               {topProducts.map((product, index) => (
                 <tr key={product.id} className={index % 2 === 0 ? 'bg-surface' : 'bg-surface2'}>
-                  <td className="px-4 py-2.5 text-white">{product.title}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-muted">
+                  <td className="px-4 py-2.5 text-foreground">{product.title}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
                     {product.views}
                   </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-muted">
+                  <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
                     {product.tryons}
                   </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-muted">
+                  <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
                     {product.orders}
                   </td>
                   <td

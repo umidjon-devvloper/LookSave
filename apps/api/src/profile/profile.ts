@@ -20,6 +20,7 @@ interface ProfileRow {
   morph_targets: MorphTargets | null;
   face_texture_url: string | null;
   face_scan_status: string;
+  body_photo_url: string | null;
   avatar_preset: string;
   gender: Gender | null;
   is_restricted: boolean | null;
@@ -33,6 +34,7 @@ async function loadProfile(userId: string): Promise<ProfileRow> {
     `SELECT COALESCE(p.measurements, '{}')::jsonb   AS measurements,
             COALESCE(p.morph_targets, '{}')::jsonb  AS morph_targets,
             p.face_texture_url, p.face_scan_status, p.avatar_preset,
+            p.body_photo_url,
             u.gender,
             t.is_restricted,
             (SELECT COUNT(*) FROM orders o
@@ -65,6 +67,12 @@ export async function getProfileExtras(userId: string) {
     morphTargets: hasMorphs(profile.morph_targets) ? profile.morph_targets : NEUTRAL,
     faceTextureUrl: profile.face_texture_url,
     faceScanStatus: profile.face_scan_status,
+    /*
+     * AI kiyintirish shu suratsiz ishlamaydi. Ilova buni oldindan bilishi
+     * kerak: tugmani bosib "surat yo'q" xatosini olish o'rniga darhol
+     * suratga taklif qilinadi.
+     */
+    bodyPhotoUrl: profile.body_photo_url,
     // Profil ekranidagi uchta raqam
     favoritesCount: Number(profile.favorites_count),
     looksCount: Number(profile.looks_count),
@@ -146,6 +154,25 @@ export async function updateMeasurements(userId: string, input: MeasurementsInpu
 
   const morphTargets = await saveMeasurements(userId, merged, profile.gender);
   return { measurements: merged, morphTargets };
+}
+
+/**
+ * To'liq bo'yli suratni saqlaydi (AI kiyintirish uchun asos).
+ *
+ * ⚠️ `profiles` qatori bo'lmasligi mumkin: u faqat o'lchov kiritilganda
+ * yaratiladi. Shuning uchun `INSERT ... ON CONFLICT`, oddiy `UPDATE` emas —
+ * aks holda hech qachon o'lchov kiritmagan foydalanuvchining surati jimgina
+ * yo'qolardi (`UPDATE` nol qator yangilaydi va xato bermaydi).
+ */
+export async function setBodyPhoto(userId: string, url: string): Promise<void> {
+  await pool.query(
+    `INSERT INTO profiles (user_id, body_photo_url, body_photo_updated_at)
+     VALUES ($1, $2, now())
+     ON CONFLICT (user_id) DO UPDATE
+       SET body_photo_url = EXCLUDED.body_photo_url,
+           body_photo_updated_at = now()`,
+    [userId, url],
+  );
 }
 
 /**

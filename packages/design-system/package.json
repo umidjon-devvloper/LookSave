@@ -1,0 +1,16 @@
+{
+  "name": "@looksave/design-system",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "LookSave dizayn tokenlari — shadcn/ui uchun Tailwind preseti",
+  "exports": {
+    "./tailwind-preset": "./tailwind-preset.js"
+  },
+  "files": [
+    "tailwind-preset.js"
+  ],
+  "dependencies": {
+    "tailwindcss-animate": "^1.0.7"
+  }
+}

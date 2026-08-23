@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 
 interface Props {
   title: string;
@@ -39,15 +41,15 @@ export function ReasonModal({
       aria-labelledby="reason-title"
     >
       <div className="card w-full max-w-md p-5">
-        <h2 id="reason-title" className="text-lg font-semibold text-white">
+        <h2 id="reason-title" className="text-lg font-semibold text-foreground">
           {title}
         </h2>
         <p className="mt-1 text-sm text-dim">{description}</p>
 
         <label className="mt-4 block">
           <span className="label">Sabab</span>
-          <textarea
-            className="field mt-2 min-h-24"
+          <Textarea
+            className="mt-2 min-h-24"
             value={reason}
             minLength={3}
             maxLength={500}
@@ -58,17 +60,18 @@ export function ReasonModal({
         </label>
 
         <div className="mt-5 flex justify-end gap-2">
-          <button type="button" className="btn-ghost" onClick={onCancel} disabled={busy}>
+          <Button variant="outline" type="button" onClick={onCancel} disabled={busy}>
             Bekor
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="destructive"
             type="button"
-            className="btn-danger"
+
             disabled={busy || reason.trim().length < 3}
             onClick={() => onSubmit(reason.trim())}
           >
             {actionLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

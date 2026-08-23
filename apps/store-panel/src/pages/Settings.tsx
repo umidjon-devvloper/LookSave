@@ -12,6 +12,9 @@ import { LocationPicker } from '../components/LocationPicker';
 import { ErrorState, Spinner } from '../components/Spinner';
 import { ImageUploader } from '../components/products/ImageUploader';
 import { TASHKENT } from '../lib/coords';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 const DAYS = [
   { day: 1, label: 'Dushanba' },
@@ -107,7 +110,7 @@ export function SettingsPage(): JSX.Element {
   return (
     <div className="max-w-3xl space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-white">Do'kon sozlamalari</h1>
+        <h1 className="text-xl font-semibold text-foreground">Do'kon sozlamalari</h1>
         <p className="mt-1 text-sm text-dim">
           Hozir: {store.data.isOpen ? 'ochiq' : 'yopiq'}
           {store.data.closesAt ? ` · ${store.data.closesAt} gacha` : ''}
@@ -118,8 +121,8 @@ export function SettingsPage(): JSX.Element {
       <section className="card space-y-4 p-5">
         <label className="block">
           <span className="label">Nomi</span>
-          <input
-            className="field mt-2"
+          <Input
+            className="mt-2"
             value={form.name ?? ''}
             onChange={(event) => update({ name: event.target.value })}
           />
@@ -127,8 +130,8 @@ export function SettingsPage(): JSX.Element {
 
         <label className="block">
           <span className="label">Tavsif</span>
-          <textarea
-            className="field mt-2 min-h-20"
+          <Textarea
+            className="mt-2 min-h-20"
             value={form.description ?? ''}
             maxLength={1000}
             onChange={(event) => update({ description: event.target.value })}
@@ -138,16 +141,16 @@ export function SettingsPage(): JSX.Element {
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
             <span className="label">Telefon</span>
-            <input
-              className="field mt-2"
+            <Input
+              className="mt-2"
               value={form.phone ?? ''}
               onChange={(event) => update({ phone: event.target.value })}
             />
           </label>
           <label className="block">
             <span className="label">Mo'ljal</span>
-            <input
-              className="field mt-2"
+            <Input
+              className="mt-2"
               value={form.landmark ?? ''}
               placeholder="Mehnat metrosi yonida"
               onChange={(event) => update({ landmark: event.target.value })}
@@ -157,8 +160,8 @@ export function SettingsPage(): JSX.Element {
 
         <label className="block">
           <span className="label">Manzil</span>
-          <input
-            className="field mt-2"
+          <Input
+            className="mt-2"
             value={form.address ?? ''}
             onChange={(event) => update({ address: event.target.value })}
           />
@@ -166,7 +169,7 @@ export function SettingsPage(): JSX.Element {
       </section>
 
       <section className="card space-y-4 p-5">
-        <h2 className="text-sm font-semibold text-white">Logo va muqova</h2>
+        <h2 className="text-sm font-semibold text-foreground">Logo va muqova</h2>
 
         <div>
           <p className="label mb-2">Logo</p>
@@ -193,7 +196,7 @@ export function SettingsPage(): JSX.Element {
 
       <section className="card space-y-3 p-5">
         <div>
-          <h2 className="text-sm font-semibold text-white">Joylashuv</h2>
+          <h2 className="text-sm font-semibold text-foreground">Joylashuv</h2>
           <p className="mt-1 text-xs text-dim">
             Yetkazib berish radiusi shu nuqtadan o'lchanadi. Xato bo'lsa yaqin mijozlar ham
             "hududdan tashqarida" xatosini oladi.
@@ -208,7 +211,7 @@ export function SettingsPage(): JSX.Element {
 
         {form.location ? (
           <a
-            className="text-sm text-accent hover:underline"
+            className="text-sm text-brand hover:underline"
             href={`https://maps.google.com/?q=${form.location.lat},${form.location.lng}`}
             target="_blank"
             rel="noreferrer"
@@ -219,7 +222,7 @@ export function SettingsPage(): JSX.Element {
       </section>
 
       <section className="card space-y-3 p-5">
-        <h2 className="text-sm font-semibold text-white">Ish vaqti</h2>
+        <h2 className="text-sm font-semibold text-foreground">Ish vaqti</h2>
 
         {DAYS.map(({ day, label }) => {
           const hour = hours[day];
@@ -227,25 +230,25 @@ export function SettingsPage(): JSX.Element {
 
           return (
             <div key={day} className="flex flex-wrap items-center gap-3">
-              <span className="w-24 text-sm text-muted">{label}</span>
+              <span className="w-24 text-sm text-muted-foreground">{label}</span>
 
-              <input
+              <Input
                 type="time"
-                className="field w-32 py-2"
+                className="w-32 py-2"
                 disabled={closed}
                 value={hour?.open ?? '10:00'}
                 onChange={(event) => setHour(day, { open: event.target.value })}
               />
               <span className="text-dim">—</span>
-              <input
+              <Input
                 type="time"
-                className="field w-32 py-2"
+                className="w-32 py-2"
                 disabled={closed}
                 value={hour?.close ?? '20:00'}
                 onChange={(event) => setHour(day, { close: event.target.value })}
               />
 
-              <label className="flex items-center gap-2 text-sm text-muted">
+              <label className="flex items-center gap-2 text-sm text-muted-foreground">
                 <input
                   type="checkbox"
                   className="accent-primary"
@@ -264,7 +267,7 @@ export function SettingsPage(): JSX.Element {
       </section>
 
       <section className="card space-y-4 p-5">
-        <h2 className="text-sm font-semibold text-white">Yetkazib berish</h2>
+        <h2 className="text-sm font-semibold text-foreground">Yetkazib berish</h2>
 
         <label className="flex items-center gap-3 text-sm">
           <input
@@ -299,12 +302,12 @@ export function SettingsPage(): JSX.Element {
           <div className="grid gap-4 sm:grid-cols-3">
             <label className="block">
               <span className="label">Radius (km)</span>
-              <input
+              <Input
                 type="number"
                 min={0.5}
                 max={50}
                 step={0.5}
-                className="field mt-2 tabular-nums"
+                className="mt-2 tabular-nums"
                 value={(form.delivery.radiusM / 1000).toString()}
                 onChange={(event) =>
                   update({
@@ -319,8 +322,8 @@ export function SettingsPage(): JSX.Element {
 
             <label className="block">
               <span className="label">Narxi</span>
-              <input
-                className="field mt-2 tabular-nums"
+              <Input
+                className="mt-2 tabular-nums"
                 inputMode="decimal"
                 value={form.delivery.fee}
                 onChange={(event) =>
@@ -331,8 +334,8 @@ export function SettingsPage(): JSX.Element {
 
             <label className="block">
               <span className="label">Bepul chegara</span>
-              <input
-                className="field mt-2 tabular-nums"
+              <Input
+                className="mt-2 tabular-nums"
                 inputMode="decimal"
                 placeholder="yo'q"
                 value={form.delivery.freeFrom ?? ''}
@@ -357,9 +360,9 @@ export function SettingsPage(): JSX.Element {
       ) : null}
 
       <div className="flex items-center gap-3">
-        <button
+        <Button
           type="button"
-          className="btn-primary"
+
           disabled={save.isPending}
           onClick={() => {
             setError(null);
@@ -367,7 +370,7 @@ export function SettingsPage(): JSX.Element {
           }}
         >
           {save.isPending ? 'Saqlanmoqda…' : 'Saqlash'}
-        </button>
+        </Button>
         {saved ? <span className="text-sm text-success">Saqlandi</span> : null}
       </div>
     </div>

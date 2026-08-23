@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Rang tokenlari (`--background`, `--primary`, ...) bu yerda emas —
+ * `packages/design-system/tailwind-preset.js` ularni `addBase` orqali quyadi.
+ * Shu sababli uchala ilovada bir xil, va bir joyda o'zgaradi.
+ *
+ * Shrift CDN dan yuklanmaydi — tarmoq sekin bo'lsa sahifa shriftsiz
+ * "sakrab" chiziladi. Inter bo'lmasa tizim shrifti ishlatiladi; ikkalasi
+ * ham grotesk, farqi sezilmaydi.
+ */
+
+@layer base {
+  body {
+    font-family: theme('fontFamily.sans');
+  }
+
+  /* Sahifa ichida havolaga o'tganda sarlavha yuqori chetga yopishmasin */
+  section[id] {
+    scroll-margin-top: 96px;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.35);
+  }
+}
+
+@layer components {
+  .shell {
+    @apply mx-auto w-full max-w-6xl px-5 sm:px-8;
+  }
+
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-label text-brand;
+  }
+
+  .headline {
+    @apply text-balance font-semibold leading-[1.05] tracking-tight;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

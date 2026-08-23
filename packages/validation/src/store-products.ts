@@ -100,7 +100,15 @@ export const storeProductsQuerySchema = z.object({
 export const presignSchema = z.object({
   fileName: z.string().trim().min(1).max(200),
   contentType: z.enum(['image/webp', 'image/jpeg', 'image/png']),
-  purpose: z.enum(['product', 'store', 'face', 'avatar']),
+  /*
+   * `body` — AI kiyintirish uchun to'liq bo'yli surat.
+   *
+   * ⚠️ Bu SHAXSIY ma'lumot: odamning butun gavdasi. Shuning uchun u
+   * `face` bilan bir xil qoidada saqlanadi — keshi `private` va qisqa.
+   * `avatar` (oddiy profil rasmi) esa ochiq, chunki uni foydalanuvchi
+   * o'zi ko'rsatish uchun qo'yadi.
+   */
+  purpose: z.enum(['product', 'store', 'face', 'avatar', 'body']),
 });
 
 export type CreateProductInput = z.output<typeof createProductSchema>;

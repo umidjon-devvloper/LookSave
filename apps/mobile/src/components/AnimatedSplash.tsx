@@ -38,9 +38,19 @@ import { colors, fonts } from '../theme/tokens';
 const WORDMARK = 'LOOK SAVE';
 const LETTERS = WORDMARK.split('');
 
-/** logo-mark.png ning tabiiy nisbati (1254×878) — qutini shunga moslaymiz,
- *  shunda `contain` qutini to'liq to'ldiradi va qo'nishda siljish bo'lmaydi. */
-const LOGO_ASPECT = 1254 / 878;
+/**
+ * logo-mark.png ning tabiiy nisbati (640×448) — qutini shunga moslaymiz,
+ * shunda `contain` qutini to'liq to'ldiradi va qo'nishda siljish bo'lmaydi.
+ *
+ * ⚠️ RASM ALMASHTIRILSA SHU YERNI HAM YANGILANG. Nisbat mos kelmasa
+ * `contain` rasm atrofida bo'sh chekka qoldiradi, qo'nish animatsiyasi esa
+ * shu bo'sh chekka bilan hisoblanadi — logotip nishonga aniq tushmaydi.
+ *
+ * Rasm ilgari 1254×878 edi. Ekranda u eng ko'pi ~180pt kenglikda
+ * ko'rsatiladi, ya'ni 3x zichlikda 540 piksel — 1254 piksel ortiqcha edi
+ * va har ochilishda bekorga dekodlanardi. Splash aynan shu payt qotardi.
+ */
+const LOGO_ASPECT = 640 / 448;
 
 /** Harflar tugagach sahna shuncha ushlab turiladi — ko'z ilg'ashi uchun */
 const HOLD_MS = 320;

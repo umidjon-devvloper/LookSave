@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 import * as THREE from 'three';
 
+import { makeAt, readAdoptedBones } from './lib/adoptedSkeleton.mjs';
+import { loadBodyParts, shellFromMeshes } from './lib/bodyShell.mjs';
 import { ANIMATION_NAMES, buildAnimation } from './lib/animations.mjs';
 import { buildBody } from './lib/body.mjs';
 import { buildGarment, CATALOG } from './lib/garments.mjs';
@@ -81,12 +83,50 @@ for (const gender of ['male', 'female']) {
 // faqat yelka/son kengligida farq qiladi, kiyim esa shape key orqali
 // moslashadi (04-3d-pipeline §3).
 // Kiyim geometriyasi uchun suyak o'rinlari kerak — ular skeletdan,
-// tana mesh'idan emas, shuning uchun protsedural tanadan olinadi
-const at = (bodies.male ?? buildBody('male')).at;
+// tana mesh'idan emas.
+//
+// ⚠️ TANA TASHQI BO'LSA, SUYAKLAR HAM O'SHA MODELDAN OLINADI. Protsedural
+// skeletning bind pozasi tashqi modelnikidan farq qiladi (qo'llar ~12° va
+// ~45°), va kiyim noto'g'ri skelet bo'yicha yasalsa hech qanday xato
+// chiqmaydi — u shunchaki tanadan chetda osilib qoladi.
+const fallbackAt = (bodies.male ?? buildBody('male')).at;
+const adoptedMale = join(OUT, `male-base-${VERSION}.glb`);
+
+const at =
+  adopted.male && existsSync(adoptedMale)
+    ? makeAt(readAdoptedBones(adoptedMale), fallbackAt)
+    : fallbackAt;
+
+if (at !== fallbackAt) console.log(`   suyak o'rinlari tashqi modeldan: ${adopted.male.source}`);
+/*
+ * Ustki kiyim gavdasi TANANING SIRTIDAN yasaladi.
+ *
+ * ⚠️ NEGA DOIRAVIY KESIM YETMAYDI: yelka qiya sirt va uning ko'ndalang
+ * kesimi doira emas. Kesimlardan qurilgan kiyim yelkada tanaga tegmay,
+ * ustida konus bo'lib osilib qolardi. Tana meshini normal bo'ylab surish
+ * esa har bir qavariqni aynan takrorlaydi.
+ */
+const bodyParts = await loadBodyParts(adoptedMale);
+
+/**
+ * `shell(nomlar, sozlamalar)` — sanab o'tilgan tana qismlaridan kiyim
+ * qobig'ini qaytaradi. Nom topilmasa xato beriladi: jimgina bo'sh kiyim
+ * yasagandan ko'ra yig'ilishda to'xtagan yaxshi.
+ */
+const shell = (names, options) => {
+  const sources = names.map((name) => {
+    const geometry = bodyParts.get(name);
+    if (!geometry) throw new Error(`Tana qismi topilmadi: ${name}`);
+    return geometry;
+  });
+
+  return shellFromMeshes(sources, options);
+};
+
 const manifest = [];
 
 for (const spec of CATALOG) {
-  const garment = buildGarment(spec, at);
+  const garment = buildGarment(spec, at, shell);
   const file = `${spec.key}-${VERSION}.glb`;
   await emit(spec.key, garment, file);
 
@@ -100,6 +140,31 @@ for (const spec of CATALOG) {
     hideBodyParts: spec.hideBodyParts,
     hasMorphs: true,
   });
+}
+
+/*
+ * Blender'da qo'lda yasalgan kiyimlar manifestga QO'SHILADI, lekin qayta
+ * yasalmaydi — ular generator qolipidan emas, rassomdan keladi.
+ *
+ * ⚠️ BUSIZ ULAR HAR QURISHDA YO'QOLARDI: manifest to'liq qayta yoziladi va
+ * ro'yxatda faqat `CATALOG` dagilar qolardi. Fayl esa `export/` da turaverar,
+ * ya'ni yo'qolgani ham sezilmasdi — ilova shunchaki uni ko'rsatmay qo'yardi.
+ */
+const externalFile = join(ROOT, 'external.json');
+
+if (existsSync(externalFile)) {
+  const external = JSON.parse(readFileSync(externalFile, 'utf8'));
+
+  for (const garment of external.garments ?? []) {
+    if (!existsSync(join(OUT, garment.file))) {
+      console.warn(`   ⚠️  ${garment.file} topilmadi — manifestga qo'shilmadi`);
+      continue;
+    }
+
+    const { source: _source, ...entry } = garment;
+    manifest.push(entry);
+    console.log(`   qo'lda yasalgan: ${garment.file} (${garment.source})`);
+  }
 }
 
 // ── Animatsiya klip'lari ──

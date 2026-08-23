@@ -60,6 +60,23 @@ export default function AiDesigner(): JSX.Element {
           <Text style={styles.titleAccent}>AI</Text> DESIGNER
         </Text>
         <Text style={styles.subtitle}>Shaxsiy AI stilistingiz</Text>
+
+        {/*
+          ⚠️ FAQAT DEV. `/ai/studio` — backendsiz 3D studiya: Blender'dan
+          olingan tana (`male-base-v1.glb`) va `assets/models` dagi kiyimlar.
+          Marshrutga ilova ichidan havola yo'q edi, ya'ni modelni qurilmada
+          ko'rishning yagona yo'li deep link edi. Bu tugma shu teshikni
+          yopadi va ishlab chiqarish to'plamiga tushmaydi.
+        */}
+        {__DEV__ ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/ai/studio')}
+            style={styles.devLink}
+          >
+            <Text style={styles.devLinkText}>DEV · 3D studiya</Text>
+          </Pressable>
+        ) : null}
         <Text style={styles.lead}>
           Uslubingiz, kayfiyatingiz yoki tadbir haqida ayting — AI siz uchun mos komplekt yasaydi.
         </Text>
@@ -89,8 +106,23 @@ export default function AiDesigner(): JSX.Element {
           </View>
         </View>
 
+        {/*
+          ⚠️ 3D OQIMIGA EMAS, SURAT OQIMIGA. Ilgari bu tugma `/ai/avatar`
+          ga — 3D maneken yasash qadamlariga olib borardi. Undan voz
+          kechildi: maneken "realistik" darajaga chiqmasdi, chunki buning
+          uchun o'n minglab uchburchakli model, teri ostidan yorug'lik
+          o'tishi va haqiqiy soch kerak.
+
+          Yangi yo'lda foydalanuvchi qadamlardan o'tadi (jins, o'lchovlar,
+          oyoq, do'kon), oxirida yuzini skaner qiladi va AI qolgan gavdani
+          o'lchovlardan yasaydi.
+
+          ⚠️ TO'LIQ BO'YLI SURAT SO'RALMAYDI: buning uchun joy, oyna va
+          ko'pincha boshqa odamning yordami kerak — ko'p foydalanuvchi shu
+          yerda to'xtardi. Selfi esa hammaga qulay.
+        */}
         <View style={styles.cta}>
-          <Button title="AI komplekt yasasin" onPress={() => router.push('/ai/avatar')} />
+          <Button title="Meni kiyintir" onPress={() => router.push('/ai/avatar')} />
         </View>
       </View>
     </View>
@@ -161,4 +193,17 @@ const styles = StyleSheet.create({
   howText: { ...text.tiny, color: colors.textMuted, textAlign: 'center' },
 
   cta: { marginTop: spacing.lg },
+
+  // ⚠️ Faqat dev — `__DEV__` bilan o'ralgan
+  devLink: {
+    alignSelf: 'center',
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
+  },
+  devLinkText: { ...text.tiny, color: colors.accent },
 });

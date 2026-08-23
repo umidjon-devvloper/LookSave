@@ -12,6 +12,9 @@ import {
 import { ErrorState, Spinner } from '../components/Spinner';
 import { ImageUploader } from '../components/products/ImageUploader';
 import { money } from '../lib/format';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 const STATUS_HINT: Record<string, string> = {
   draft: "Qoralama — katalogda ko'rinmaydi.",
@@ -50,7 +53,7 @@ function StockEditor({
             style={{ backgroundColor: variant.colorHex ?? '#1a1a1a' }}
           />
           <div>
-            <p className="text-sm font-medium text-white">{variant.colorName || 'Rang'}</p>
+            <p className="text-sm font-medium text-foreground">{variant.colorName || 'Rang'}</p>
             <p className="text-xs text-dim">
               {variant.assetStatus === 'ready'
                 ? '3D tayyor'
@@ -66,12 +69,12 @@ function StockEditor({
       <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {variant.sizes.map((size) => (
           <label key={size.size} className="flex items-center gap-2 text-sm">
-            <span className="w-10 text-muted">{size.size}</span>
-            <input
+            <span className="w-10 text-muted-foreground">{size.size}</span>
+            <Input
               type="number"
               min={size.reserved}
               max={9999}
-              className="field py-2 tabular-nums"
+              className="py-2 tabular-nums"
               value={values[size.size] ?? ''}
               onChange={(event) => {
                 setSaved(false);
@@ -86,9 +89,10 @@ function StockEditor({
       </div>
 
       <div className="mt-3 flex items-center gap-3">
-        <button
+        <Button
+          variant="outline"
           type="button"
-          className="btn-ghost"
+
           disabled={busy || !changed}
           onClick={() => {
             setSaved(true);
@@ -101,7 +105,7 @@ function StockEditor({
           }}
         >
           Omborni saqlash
-        </button>
+        </Button>
         {saved && !changed ? <span className="text-xs text-success">Saqlandi</span> : null}
         <span className="text-xs text-dim">Buyurtma qilingan miqdordan kam qilib bo'lmaydi.</span>
       </div>
@@ -179,7 +183,7 @@ export function EditProductPage(): JSX.Element {
     <div className="max-w-3xl space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">{data.title}</h1>
+          <h1 className="text-xl font-semibold text-foreground">{data.title}</h1>
           <p className="mt-1 text-sm text-dim">{STATUS_HINT[data.status] ?? data.status}</p>
         </div>
         <Link to="/products" className="btn-ghost">
@@ -190,8 +194,8 @@ export function EditProductPage(): JSX.Element {
       <section className="card space-y-4 p-5">
         <label className="block">
           <span className="label">Nomi</span>
-          <input
-            className="field mt-2"
+          <Input
+            className="mt-2"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
           />
@@ -199,8 +203,8 @@ export function EditProductPage(): JSX.Element {
 
         <label className="block">
           <span className="label">Tavsif</span>
-          <textarea
-            className="field mt-2 min-h-24"
+          <Textarea
+            className="mt-2 min-h-24"
             value={description}
             maxLength={2000}
             onChange={(event) => setDescription(event.target.value)}
@@ -210,8 +214,8 @@ export function EditProductPage(): JSX.Element {
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
             <span className="label">Narx ({data.currency})</span>
-            <input
-              className="field mt-2 tabular-nums"
+            <Input
+              className="mt-2 tabular-nums"
               inputMode="decimal"
               value={price}
               onChange={(event) => setPrice(event.target.value)}
@@ -219,8 +223,8 @@ export function EditProductPage(): JSX.Element {
           </label>
           <label className="block">
             <span className="label">Eski narx</span>
-            <input
-              className="field mt-2 tabular-nums"
+            <Input
+              className="mt-2 tabular-nums"
               inputMode="decimal"
               value={oldPrice}
               placeholder="chegirma uchun"
@@ -233,13 +237,13 @@ export function EditProductPage(): JSX.Element {
       </section>
 
       <section className="card space-y-3 p-5">
-        <h2 className="text-sm font-semibold text-white">Rasmlar</h2>
+        <h2 className="text-sm font-semibold text-foreground">Rasmlar</h2>
         <ImageUploader images={images} onChange={setImages} />
       </section>
 
       <section className="card space-y-4 p-5">
         <div>
-          <h2 className="text-sm font-semibold text-white">Ombor</h2>
+          <h2 className="text-sm font-semibold text-foreground">Ombor</h2>
           <p className="mt-1 text-xs text-dim">
             Har rang uchun alohida saqlanadi. Ombor darhol katalogda aks etadi.
           </p>
@@ -265,9 +269,10 @@ export function EditProductPage(): JSX.Element {
       ) : null}
 
       <div className="flex flex-wrap gap-3">
-        <button
+        <Button
+          variant="outline"
           type="button"
-          className="btn-ghost"
+
           disabled={save.isPending}
           onClick={() => {
             setError(null);
@@ -275,12 +280,12 @@ export function EditProductPage(): JSX.Element {
           }}
         >
           {save.isPending ? 'Saqlanmoqda…' : "O'zgarishlarni saqlash"}
-        </button>
+        </Button>
 
         {data.status !== 'active' && data.status !== 'pending' ? (
-          <button
+          <Button
             type="button"
-            className="btn-primary"
+
             disabled={save.isPending || !canSubmit}
             onClick={() => {
               setError(null);
@@ -288,7 +293,7 @@ export function EditProductPage(): JSX.Element {
             }}
           >
             Tekshiruvga yuborish
-          </button>
+          </Button>
         ) : null}
 
         {!canSubmit ? (

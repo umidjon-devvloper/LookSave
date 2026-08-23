@@ -3,8 +3,11 @@ import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { getCart, removeCartItem, setCartItemQty, type CartStore } from '../../src/api/endpoints';
-import { Button, Empty, ErrorView, Loading, Screen } from '../../src/components/ui';
+import { Button, Empty, ErrorView, Screen } from '../../src/components/ui';
+import { SignInRequired } from '../../src/components/SignInRequired';
+import { SkeletonList } from '../../src/components/Skeleton';
 import { useI18n } from '../../src/i18n';
+import { useAuthStore } from '../../src/store/authStore';
 import { money } from '../../src/theme/format';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 
@@ -103,7 +106,13 @@ export default function Cart(): JSX.Element {
   const queryClient = useQueryClient();
   const t = useI18n((state) => state.t);
 
-  const cart = useQuery({ queryKey: ['cart'], queryFn: getCart });
+  /*
+   * ⚠️ QOROVUL BARCHA HOOKLARDAN KEYIN QAYTARADI, lekin holat SHU YERDA
+   * o'qiladi: erta `return` hooklar tartibini buzadi va React qulaydi.
+   */
+  const signedIn = useAuthStore((state) => state.status) === 'signedIn';
+
+  const cart = useQuery({ queryKey: ['cart'], queryFn: getCart, enabled: signedIn });
 
   const invalidate = (): void => {
     void queryClient.invalidateQueries({ queryKey: ['cart'] });
@@ -117,9 +126,18 @@ export default function Cart(): JSX.Element {
   const remove = useMutation({ mutationFn: removeCartItem, onSuccess: invalidate });
   const busy = changeQty.isPending || remove.isPending;
 
-  if (cart.isLoading) return <Loading />;
+  // Kirmagan foydalanuvchiga xato emas, sabab ko'rsatiladi
+  if (!signedIn) {
+    return (
+      <Screen>
+        <SignInRequired />
+      </Screen>
+    );
+  }
+
+  if (cart.isLoading) return <SkeletonList count={3} />;
   if (cart.isError) {
-    return <ErrorView message={t.errors.generic} onRetry={() => void cart.refetch()} />;
+    return <ErrorView error={cart.error} onRetry={() => void cart.refetch()} />;
   }
 
   if (!cart.data || cart.data.itemCount === 0) {

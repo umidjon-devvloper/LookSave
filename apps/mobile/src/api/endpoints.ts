@@ -311,6 +311,8 @@ export interface FullProfile extends AuthUser {
   morphTargets: MorphTargets;
   faceTextureUrl: string | null;
   faceScanStatus: string;
+  /** To'liq bo'yli surat — AI kiyintirish shusiz ishlamaydi */
+  bodyPhotoUrl: string | null;
   favoritesCount: number;
   looksCount: number;
   trust: { isRestricted: boolean; openOrders: number };
@@ -363,6 +365,173 @@ export const updateMeasurements = (
   input: Measurements,
 ): Promise<{ measurements: Measurements; morphTargets: MorphTargets }> =>
   api('/profile/measurements', { method: 'PATCH', body: input });
+
+// ============================================================
+// AI kiyintirish
+// ============================================================
+
+/**
+ * Kiyintirish holati.
+ *
+ * `pending`/`processing` — hali tayyorlanmoqda, ilova so'rab turishi kerak.
+ * `ready` — `imageUrl` bor. `failed` — `error` da sabab.
+ */
+export type RenderStatus = 'pending' | 'processing' | 'ready' | 'failed';
+
+export interface TryonRender {
+  id: string;
+  variantId: string;
+  /** Qaysi burchak uchun — har biri alohida natija va alohida to'lov */
+  angle: AvatarAngle;
+  status: RenderStatus;
+  imageUrl: string | null;
+  /** Fondan ajratilgan variant — qorong'i sahnaga qo'yish uchun */
+  cutoutUrl: string | null;
+  error: string | null;
+}
+
+/**
+ * To'liq bo'yli suratni yuklaydi va profilga bog'laydi.
+ *
+ * ⚠️ `purpose: 'body'` — bu surat `private` kesh bilan saqlanadi. Oddiy
+ * profil rasmidan farqi shu: gavda surati ochiq bo'lmasligi kerak.
+ */
+export async function uploadBodyPhoto(localUri: string): Promise<string> {
+  const fileName = localUri.split('/').pop() ?? 'body.jpg';
+  const contentType = fileName.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+
+  const signed = await api<PresignResult>('/profile/uploads/presign', {
+    method: 'POST',
+    body: { fileName, contentType, purpose: 'body' },
+  });
+
+  const blob = await (await fetch(localUri)).blob();
+  const response = await fetch(signed.uploadUrl, {
+    method: 'PUT',
+    headers: signed.headers,
+    body: blob,
+  });
+  if (!response.ok) throw new Error('Surat yuklanmadi');
+
+  await api<{ bodyPhotoUrl: string }>('/tryon/body-photo', {
+    method: 'PUT',
+    body: { url: signed.publicUrl },
+  });
+
+  return signed.publicUrl;
+}
+
+/**
+ * AI yasagan to'liq bo'yli avatar.
+ *
+ * ⚠️ BU KIYINTIRISHNING ASOSI. Yuz skaneri va o'lchovlardan yasaladi va
+ * barcha kiyimlar shu suratga kiydiriladi. Tayyor bo'lmasa kiyintirish
+ * ishlamaydi.
+ */
+/** Aylantirish burchaklari — har biri alohida yasaladi va alohida to'lanadi. */
+export type AvatarAngle = 'front' | 'side' | 'back';
+
+export const ANGLE_ORDER: AvatarAngle[] = ['front', 'side', 'back'];
+
+export const ANGLE_LABEL: Record<AvatarAngle, string> = {
+  front: 'Old',
+  side: 'Yon',
+  back: 'Orqa',
+};
+
+export interface UserAvatar {
+  status: 'none' | 'processing' | 'ready' | 'failed';
+  imageUrl: string | null;
+  /** Fondan ajratilgan variant — qorong'i sahnaga qo'yish uchun. `null` bo'lishi mumkin. */
+  cutoutUrl: string | null;
+  error: string | null;
+  /** Yasalgan burchaklar: `{ front: url, side: url }` */
+  angles: Partial<Record<AvatarAngle, string>>;
+  /** Hozir yasalayotgan burchak — ilova kutish holatini ko'rsatadi */
+  anglePending: AvatarAngle | null;
+}
+
+/** Avatarni yasashni boshlaydi. Tayyori bo'lsa qayta yasalmaydi. */
+export const requestAvatar = (): Promise<UserAvatar> =>
+  api<UserAvatar>('/tryon/avatar', { method: 'POST' });
+
+/** Holat — ilova tayyor bo'lguncha takrorlaydi. */
+export const getAvatar = (): Promise<UserAvatar> => api<UserAvatar>('/tryon/avatar');
+
+/**
+ * Aylantirish uchun burchak so'raydi.
+ *
+ * ⚠️ HAR BURCHAK PUL TURADI, shuning uchun u faqat foydalanuvchi
+ * "aylantirish" bosganda chaqiriladi. Yasalgani saqlanadi — keyingi
+ * safar bepul.
+ */
+export const requestAvatarAngle = (angle: AvatarAngle): Promise<UserAvatar> =>
+  api<UserAvatar>('/tryon/avatar/angle', { method: 'POST', body: { angle } });
+
+export interface Garment {
+  variantId: string;
+  productId: string;
+  title: string;
+  slot: string;
+  price: string;
+  currency: string;
+  image: string;
+  /** Variant rangi — tanlagichda nuqta bo'lib ko'rsatiladi */
+  colorHex: string | null;
+  /** Faqat OMBORDA BOR o'lchamlar (band qilinganlar chegirilgan) */
+  sizes: string[];
+  store: { id: string; name: string };
+}
+
+/**
+ * AI kiyintirish uchun kiyimlar.
+ *
+ * ⚠️ `getProducts` YARAMAYDI: unda `variantId` yo'q, kiyintirish esa aynan
+ * variantga bog'lanadi (rang muhim). `/tryon/slot/:slot` ham yaramaydi —
+ * u 3D modeli borlarini qaytaradi, AI'ga esa oddiy surat kerak.
+ */
+export const getGarments = (slot?: string, gender?: string): Promise<Garment[]> => {
+  const params = new URLSearchParams({ limit: '30' });
+  if (slot) params.set('slot', slot);
+  if (gender) params.set('gender', gender);
+  return api<Garment[]>(`/tryon/garments?${params.toString()}`);
+};
+
+/** Bitta kiyimni kiyintirishni so'raydi. Kesh bo'lsa darhol `ready` qaytadi. */
+export const requestRender = (variantId: string, angle: AvatarAngle = 'front') =>
+  api<TryonRender>('/tryon/render', { method: 'POST', body: { variantId, angle } });
+
+/** Holatni so'raydi — ilova buni tayyor bo'lguncha takrorlaydi. */
+export const getRender = (id: string): Promise<TryonRender> =>
+  api<TryonRender>(`/tryon/render/${id}`);
+
+/**
+ * Gallereya uchun bir nechta variantning holati.
+ *
+ * Svayp paytida har rasm uchun alohida so'rov yuborilsa tarmoq bo'g'iladi —
+ * ro'yxat oldindan olinadi va faqat tayyor bo'lmaganlari kuzatiladi.
+ */
+export const getRenders = (
+  variantIds: string[],
+  angle: AvatarAngle = 'front',
+): Promise<TryonRender[]> =>
+  variantIds.length === 0
+    ? Promise.resolve([])
+    : api<TryonRender[]>(`/tryon/renders?angle=${angle}&variantIds=${variantIds.join(',')}`);
+
+/**
+ * AI kiyintirish qaysi slotlarda ishlaydi.
+ *
+ * ⚠️ MODEL FAQAT KIYIM UCHUN O'QITILGAN. Oyoq kiyim, soat, sumka va bosh
+ * kiyimda natija ishonchsiz chiqadi — ularni AI'ga yubormaymiz va oddiy
+ * mahsulot suratini ko'rsatamiz. Pul ham, foydalanuvchining ishonchi ham
+ * behuda ketmaydi.
+ */
+export const AI_TRYON_SLOTS = ['top', 'outer', 'bottom'] as const;
+
+export function supportsAiTryon(slot: string): boolean {
+  return (AI_TRYON_SLOTS as readonly string[]).includes(slot);
+}
 
 // ── Sevimlilar ──
 
@@ -490,3 +659,255 @@ export const deleteAccount = (
 
 export const restoreAccount = (): Promise<{ restored: boolean }> =>
   api('/auth/account/restore', { method: 'POST', body: {} });
+
+// ============================================================
+// Sotuvchi paneli
+// ============================================================
+
+/**
+ * ⚠️ ILOVADA FAQAT OPERATIV QISM.
+ *
+ * Backend to'liq panelni qo'llab-quvvatlaydi (katalog, analitika, jamoa,
+ * hisob-fakturalar), lekin ilovaga faqat SHOSHILINCH ishlar olingan:
+ * ariza yuborish va buyurtmalarga javob berish.
+ *
+ * Sabab: buyurtma kelganda sotuvchi darhol javob berishi kerak va telefon
+ * doim yonida. Mahsulot qo'shish, narx tahrirlash va analitika esa
+ * klaviatura hamda katta ekran talab qiladi — ular veb-panelda qoladi
+ * (`STORE_PANEL_URL`). Ikkalasini ham telefonga tiqish har ikkalasini
+ * noqulay qilardi.
+ */
+
+export interface StoreApplication {
+  id: string;
+  name: string;
+  slug: string;
+  status: 'pending' | 'active' | 'rejected' | 'suspended';
+  rejectReason?: string | null;
+}
+
+export interface StoreApplicationInput {
+  name: string;
+  description?: string;
+  phone: string;
+  address: string;
+  landmark?: string;
+  city: string;
+  country: 'UZ' | 'AE';
+  location: { lat: number; lng: number };
+  currency: 'UZS' | 'AED' | 'USD';
+  deliveryEnabled: boolean;
+  pickupEnabled: boolean;
+}
+
+export const applyForStore = (input: StoreApplicationInput): Promise<StoreApplication> =>
+  api<StoreApplication>('/stores/apply', { method: 'POST', body: input });
+
+export interface StoreOrderItem {
+  title: string;
+  size: string | null;
+  qty: number;
+  unitPrice: string;
+}
+
+export interface StoreOrder {
+  id: string;
+  orderNumber: string;
+  status: 'new' | 'seen' | 'confirmed' | 'ready' | 'completed' | 'rejected' | 'expired';
+  createdAt: string;
+  /** `new` holatida qancha daqiqa qolgani; boshqa holatda `null` */
+  minutesLeft: number | null;
+  customer: { name: string; phone: string };
+  deliveryType: string;
+  address: string | null;
+  note: string | null;
+  items: StoreOrderItem[];
+  subtotal: string;
+  total: string;
+  currency: string;
+}
+
+export type StoreOrderFilter = 'new' | 'active' | 'completed' | 'cancelled' | 'all';
+
+export const getStoreOrders = (status: StoreOrderFilter = 'new') =>
+  apiList<StoreOrder>(`/store/orders?status=${status}&limit=30`);
+
+export interface StoreDashboard {
+  newOrders: number;
+  inProgress: number;
+  completedMonth: number;
+  revenueMonth: string;
+  currency: string;
+  productCount: number;
+}
+
+export const getStoreDashboard = (): Promise<StoreDashboard> =>
+  api<StoreDashboard>('/store/dashboard');
+
+/** Rad etish sabablari — server aynan shu qiymatlarni qabul qiladi. */
+export const REJECT_REASONS = [
+  'out_of_stock',
+  'size_unavailable',
+  'price_changed',
+  'fake_order',
+  'other',
+] as const;
+
+export type RejectReason = (typeof REJECT_REASONS)[number];
+
+/**
+ * Buyurtma holatini o'zgartiradi.
+ *
+ * ⚠️ `seen` ALOHIDA: u sotuvchi buyurtmani ochganini bildiradi va mijozga
+ * "ko'rildi" bo'lib chiqadi. Uni tugma bosilganda emas, ekran ochilganda
+ * yuborish kerak — mijoz javob kutayotganini bilishi muhim.
+ */
+export const storeOrderAction = (
+  id: string,
+  action: 'seen' | 'confirm' | 'ready' | 'complete' | 'reject',
+  body?: Record<string, unknown>,
+): Promise<unknown> =>
+  api(`/store/orders/${id}/${action}`, { method: 'POST', ...(body ? { body } : {}) });
+
+// ── Do'kon: mahsulotlar va sozlamalar ──
+
+/**
+ * Ro'yxatdagi mahsulot.
+ *
+ * ⚠️ BU BATAFSIL JAVOBDAN FARQ QILADI. Ro'yxat yengil bo'lishi uchun
+ * server faqat bitta rasm (`image`) va UMUMIY qoldiq (`stock`) beradi —
+ * variantlar va o'lchamlar ro'yxati yo'q. Ularni tahrirlash uchun
+ * `getMyProduct` chaqiriladi.
+ *
+ * Buni sinovda topdim: tipni `basePrice`/`images`/`variants` deb yozgan
+ * edim va ilova `product.images[0]` da qulagan.
+ */
+export interface StoreProduct {
+  id: string;
+  title: string;
+  status: 'draft' | 'pending' | 'active' | 'rejected' | 'archived';
+  price: string;
+  oldPrice: string | null;
+  currency: string;
+  image: string | null;
+  category: { slug: string; name: string } | null;
+  stock: { total: number; reserved: number; available: number };
+  has3d: boolean;
+}
+
+/** Batafsil — variantlar va o'lchamlar shu yerda. */
+export interface StoreProductDetail {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  price: string;
+  currency: string;
+  images: string[];
+  variants: Array<{
+    id: string;
+    colorName: string;
+    sizes: Array<{ size: string; stock: number; reserved: number }>;
+  }>;
+}
+
+export const getMyProduct = (id: string): Promise<StoreProductDetail> =>
+  api<StoreProductDetail>(`/store/products/${id}`);
+
+export type ProductStatusFilter = 'all' | 'draft' | 'pending' | 'active' | 'rejected' | 'archived';
+
+export const getMyProducts = (status: ProductStatusFilter = 'all') =>
+  apiList<StoreProduct>(`/store/products?status=${status}&limit=30`);
+
+export interface CreateProductInput {
+  title: string;
+  description?: string;
+  categoryId: string;
+  gender: 'male' | 'female' | 'unisex';
+  basePrice: string;
+  images: string[];
+  /**
+   * `draft` — qoralama, katalogda ko'rinmaydi va rasm soni tekshirilmaydi.
+   * `pending` — moderatsiyaga yuboriladi, kamida 3 rasm SHART.
+   */
+  status: 'draft' | 'pending';
+  variants: Array<{ sizes: Array<{ size: string; stock: number }> }>;
+}
+
+export const createStoreProduct = (input: CreateProductInput): Promise<{ id: string }> =>
+  api<{ id: string }>('/store/products', { method: 'POST', body: input });
+
+export const deleteStoreProduct = (id: string): Promise<void> =>
+  api<void>(`/store/products/${id}`, { method: 'DELETE' });
+
+/** Ombor qoldig'i — variant bo'yicha, o'lchamlar ro'yxati bilan. */
+export const updateVariantStock = (
+  variantId: string,
+  sizes: Array<{ size: string; stock: number }>,
+): Promise<unknown> =>
+  api(`/store/variants/${variantId}/stock`, { method: 'PATCH', body: { sizes } });
+
+export interface StoreProfile {
+  id: string;
+  name: string;
+  description: string | null;
+  logoUrl: string | null;
+  address: string;
+  landmark: string | null;
+  city: string;
+  phone: string;
+  status: string;
+  currency: string;
+  deliveryEnabled?: boolean;
+  pickupEnabled?: boolean;
+}
+
+export const getStoreProfile = (): Promise<StoreProfile> => api<StoreProfile>('/store/profile');
+
+export const updateStoreProfile = (input: Partial<StoreProfile>): Promise<StoreProfile> =>
+  api<StoreProfile>('/store/profile', { method: 'PATCH', body: input });
+
+/**
+ * Do'kon rasmini R2 ga yuklaydi.
+ *
+ * ⚠️ `purpose: 'product'` — kesh `immutable`, ya'ni rasm bir yil saqlanadi.
+ * Do'kon rasmi almashtirilganda yangi UUID beriladi, shuning uchun eski
+ * havola keshda qolsa ham zarari yo'q.
+ */
+export interface PreparedGarment {
+  originalUrl: string;
+  cleanedUrl: string;
+  /** Kiyim kadrning necha qismini egallaydi (0–1) */
+  coverage: number;
+  warning: string | null;
+}
+
+/**
+ * Yuklangan kiyim suratini kiyintirish uchun tayyorlaydi.
+ *
+ * Server fonni olib tashlaydi va oq fonli variant qaytaradi. Do'konchi
+ * ikkalasini ko'rib o'zi tanlaydi — avtomatik almashtirmaymiz, chunki
+ * ba'zan asl surat yaxshiroq bo'ladi.
+ */
+export const prepareGarmentImage = (url: string): Promise<PreparedGarment> =>
+  api<PreparedGarment>('/store/uploads/prepare', { method: 'POST', body: { url } });
+
+export async function uploadStoreImage(localUri: string): Promise<string> {
+  const fileName = localUri.split('/').pop() ?? 'photo.jpg';
+  const contentType = fileName.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+
+  const signed = await api<PresignResult>('/store/uploads/presign', {
+    method: 'POST',
+    body: { fileName, contentType, purpose: 'product' },
+  });
+
+  const blob = await (await fetch(localUri)).blob();
+  const response = await fetch(signed.uploadUrl, {
+    method: 'PUT',
+    headers: signed.headers,
+    body: blob,
+  });
+  if (!response.ok) throw new Error('Rasm yuklanmadi');
+
+  return signed.publicUrl;
+}

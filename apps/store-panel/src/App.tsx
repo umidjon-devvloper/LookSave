@@ -49,13 +49,13 @@ export function App(): JSX.Element {
           element={
             <main className="flex min-h-full items-center justify-center px-4 text-center">
               <div className="max-w-sm space-y-3">
-                <h1 className="text-lg font-semibold text-white">Bu panel do'konlar uchun</h1>
+                <h1 className="text-lg font-semibold text-foreground">Bu panel do'konlar uchun</h1>
                 <p className="text-sm text-dim">
                   Xarid qilish uchun LookSave mobil ilovasidan foydalaning.
                 </p>
                 <a
                   href="/apply"
-                  className="inline-block rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white"
+                  className="inline-block rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-foreground"
                 >
                   Do'kon ochmoqchimisiz?
                 </a>

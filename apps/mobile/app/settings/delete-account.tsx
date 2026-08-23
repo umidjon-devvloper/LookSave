@@ -51,7 +51,7 @@ export default function DeleteAccount(): JSX.Element {
 
   if (status.isLoading) return <Loading />;
   if (status.isError) {
-    return <ErrorView message={t.errors.generic} onRetry={() => void status.refetch()} />;
+    return <ErrorView error={status.error} onRetry={() => void status.refetch()} />;
   }
 
   const scheduled = status.data?.scheduledFor;

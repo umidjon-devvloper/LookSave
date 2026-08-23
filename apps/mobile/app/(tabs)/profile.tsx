@@ -69,6 +69,9 @@ export default function Profile(): JSX.Element {
   const router = useRouter();
   const status = useAuthStore((state) => state.status);
   const user = useAuthStore((state) => state.user);
+
+  // Rol access tokenda keladi — do'kon arizasi qabul qilingach yangilanadi
+  const isSeller = user?.role === 'store_owner' || user?.role === 'admin';
   const signOut = useAuthStore((state) => state.signOut);
   const { locale, setLocale, t, isRTL } = useI18n();
 
@@ -167,6 +170,19 @@ export default function Profile(): JSX.Element {
             label={t.profile.myMeasurements}
             hint={height === undefined ? t.profile.noMeasurements : `${height} sm`}
             onPress={() => router.push('/settings/measurements')}
+            isRTL={isRTL}
+          />
+
+          {/*
+            Sotuvchi bo'limi HAR DOIM ko'rinadi — do'koni bor odamga panel,
+            yo'q odamga esa taklif. Uni yashirsak, ilovada do'kon ochish
+            mumkinligini hech kim bilmay qolardi.
+          */}
+          <Row
+            icon="stores"
+            label={isSeller ? 'Do`konim' : 'Do`kon ochish'}
+            hint={isSeller ? 'Buyurtmalar va panel' : 'Sotuvchi bo`ling'}
+            onPress={() => router.push('/seller')}
             isRTL={isRTL}
           />
         </View>

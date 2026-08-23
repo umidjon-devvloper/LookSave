@@ -23,6 +23,8 @@ Loyihaning yagona haqiqat manbai — [`docs/`](./docs) katalogi. Kod hujjatga zi
 | 08  | [08-deployment.md](./docs/08-deployment.md)     | Docker, VPS, backup, CI/CD                |
 | 09  | [09-integrations.md](./docs/09-integrations.md) | Telegram, SMS, Gemini, Maps, R2           |
 | 10  | [10-roadmap.md](./docs/10-roadmap.md)           | Fazalar, sprintlar, risklar               |
+| 11  | [11-deck-audit.md](./docs/11-deck-audit.md)     | Deck ↔ kod solishtiruvi                   |
+| 12  | [12-tz.md](./docs/12-tz.md)                     | Kamchiliklar reyestri, ish paketlari      |
 
 ---
 

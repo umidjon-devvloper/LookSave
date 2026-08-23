@@ -4,6 +4,9 @@ import { useState } from 'react';
 import { addToBlocklist, getBlocklist, removeFromBlocklist } from '../api/store';
 import { EmptyState, ErrorState, Spinner } from '../components/Spinner';
 import { phone as formatPhone } from '../lib/format';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 
 export function BlocklistPage(): JSX.Element {
   const queryClient = useQueryClient();
@@ -30,7 +33,7 @@ export function BlocklistPage(): JSX.Element {
   return (
     <div className="max-w-3xl space-y-5">
       <div>
-        <h1 className="text-xl font-semibold text-white">Qora ro'yxat</h1>
+        <h1 className="text-xl font-semibold text-foreground">Qora ro'yxat</h1>
         <p className="mt-1 text-sm text-dim">
           Bu raqamlar do'koningizga buyurtma bera olmaydi. Uchta do'kon bir raqamni bloklasa, u
           barcha do'konlarda bloklanadi.
@@ -46,8 +49,8 @@ export function BlocklistPage(): JSX.Element {
       >
         <label className="flex-1">
           <span className="label">Telefon</span>
-          <input
-            className="field mt-2"
+          <Input
+            className="mt-2"
             value={phoneValue}
             onChange={(event) => setPhoneValue(event.target.value)}
             placeholder="+998901234567"
@@ -56,8 +59,8 @@ export function BlocklistPage(): JSX.Element {
         </label>
         <label className="flex-1">
           <span className="label">Sabab</span>
-          <input
-            className="field mt-2"
+          <Input
+            className="mt-2"
             value={reason}
             minLength={3}
             maxLength={300}
@@ -66,9 +69,9 @@ export function BlocklistPage(): JSX.Element {
             required
           />
         </label>
-        <button type="submit" className="btn-primary" disabled={add.isPending}>
+        <Button type="submit" disabled={add.isPending}>
           Bloklash
-        </button>
+        </Button>
       </form>
 
       {add.isError ? (
@@ -102,13 +105,18 @@ export function BlocklistPage(): JSX.Element {
             <tbody>
               {list.data.map((entry, index) => (
                 <tr key={entry.id} className={index % 2 === 0 ? 'bg-surface' : 'bg-surface2'}>
-                  <td className="px-4 py-3 font-medium text-white">{formatPhone(entry.phone)}</td>
-                  <td className="px-4 py-3 text-muted">
+                  <td className="px-4 py-3 font-medium text-foreground">
+                    {formatPhone(entry.phone)}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
                     {entry.reason}
                     {entry.isGlobal ? (
-                      <span className="ml-2 rounded-full border border-danger/30 bg-danger/10 px-2 py-0.5 text-[11px] text-danger">
+                      <Badge
+                        variant="outline"
+                        className="ml-2 rounded-full border-danger/30 bg-danger/10 px-2 py-0.5 text-[11px] text-danger"
+                      >
                         barcha do'konlarda
-                      </span>
+                      </Badge>
                     ) : null}
                   </td>
                   <td className="px-4 py-3 text-dim">
@@ -118,14 +126,16 @@ export function BlocklistPage(): JSX.Element {
                     {entry.isGlobal ? (
                       <span className="text-xs text-dim">o'chirib bo'lmaydi</span>
                     ) : (
-                      <button
+                      <Button
+                        variant="link"
+                        size="sm"
                         type="button"
-                        className="text-sm text-accent hover:underline"
+                        className="h-auto p-0 text-sm text-brand hover:underline"
                         disabled={remove.isPending}
                         onClick={() => remove.mutate(entry.id)}
                       >
                         Chiqarish
-                      </button>
+                      </Button>
                     )}
                   </td>
                 </tr>

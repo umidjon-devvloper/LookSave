@@ -11,6 +11,8 @@ import {
 } from '../api/store';
 import { ErrorState, Spinner } from '../components/Spinner';
 import { phone as formatPhone } from '../lib/format';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 const ROLES: Array<{ value: MemberRole; label: string; hint: string }> = [
   { value: 'manager', label: 'Menejer', hint: 'buyurtma va mahsulotlar' },
@@ -55,7 +57,7 @@ export function TeamPage(): JSX.Element {
   return (
     <div className="max-w-3xl space-y-5">
       <div>
-        <h1 className="text-xl font-semibold text-white">Jamoa</h1>
+        <h1 className="text-xl font-semibold text-foreground">Jamoa</h1>
         <p className="mt-1 text-sm text-dim">
           Xodimlar buyurtmalarga javob bera oladi. Javob tezligi qidiruv reytingiga ta'sir qiladi —
           bitta odam 24 soat kutib o'tira olmaydi.
@@ -71,8 +73,8 @@ export function TeamPage(): JSX.Element {
       >
         <label className="flex-1">
           <span className="label">Telefon</span>
-          <input
-            className="field mt-2"
+          <Input
+            className="mt-2"
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
             placeholder="+998901234567"
@@ -95,9 +97,9 @@ export function TeamPage(): JSX.Element {
           </select>
         </label>
 
-        <button type="submit" className="btn-primary" disabled={add.isPending}>
+        <Button type="submit" disabled={add.isPending}>
           Qo'shish
-        </button>
+        </Button>
       </form>
 
       <p className="text-xs text-dim">
@@ -131,13 +133,13 @@ export function TeamPage(): JSX.Element {
               {members.data.map((member, index) => (
                 <tr key={member.id} className={index % 2 === 0 ? 'bg-surface' : 'bg-surface2'}>
                   <td className="px-4 py-3">
-                    <p className="text-white">{member.fullName ?? '—'}</p>
+                    <p className="text-foreground">{member.fullName ?? '—'}</p>
                     <p className="text-xs text-dim">{formatPhone(member.phone)}</p>
                   </td>
 
                   <td className="px-4 py-3">
                     {member.isStoreOwner ? (
-                      <span className="text-muted">{ROLE_LABEL.owner}</span>
+                      <span className="text-muted-foreground">{ROLE_LABEL.owner}</span>
                     ) : (
                       <select
                         className="field py-1.5 text-sm"
@@ -169,14 +171,16 @@ export function TeamPage(): JSX.Element {
                     {member.isStoreOwner ? (
                       <span className="text-xs text-dim">o'chirib bo'lmaydi</span>
                     ) : (
-                      <button
+                      <Button
+                        variant="link"
+                        size="sm"
                         type="button"
-                        className="text-sm text-dim hover:text-danger"
+                        className="h-auto p-0 text-sm text-dim hover:text-danger"
                         disabled={remove.isPending}
                         onClick={() => remove.mutate(member.id)}
                       >
                         Chiqarish
-                      </button>
+                      </Button>
                     )}
                   </td>
                 </tr>

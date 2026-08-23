@@ -18,10 +18,14 @@ const uz = {
     close: 'Yopish',
     loading: 'Yuklanmoqda',
     somm: "so'm",
+    notFound: 'Topilmadi',
   },
   auth: {
     signIn: 'Kirish',
     signUp: "Ro'yxatdan o'tish",
+    /* Kirish talab qilinadigan ekranlar uchun umumiy holat */
+    requiredTitle: 'Kirish kerak',
+    requiredHint: 'Bu bo`lim shaxsiy ma`lumotlaringizga bog`langan.',
     phone: 'Telefon',
     password: 'Parol',
     fullName: 'Ism familiya',
@@ -212,10 +216,14 @@ const ru: Dictionary = {
     close: 'Закрыть',
     loading: 'Загрузка',
     somm: 'сум',
+    notFound: 'Не найдено',
   },
   auth: {
     signIn: 'Вход',
     signUp: 'Регистрация',
+    /* Kirish talab qilinadigan ekranlar uchun umumiy holat */
+    requiredTitle: 'Нужен вход',
+    requiredHint: 'Этот раздел связан с вашими личными данными.',
     phone: 'Телефон',
     password: 'Пароль',
     fullName: 'Имя и фамилия',
@@ -379,10 +387,13 @@ const ru: Dictionary = {
 };
 
 const en: Dictionary = {
-  common: { retry: 'Try again', cancel: 'Cancel', close: 'Close', loading: 'Loading', somm: 'UZS' },
+  common: { retry: 'Try again', cancel: 'Cancel', close: 'Close', loading: 'Loading', somm: 'UZS', notFound: 'Not found' },
   auth: {
     signIn: 'Sign in',
     signUp: 'Sign up',
+    /* Kirish talab qilinadigan ekranlar uchun umumiy holat */
+    requiredTitle: 'Sign in required',
+    requiredHint: 'This section is tied to your personal data.',
     phone: 'Phone',
     password: 'Password',
     fullName: 'Full name',
@@ -552,10 +563,14 @@ const ar: Dictionary = {
     close: 'إغلاق',
     loading: 'جارٍ التحميل',
     somm: 'درهم',
+    notFound: 'غير موجود',
   },
   auth: {
     signIn: 'تسجيل الدخول',
     signUp: 'إنشاء حساب',
+    /* Kirish talab qilinadigan ekranlar uchun umumiy holat */
+    requiredTitle: 'يلزم تسجيل الدخول',
+    requiredHint: 'يرتبط هذا القسم ببياناتك الشخصية.',
     phone: 'الهاتف',
     password: 'كلمة المرور',
     fullName: 'الاسم الكامل',

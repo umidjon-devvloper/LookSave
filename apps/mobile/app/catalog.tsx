@@ -1,10 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { FlatList, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { getCategories, getProducts, type ProductSort } from '../src/api/endpoints';
-import { Empty, ErrorView, Field, Loading, Screen } from '../src/components/ui';
+import { Empty, ErrorView, Field, Screen } from '../src/components/ui';
+import { SkeletonGrid } from '../src/components/Skeleton';
 import { useI18n } from '../src/i18n';
 import { useLocationStore } from '../src/store/locationStore';
 import { distance, money } from '../src/theme/format';
@@ -49,18 +50,32 @@ export default function Catalog(): JSX.Element {
 
   const categories = useQuery({ queryKey: ['categories'], queryFn: getCategories });
 
-  const products = useQuery({
+  /*
+   * ⚠️ SAHIFALASH. Ilgari bu oddiy `useQuery` edi va faqat BIRINCHI 20 ta
+   * mahsulotni olardi. Server kursor qaytarardi, lekin uni hech kim
+   * ishlatmasdi — ya'ni katalogdagi qolgan mahsulotlarga umuman yetib
+   * bo'lmasdi va buni sezish qiyin edi: ro'yxat to'la ko'rinardi, oxiriga
+   * yetganda esa shunchaki to'xtardi.
+   */
+  const products = useInfiniteQuery({
     queryKey: ['products', 'catalog', debounced, category, sort, only3d, coords.lat, coords.lng],
-    queryFn: () =>
+    queryFn: ({ pageParam }) =>
       getProducts({
         ...(debounced.trim().length >= 2 ? { q: debounced.trim() } : {}),
         ...(category ? { category } : {}),
         ...(only3d ? { only3d: true } : {}),
+        ...(pageParam ? { cursor: pageParam } : {}),
         sort,
         lat: coords.lat,
         lng: coords.lng,
       }),
+    initialPageParam: '',
+    // `hasMore` yolg'on bo'lsa `undefined` qaytadi va TanStack so'ramaydi
+    getNextPageParam: (last) => (last.hasMore ? (last.nextCursor ?? undefined) : undefined),
   });
+
+  // Barcha sahifalarni bitta ro'yxatga yig'amiz
+  const items = products.data?.pages.flatMap((page) => page.items) ?? [];
 
   // Kategoriya daraxti tekislanadi — chiplarda ierarxiya ko'rinmaydi
   const flatCategories = (categories.data ?? []).flatMap((parent) => [parent, ...parent.children]);
@@ -69,7 +84,6 @@ export default function Catalog(): JSX.Element {
     <Screen>
       <View style={styles.header}>
         <Field
-          label={t.home.search}
           value={query}
           onChangeText={setQuery}
           placeholder={t.home.search}
@@ -113,19 +127,44 @@ export default function Catalog(): JSX.Element {
         </ScrollView>
       </View>
 
-      {products.isLoading ? <Loading /> : null}
+      {products.isLoading ? <SkeletonGrid count={4} /> : null}
       {products.isError ? (
-        <ErrorView message={t.errors.generic} onRetry={() => void products.refetch()} />
+        <ErrorView error={products.error} onRetry={() => void products.refetch()} />
       ) : null}
 
       {products.data ? (
         <FlatList
-          data={products.data.items}
+          data={items}
           keyExtractor={(product) => product.id}
           numColumns={2}
           columnWrapperStyle={{ gap: spacing.sm }}
           contentContainerStyle={styles.list}
           keyboardShouldPersistTaps="handled"
+          /*
+           * 0.6 — ro'yxat oxiriga yetishdan oldin so'raladi, shunda
+           * foydalanuvchi kutmaydi. Juda kichik qiymat kech chaqiradi,
+           * juda katta esa keraksiz sahifalarni oldindan yuklaydi.
+           */
+          /*
+           * Ro'yxat unumdorligi: ekrandan chiqqan kartalar xotiradan
+           * bo'shatiladi va boshlanishida faqat ko'rinadigan qismi
+           * chiziladi. Uzun katalogda bu sezilarli farq beradi.
+           */
+          removeClippedSubviews
+          initialNumToRender={6}
+          maxToRenderPerBatch={8}
+          windowSize={7}
+          onEndReachedThreshold={0.6}
+          onEndReached={() => {
+            // ⚠️ `isFetchingNextPage` SHART: usiz bitta scrollda bir necha
+            // marta chaqiriladi va bir xil sahifa qayta-qayta so'raladi
+            if (products.hasNextPage && !products.isFetchingNextPage) {
+              void products.fetchNextPage();
+            }
+          }}
+          ListFooterComponent={
+            products.isFetchingNextPage ? <SkeletonGrid count={2} /> : null
+          }
           ListEmptyComponent={
             <Empty
               title={t.home.emptyTitle}

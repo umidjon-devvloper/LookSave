@@ -4,6 +4,9 @@ import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { cancelOrder, getOrder, type OrderDetail } from '../../src/api/endpoints';
 import { Button, ErrorView, Loading, Screen } from '../../src/components/ui';
+import { useI18n } from '../../src/i18n';
+import { SignInRequired } from '../../src/components/SignInRequired';
+import { useAuthStore } from '../../src/store/authStore';
 import { money, phone as formatPhone } from '../../src/theme/format';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 
@@ -77,14 +80,21 @@ function StatusBanner({ order }: { order: OrderDetail }): JSX.Element {
 }
 
 export default function Order(): JSX.Element {
+  const t = useI18n((state) => state.t);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
 
+  /*
+   * ⚠️ QOROVUL BARCHA HOOKLARDAN KEYIN QAYTARADI, lekin holat SHU YERDA
+   * o'qiladi: erta `return` hooklar tartibini buzadi va React qulaydi.
+   */
+  const signedIn = useAuthStore((state) => state.status) === 'signedIn';
+
   const order = useQuery({
     queryKey: ['orders', id],
     queryFn: () => getOrder(id),
-    enabled: Boolean(id),
+    enabled: Boolean(id) && signedIn,
     // Sotuvchi javobini kutayotgan buyurtma tez-tez yangilanadi.
     // SSE mijoz tomonida yo'q — push qo'shilgach bu interval olib tashlanadi.
     refetchInterval: (query) =>
@@ -100,9 +110,18 @@ export default function Order(): JSX.Element {
     },
   });
 
+  // Kirmagan foydalanuvchiga xato emas, sabab ko'rsatiladi
+  if (!signedIn) {
+    return (
+      <Screen>
+        <SignInRequired />
+      </Screen>
+    );
+  }
+
   if (order.isLoading) return <Loading />;
   if (order.isError || !order.data) {
-    return <ErrorView message="Buyurtma topilmadi" onRetry={() => void order.refetch()} />;
+    return <ErrorView message={t.common.notFound} onRetry={() => void order.refetch()} />;
   }
 
   const data = order.data;
@@ -119,12 +138,12 @@ export default function Order(): JSX.Element {
           <Text style={styles.storeName}>{data.store.name}</Text>
           <View style={styles.row}>
             <Button
-              title="Qo'ng'iroq"
+              title={t.stores.call}
               variant="ghost"
               onPress={() => void Linking.openURL(`tel:${data.store.phone}`)}
             />
             <Button
-              title="Yo'nalish"
+              title={t.stores.directions}
               variant="ghost"
               onPress={() =>
                 void Linking.openURL(
@@ -183,7 +202,7 @@ export default function Order(): JSX.Element {
 
         {data.canCancel ? (
           <Button
-            title="Bekor qilish"
+            title={t.order.cancel}
             variant="danger"
             loading={cancel.isPending}
             onPress={() => cancel.mutate()}
@@ -191,7 +210,7 @@ export default function Order(): JSX.Element {
         ) : null}
 
         {data.status === 'expired' || data.status === 'rejected' ? (
-          <Button title="Boshqa do'konda qidirish" onPress={() => router.replace('/(tabs)')} />
+          <Button title={t.order.findElsewhere} onPress={() => router.replace('/(tabs)')} />
         ) : null}
       </ScrollView>
     </Screen>

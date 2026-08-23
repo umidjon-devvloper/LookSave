@@ -71,3 +71,6 @@ apps/api/.env
 # Python (blender_scripts)
 __pycache__/
 *.pyc
+
+# Web — `assets-3d/export` dan avtomatik ko`chiriladi (apps/web/scripts/sync-models.mjs)
+apps/web/public/models/

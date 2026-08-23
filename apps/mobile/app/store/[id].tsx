@@ -4,10 +4,12 @@ import { FlatList, Image, Linking, Pressable, StyleSheet, Text, View } from 'rea
 
 import { getStore, getStoreProducts } from '../../src/api/endpoints';
 import { Button, Empty, ErrorView, Loading, Screen } from '../../src/components/ui';
+import { useI18n } from '../../src/i18n';
 import { money } from '../../src/theme/format';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 
 export default function Store(): JSX.Element {
+  const t = useI18n((state) => state.t);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
@@ -24,7 +26,7 @@ export default function Store(): JSX.Element {
 
   if (store.isLoading) return <Loading />;
   if (store.isError || !store.data) {
-    return <ErrorView message="Do'kon topilmadi" onRetry={() => void store.refetch()} />;
+    return <ErrorView message={t.common.notFound} onRetry={() => void store.refetch()} />;
   }
 
   const data = store.data;
@@ -61,12 +63,12 @@ export default function Store(): JSX.Element {
 
             <View style={styles.row}>
               <Button
-                title="Qo'ng'iroq"
+                title={t.stores.call}
                 variant="ghost"
                 onPress={() => void Linking.openURL(`tel:${data.phone}`)}
               />
               <Button
-                title="Yo'nalish"
+                title={t.stores.directions}
                 variant="ghost"
                 onPress={() =>
                   void Linking.openURL(

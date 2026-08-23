@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 
 import type { RejectReason } from '../../api/store';
 import { phone as formatPhone } from '../../lib/format';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 const REASONS: Array<{ value: RejectReason; label: string }> = [
   { value: 'out_of_stock', label: 'Mahsulot tugagan' },
@@ -44,7 +46,7 @@ export function RejectModal({ customerPhone, busy, onCancel, onSubmit }: Props):
       aria-labelledby="reject-title"
     >
       <div className="card w-full max-w-md p-5">
-        <h2 id="reject-title" className="text-lg font-semibold text-white">
+        <h2 id="reject-title" className="text-lg font-semibold text-foreground">
           Buyurtmani rad etish
         </h2>
         <p className="mt-1 text-sm text-dim">Sabab mijozga ko'rsatiladi.</p>
@@ -56,8 +58,8 @@ export function RejectModal({ customerPhone, busy, onCancel, onSubmit }: Props):
               key={option.value}
               className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition ${
                 reason === option.value
-                  ? 'border-primary bg-primary/10 text-white'
-                  : 'border-border bg-surface2 text-muted hover:border-borderStrong'
+                  ? 'border-primary bg-primary/10 text-foreground'
+                  : 'border-border bg-surface2 text-muted-foreground hover:border-borderStrong'
               }`}
             >
               <input
@@ -74,8 +76,8 @@ export function RejectModal({ customerPhone, busy, onCancel, onSubmit }: Props):
 
         <label className="mt-4 block">
           <span className="label">Izoh (ixtiyoriy)</span>
-          <input
-            className="field mt-2"
+          <Input
+            className="mt-2"
             value={comment}
             maxLength={300}
             placeholder="Masalan: raqam ishlamayapti"
@@ -91,7 +93,7 @@ export function RejectModal({ customerPhone, busy, onCancel, onSubmit }: Props):
             onChange={(event) => setBlockPhone(event.target.checked)}
           />
           <span className="text-sm">
-            <span className="font-medium text-white">Bu raqamni bloklash</span>
+            <span className="font-medium text-foreground">Bu raqamni bloklash</span>
             <span className="mt-0.5 block text-xs text-dim">
               {formatPhone(customerPhone)} shu do'kondan boshqa buyurtma bera olmaydi. Uchta do'kon
               bloklasa — barcha do'konlarda bloklanadi.
@@ -100,12 +102,13 @@ export function RejectModal({ customerPhone, busy, onCancel, onSubmit }: Props):
         </label>
 
         <div className="mt-5 flex justify-end gap-2">
-          <button type="button" className="btn-ghost" onClick={onCancel} disabled={busy}>
+          <Button variant="outline" type="button" onClick={onCancel} disabled={busy}>
             Bekor
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="destructive"
             type="button"
-            className="btn-danger"
+
             disabled={busy}
             onClick={() =>
               onSubmit({
@@ -116,7 +119,7 @@ export function RejectModal({ customerPhone, busy, onCancel, onSubmit }: Props):
             }
           >
             Rad etish
-          </button>
+          </Button>
         </div>
       </div>
     </div>

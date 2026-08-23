@@ -11,6 +11,7 @@ import {
 } from '../api/products';
 import { EmptyState, ErrorState, Spinner } from '../components/Spinner';
 import { money } from '../lib/format';
+import { Input } from '@/components/ui/input';
 
 const TABS: Array<{ value: ProductStatus | 'all'; label: string }> = [
   { value: 'all', label: 'Barchasi' },
@@ -48,7 +49,10 @@ function ProductRow({
   onArchive: () => void;
   onRequest3d: () => void;
 }): JSX.Element {
-  const status = STATUS_LABEL[product.status] ?? { text: product.status, className: 'text-muted' };
+  const status = STATUS_LABEL[product.status] ?? {
+    text: product.status,
+    className: 'text-muted-foreground',
+  };
 
   return (
     <tr className="border-t border-border">
@@ -66,7 +70,7 @@ function ProductRow({
           <div className="min-w-0">
             <Link
               to={`/products/${product.id}`}
-              className="block truncate font-medium text-white hover:text-accent"
+              className="block truncate font-medium text-foreground hover:text-brand"
             >
               {product.title}
             </Link>
@@ -74,11 +78,11 @@ function ProductRow({
           </div>
         </div>
       </td>
-      <td className="px-4 py-3 tabular-nums text-muted">
+      <td className="px-4 py-3 tabular-nums text-muted-foreground">
         {money(product.price, product.currency)}
       </td>
       <td className="px-4 py-3 tabular-nums">
-        <span className={product.stock.available === 0 ? 'text-danger' : 'text-muted'}>
+        <span className={product.stock.available === 0 ? 'text-danger' : 'text-muted-foreground'}>
           {product.stock.available}
         </span>
         {product.stock.reserved > 0 ? (
@@ -89,13 +93,13 @@ function ProductRow({
         {product.has3d ? (
           <span className="text-success">tayyor</span>
         ) : product.assetStatus ? (
-          <span className="text-muted">
+          <span className="text-muted-foreground">
             {ASSET_LABEL[product.assetStatus] ?? product.assetStatus}
           </span>
         ) : (
           <button
             type="button"
-            className="text-accent hover:underline disabled:opacity-50"
+            className="text-brand hover:underline disabled:opacity-50"
             disabled={busy}
             onClick={onRequest3d}
           >
@@ -141,7 +145,7 @@ export function ProductsPage(): JSX.Element {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-white">Mahsulotlar</h1>
+        <h1 className="text-xl font-semibold text-foreground">Mahsulotlar</h1>
         <Link to="/products/new" className="btn-primary">
           Mahsulot qo'shish
         </Link>
@@ -155,7 +159,9 @@ export function ProductsPage(): JSX.Element {
               type="button"
               onClick={() => setTab(item.value)}
               className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
-                tab === item.value ? 'bg-primary text-white' : 'text-muted hover:text-white'
+                tab === item.value
+                  ? 'bg-primary text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               {item.label}
@@ -163,8 +169,8 @@ export function ProductsPage(): JSX.Element {
           ))}
         </div>
 
-        <input
-          className="field sm:w-64"
+        <Input
+          className="sm:w-64"
           placeholder="Nomi bo'yicha qidirish"
           value={search}
           onChange={(event) => setSearch(event.target.value)}

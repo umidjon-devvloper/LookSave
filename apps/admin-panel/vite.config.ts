@@ -1,8 +1,14 @@
+import { fileURLToPath, URL } from 'node:url';
+
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [react()],
+  // shadcn/ui `@/...` bilan import qiladi — bitta manbadan barcha ilovalarda bir xil.
+  resolve: {
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+  },
   server: {
     port: 5174,
     // Dev'da API'ga proksi — CORS bilan ovora bo'lmaymiz

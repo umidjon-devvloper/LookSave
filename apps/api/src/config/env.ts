@@ -73,6 +73,27 @@ const envSchema = z.object({
   R2_ENDPOINT: z.string().default(''),
   R2_BUCKET_ASSETS: z.string().default('looksave-assets'),
   CDN_BASE_URL: z.string().url().default('https://cdn.looksave.app'),
+
+  // ── AI kiyintirish (FASHN) ──
+  // Bo'sh bo'lsa imkoniyat o'chirilgan deb hisoblanadi va ilova buni
+  // ochiq aytadi — kalitsiz so'rov yuborib 401 kutib turish emas.
+  FASHN_API_KEY: z.string().default(''),
+  FASHN_BASE_URL: z.string().url().default('https://api.fashn.ai/v1'),
+  FASHN_MODEL: z.string().default('tryon-v1.6'),
+
+  /*
+   * Sifat rejimi. `performance` ~5s, `balanced` ~10s, `quality` ~17s.
+   * Narx bir xil (1 kredit), farq faqat vaqtda va detalda.
+   */
+  FASHN_MODE: z.enum(['performance', 'balanced', 'quality']).default('balanced'),
+
+  /*
+   * ⚠️ KUNLIK CHEGARA — PUL HIMOYASI. Har bir yasalgan surat pul turadi,
+   * kesh esa faqat TAKRORIY so'rovni to'sadi: foydalanuvchi har safar yangi
+   * kiyimni so'rasa har biri alohida to'lanadi. Chegarasiz bitta hisob bir
+   * kechada katalogni aylanib chiqib hisobni bo'shatishi mumkin.
+   */
+  TRYON_DAILY_LIMIT: z.coerce.number().int().min(1).max(500).default(30),
 });
 
 const withChecks = envSchema.superRefine((value, ctx) => {

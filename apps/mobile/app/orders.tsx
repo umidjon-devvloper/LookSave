@@ -4,8 +4,11 @@ import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getOrders } from '../src/api/endpoints';
-import { Empty, ErrorView, Loading, Screen } from '../src/components/ui';
+import { Empty, ErrorView, Screen } from '../src/components/ui';
+import { SignInRequired } from '../src/components/SignInRequired';
+import { SkeletonList } from '../src/components/Skeleton';
 import { useI18n } from '../src/i18n';
+import { useAuthStore } from '../src/store/authStore';
 import { money } from '../src/theme/format';
 import { colors, radius, spacing, text } from '../src/theme/tokens';
 
@@ -18,10 +21,26 @@ export default function Orders(): JSX.Element {
   const t = useI18n((state) => state.t);
   const [tab, setTab] = useState<Tab>('active');
 
+  /*
+   * ⚠️ QOROVUL BARCHA HOOKLARDAN KEYIN QAYTARADI, lekin holat SHU YERDA
+   * o'qiladi: erta `return` hooklar tartibini buzadi va React qulaydi.
+   */
+  const signedIn = useAuthStore((state) => state.status) === 'signedIn';
+
   const orders = useQuery({
     queryKey: ['orders', 'list', tab],
     queryFn: () => getOrders(tab),
+    enabled: signedIn,
   });
+
+  // Kirmagan foydalanuvchiga xato emas, sabab ko'rsatiladi
+  if (!signedIn) {
+    return (
+      <Screen>
+        <SignInRequired />
+      </Screen>
+    );
+  }
 
   return (
     <Screen>
@@ -39,9 +58,9 @@ export default function Orders(): JSX.Element {
         ))}
       </View>
 
-      {orders.isLoading ? <Loading /> : null}
+      {orders.isLoading ? <SkeletonList count={4} /> : null}
       {orders.isError ? (
-        <ErrorView message={t.errors.generic} onRetry={() => void orders.refetch()} />
+        <ErrorView error={orders.error} onRetry={() => void orders.refetch()} />
       ) : null}
 
       {orders.data ? (

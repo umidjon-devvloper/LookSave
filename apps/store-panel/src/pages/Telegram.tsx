@@ -16,7 +16,7 @@ export function TelegramPage(): JSX.Element {
   return (
     <div className="max-w-2xl space-y-5">
       <div>
-        <h1 className="text-xl font-semibold text-white">Telegram</h1>
+        <h1 className="text-xl font-semibold text-foreground">Telegram</h1>
         <p className="mt-1 text-sm text-dim">
           Yangi buyurtmalar Telegramga keladi. Tugmalar orqali panelni ochmasdan tasdiqlash yoki rad
           etish mumkin.
@@ -29,7 +29,7 @@ export function TelegramPage(): JSX.Element {
             <span className="h-2 w-2 rounded-full bg-success" />
             Ulangan
           </p>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             Buyurtmalar Telegramga yuborilmoqda.
             {data.linkedAt
               ? ` ${new Date(data.linkedAt).toLocaleDateString('uz-UZ')} dan beri.`
@@ -46,16 +46,18 @@ export function TelegramPage(): JSX.Element {
             Ulanmagan
           </p>
 
-          <ol className="space-y-3 text-sm text-muted">
+          <ol className="space-y-3 text-sm text-muted-foreground">
             <li>
-              <span className="text-white">1.</span> Quyidagi tugmani bosing — Telegram ochiladi.
+              <span className="text-foreground">1.</span> Quyidagi tugmani bosing — Telegram
+              ochiladi.
             </li>
             <li>
-              <span className="text-white">2.</span> Botda <b className="text-white">Start</b> ni
-              bosing.
+              <span className="text-foreground">2.</span> Botda{' '}
+              <b className="text-foreground">Start</b> ni bosing.
             </li>
             <li>
-              <span className="text-white">3.</span> Tayyor. Buyurtmalar shu chatga kela boshlaydi.
+              <span className="text-foreground">3.</span> Tayyor. Buyurtmalar shu chatga kela
+              boshlaydi.
             </li>
           </ol>
 
@@ -71,7 +73,9 @@ export function TelegramPage(): JSX.Element {
           {data.linkCode ? (
             <div className="rounded-xl border border-border bg-surface2 p-3">
               <p className="label">Ulash kodi</p>
-              <p className="mt-1 font-mono text-lg tracking-widest text-white">{data.linkCode}</p>
+              <p className="mt-1 font-mono text-lg tracking-widest text-foreground">
+                {data.linkCode}
+              </p>
               <p className="mt-1 text-xs text-dim">
                 Kod bir martalik. Botga <code>/start {data.linkCode}</code> deb ham yozish mumkin.
               </p>

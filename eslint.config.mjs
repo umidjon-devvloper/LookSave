@@ -31,6 +31,14 @@ export default tseslint.config(
   },
 
   {
+    // Yig'ish skriptlari — Node muhitida yuguradi, brauzerda emas
+    files: ['**/scripts/*.mjs', '**/*.config.mjs'],
+    languageOptions: {
+      globals: { console: 'readonly', process: 'readonly', URL: 'readonly' },
+    },
+  },
+
+  {
     files: ['**/*.ts', '**/*.tsx'],
     rules: {
       // 00-README §7: hech qayerda `any`

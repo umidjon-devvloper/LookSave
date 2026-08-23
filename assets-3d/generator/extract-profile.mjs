@@ -72,15 +72,34 @@ for (const level of LEVELS) {
   const slab = points.filter((point) => Math.abs(point.y - level) <= 0.025);
   if (slab.length < 6) continue;
 
-  const rx = Math.max(...slab.map((point) => Math.abs(point.x)));
+  const bboxRx = Math.max(...slab.map((point) => Math.abs(point.x)));
   const zMin = Math.min(...slab.map((point) => point.z));
   const zMax = Math.max(...slab.map((point) => point.z));
+  const bboxRz = (zMax - zMin) / 2;
+  const cz = (zMax + zMin) / 2;
+
+  /*
+   * ⚠️ CHEGARA QUTISI YETARLI EMAS. `rx` va `rz` ni shunchaki eng chetdagi
+   * nuqtadan olsak, ellips gavdaning BURCHAKLARINI ichiga olmaydi: kesim
+   * ellips emas, to'rtburchakka yaqin. Yon tomondan ham, orqadan ham
+   * ellips ichida qolgan nuqta diagonalda undan 10-15% chiqib turadi —
+   * kiyim aynan o'sha joydan tanaga botadi (validator: y=0.98 da -26 mm).
+   *
+   * Shuning uchun ellips barcha nuqtani qamragunicha kengaytiriladi.
+   * Koeffitsiyent ~1.10-1.15 — kiyim shishib ketmaydi, lekin teri
+   * hech qayerdan chiqmaydi.
+   */
+  let enclose = 1;
+  for (const point of slab) {
+    const distance = Math.hypot(point.x / bboxRx, (point.z - cz) / bboxRz);
+    if (distance > enclose) enclose = distance;
+  }
 
   keys.push([
     Number(level.toFixed(3)),
-    Number(rx.toFixed(4)),
-    Number(((zMax - zMin) / 2).toFixed(4)),
-    Number(((zMax + zMin) / 2).toFixed(4)),
+    Number((bboxRx * enclose).toFixed(4)),
+    Number((bboxRz * enclose).toFixed(4)),
+    Number(cz.toFixed(4)),
   ]);
 }
 

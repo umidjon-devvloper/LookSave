@@ -81,6 +81,12 @@ function AppShell(): JSX.Element {
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           {/* AI oqimi to'liq ekran — tab qatori ustidan ochiladi va uni yashiradi */}
           <Stack.Screen name="ai" options={{ headerShown: false }} />
+          {/*
+            Sotuvchi paneli o'z sarlavhalarini chizadi. Bu qator bo'lmasa
+            ildiz Stack ham sarlavha qo'yadi va ekranda IKKITA sarlavha
+            hamda ikkita orqaga tugmasi ko'rinadi.
+          */}
+          <Stack.Screen name="seller" options={{ headerShown: false }} />
           <Stack.Screen name="product/[id]" options={{ title: '' }} />
           <Stack.Screen name="store/[id]" options={{ title: '' }} />
           <Stack.Screen name="checkout" options={{ title: t.order.title }} />

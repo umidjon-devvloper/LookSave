@@ -58,14 +58,14 @@ export function ImageUploader({
           >
             <img src={url} alt="" className="h-full w-full object-cover" />
             {index === 0 ? (
-              <figcaption className="absolute inset-x-0 bottom-0 bg-black/70 py-0.5 text-center text-[10px] text-white">
+              <figcaption className="absolute inset-x-0 bottom-0 bg-black/70 py-0.5 text-center text-[10px] text-foreground">
                 asosiy
               </figcaption>
             ) : null}
             <button
               type="button"
               aria-label="Rasmni olib tashlash"
-              className="absolute right-1 top-1 rounded-full bg-black/70 px-1.5 text-xs text-white hover:bg-danger"
+              className="absolute right-1 top-1 rounded-full bg-black/70 px-1.5 text-xs text-foreground hover:bg-danger"
               onClick={() => onChange(images.filter((item) => item !== url))}
             >
               ×
@@ -76,7 +76,7 @@ export function ImageUploader({
         {images.length < max ? (
           <button
             type="button"
-            className="flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-borderStrong text-xs text-dim transition hover:border-primary hover:text-accent"
+            className="flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-borderStrong text-xs text-dim transition hover:border-primary hover:text-brand"
             disabled={busy}
             onClick={() => input.current?.click()}
           >

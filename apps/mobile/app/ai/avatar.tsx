@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { SaveFormat, manipulateAsync } from 'expo-image-manipulator';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -17,13 +19,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   getAllStoreMarkers,
+  getAvatar,
   getFullProfile,
   getNearbyStores,
+  requestAvatar,
   updateMeasurements,
   updateProfile,
   uploadAvatar,
   type Measurements,
+  type UserAvatar,
 } from '../../src/api/endpoints';
+import { AvatarBuilding } from '../../src/components/ai/AvatarBuilding';
 import { Icon, type IconName } from '../../src/components/Icon';
 import { distanceMeters } from '../../src/map/distance';
 import { Button, ErrorView, Field, Loading } from '../../src/components/ui';
@@ -385,7 +391,7 @@ export default function AvatarFlow(): JSX.Element {
           <DoneStep
             // Kiyintirish qadamlariga o'tamiz. `replace` — avatar yasash
             // tugagan, unga orqaga qaytishning ma'nosi yo'q
-            onStart={() => router.replace('/ai/dressing')}
+            onStart={() => router.replace('/ai/fitting')}
           />
         ) : null}
       </ScrollView>
@@ -541,8 +547,31 @@ function FaceStep({
       const photo = await camera.current?.takePictureAsync({ quality: 0.7 });
       if (!photo?.uri) throw new Error('takePictureAsync rasm qaytarmadi');
 
+      /*
+       * ⚠️ BURILISHNI PIKSELGA SINGDIRISH — SHARTLI EMAS, MAJBURIY.
+       *
+       * Kamera suratni sensor yo'nalishida saqlaydi va to'g'ri tomonni
+       * EXIF belgisida ko'rsatadi. Telefon uni to'g'ri ko'rsatadi, chunki
+       * belgini o'qiydi. Lekin R2 ga yuklanganda va AI provayderiga
+       * berilganda o'sha belgi hisobga OLINMAYDI — natijada yuz 90 gradus
+       * yonboshlab ketadi.
+       *
+       * Bu jim xato edi va aynan shuning uchun avatarda foydalanuvchining
+       * yuzi chiqmasdi: model yonboshlagan suratdan yuzni tanimaydi va
+       * o'rniga umumiy odam yasab qo'yadi.
+       *
+       * `manipulateAsync` hech qanday amal bermasa ham suratni qayta
+       * kodlaydi va burilishni PIKSELLARGA singdiradi — shundan keyin
+       * EXIF belgisi umuman kerak emas.
+       */
+      stage = 'burilishni to`g`rilash';
+      const upright = await manipulateAsync(photo.uri, [], {
+        compress: 0.85,
+        format: SaveFormat.JPEG,
+      });
+
       stage = 'yuklash';
-      const url = await uploadAvatar(photo.uri);
+      const url = await uploadAvatar(upright.uri);
 
       stage = 'profilni saqlash';
       /*
@@ -806,16 +835,130 @@ function StoreStep({
   );
 }
 
+/**
+ * Yakuniy qadam — avatar yasaladi.
+ *
+ * ⚠️ ISH SHU YERDA BOSHLANADI, yuz skanerida emas. Skaner faqat suratni
+ * saqlaydi; generatsiya esa kredit sarflaydi va u foydalanuvchi barcha
+ * qadamlarni tugatganidan keyingina boshlanishi kerak. Aks holda oqimni
+ * yarmida tashlab ketgan odam uchun ham to'lardik.
+ *
+ * ⚠️ TAYYOR AVATAR QAYTA YASALMAYDI: server manba hashini solishtiradi.
+ * Shuning uchun bu ekranga qayta kirish xavfsiz.
+ */
 function DoneStep({ onStart }: { onStart: () => void }): JSX.Element {
   const storeName = useAiFlowStore((state) => state.storeName);
   const occasion = useAiFlowStore((state) => state.occasion);
   const style = useAiFlowStore((state) => state.style);
 
+  const profile = useQuery({ queryKey: ['profile'], queryFn: getFullProfile });
+  const queryClient = useQueryClient();
+
+  const startAvatar = useMutation({
+    mutationFn: requestAvatar,
+    // Ish boshlangach holatni darhol so'raymiz — 3 soniya kutilmasin
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['avatar'] }),
+  });
+
+  /*
+   * Holat kuzatuvi.
+   *
+   * `refetchInterval` faqat tugamagan ishda ishlaydi — tayyor bo'lgach
+   * o'zi to'xtaydi va serverga keraksiz so'rov ketmaydi.
+   */
+  const avatar = useQuery({
+    queryKey: ['avatar'],
+    queryFn: getAvatar,
+    /*
+     * ⚠️ `none` HAM KUZATILADI. Ish endi boshlangan bo'lsa server hali
+     * `none` qaytarishi mumkin — u payt so'rovni to'xtatsak, holat
+     * `processing` ga o'tganini hech kim sezmay qolardi va ekran abadiy
+     * kutib turardi.
+     *
+     * `ready` va `failed` da esa to'xtaydi: ular yakuniy holat.
+     */
+    refetchInterval: (query) => {
+      const data = query.state.data as UserAvatar | undefined;
+      return data?.status === 'ready' || data?.status === 'failed' ? false : 3000;
+    },
+  });
+
+  /*
+   * Ekran ochilishi bilan yasash SO'RALADI.
+   *
+   * ⚠️ "TAYYOR" BO'LSA HAM SO'RALADI — bu ataylab. Ilgari bu yerda
+   * `status === 'ready'` bo'lsa so'rov umuman yuborilmasdi va shu sababli
+   * JIM XATO chiqqan edi: foydalanuvchi yuzini QAYTADAN skaner qildi,
+   * lekin ilova eski avatarni ko'rsatib turaverdi. Avatar yangi yuz bilan
+   * hech qachon qayta yasalmadi va odam "o'xshamadi" deb qoldi.
+   *
+   * Qaror serverda qabul qilinishi kerak, ilovada emas: server manba
+   * hashini (yuz surati + o'lchovlardan tuzilgan tavsif) solishtiradi.
+   * Manba o'zgarmagan bo'lsa mavjud avatar qaytadi va KREDIT SARFLANMAYDI;
+   * o'zgargan bo'lsa yangisi yasaladi. Ilova buni bilishi mumkin emas —
+   * u hashni hisoblamaydi.
+   *
+   * ⚠️ REF BILAN QULFLANADI: mutatsiya obyekti har chizishda yangilanadi,
+   * uni bog'liqliklarga qo'ysak effekt qayta ishlab ikkinchi so'rov ketardi.
+   */
+  const requested = useRef(false);
+
+  useEffect(() => {
+    if (requested.current) return;
+    if (avatar.isLoading) return;
+
+    // Ish allaqachon ketayotgan bo'lsa ikkinchisini boshlamaymiz
+    if (avatar.data?.status === 'processing') return;
+
+    requested.current = true;
+    startAvatar.mutate();
+  }, [avatar.isLoading, avatar.data?.status, startAvatar]);
+
+  /*
+   * ⚠️ HOLAT MANBAI — SO'ROV, MUTATSIYA EMAS.
+   *
+   * `startAvatar.data` — bu `POST /tryon/avatar` ning javobi va u har doim
+   * `processing` bo'ladi. Mutatsiya natijasi MUZLAB QOLADI: u qayta
+   * so'ralmaydi va o'zgarmaydi.
+   *
+   * Ilgari u birinchi o'rinda turardi va so'rovdan kelayotgan `ready`
+   * holatini to'sib qo'yardi. Natijada avatar bazada tayyor bo'lsa ham
+   * ekranda "deyarli tayyor" bo'lib abadiy qotib turardi — foydalanuvchi
+   * esa buni nosozlik deb o'ylab qayta-qayta urinardi va HAR URINISH
+   * KREDIT YERDI.
+   *
+   * `avatar` so'rovi esa har 3 soniyada yangilanadi va haqiqiy holatni
+   * biladi. Shuning uchun u birinchi.
+   */
+  const status = avatar.data?.status ?? startAvatar.data?.status ?? 'none';
+
+  if (status === 'processing' || status === 'none') {
+    return <AvatarBuilding faceUrl={profile.data?.faceTextureUrl ?? null} />;
+  }
+
+  if (status === 'failed') {
+    const message = avatar.data?.error ?? startAvatar.data?.error;
+    return (
+      <View style={styles.card}>
+        <View style={styles.doneIcon}>
+          <Icon name="close" size={32} color={colors.danger} />
+        </View>
+        <Text style={styles.cardTitle}>Avatar yasalmadi</Text>
+        <Text style={styles.cardHint}>{message ?? 'Boshqa yuz surati bilan urinib ko`ring'}</Text>
+        <Button title="Qaytadan urinish" onPress={() => startAvatar.mutate()} />
+        <RealPhotoLink />
+      </View>
+    );
+  }
+
+  const imageUrl = avatar.data?.imageUrl ?? startAvatar.data?.imageUrl ?? null;
+
   return (
     <View style={styles.card}>
-      <View style={styles.doneIcon}>
-        <Icon name="authentic" size={36} color={colors.success} />
-      </View>
+      {imageUrl ? (
+        <Image source={{ uri: imageUrl }} style={styles.avatarPreview} resizeMode="cover" />
+      ) : null}
+
       <Text style={styles.cardTitle}>Avataringiz tayyor</Text>
       <Text style={styles.cardHint}>
         {storeName ? `${storeName} · ` : ''}
@@ -826,12 +969,55 @@ function DoneStep({ onStart }: { onStart: () => void }): JSX.Element {
         ko‘rsatiladi.
       </Text>
       <Button title="Kiyintirishni boshlash" onPress={onStart} />
+      <RealPhotoLink />
     </View>
+  );
+}
+
+/**
+ * O'z haqiqiy suratiga o'tish yo'li.
+ *
+ * ⚠️ NEGA KERAK: yasalgan avatar — o'lchovlarga YAQINLASHTIRILGAN sintetik
+ * tasvir. U yoqmasligi mumkin: yuz to'liq o'xshamasligi yoki gavda
+ * boshqacha chiqishi mumkin. Bunday holatda foydalanuvchida chiqish yo'li
+ * bo'lishi shart, aks holda u oqimda qamalib qoladi va ilovadan chiqib
+ * ketadi.
+ *
+ * To'liq bo'yli surat esa haqiqiy natija beradi — u sintetik emas.
+ * Shuning uchun bu yo'l yashirilmaydi, faqat ikkinchi o'rinda turadi.
+ */
+function RealPhotoLink(): JSX.Element {
+  const router = useRouter();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => router.push('/ai/photo')}
+      hitSlop={8}
+      style={styles.realPhoto}
+    >
+      <Text style={styles.realPhotoText}>Yoki o`z to`liq bo`yli suratimni yuklayman</Text>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+
+  /*
+   * Yasalgan avatar ko'rinishi — tik to'rtburchak, chunki `model-create`
+   * 3:4 nisbatda qaytaradi va `cover` bilan kesilmasin.
+   */
+  realPhoto: { alignSelf: 'center', paddingVertical: spacing.sm },
+  realPhotoText: { ...text.small, color: colors.accent, textAlign: 'center' },
+
+  avatarPreview: {
+    width: '100%',
+    aspectRatio: 3 / 4,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface2,
+    marginBottom: spacing.md,
+  },
 
   header: {
     flexDirection: 'row',

@@ -5,7 +5,8 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getNearbyStores, getStoresMap, type NearbyStore } from '../src/api/endpoints';
 import { StoreMap } from '../src/components/StoreMap';
-import { Empty, ErrorView, Loading, Screen } from '../src/components/ui';
+import { Empty, ErrorView, Screen } from '../src/components/ui';
+import { SkeletonList } from '../src/components/Skeleton';
 import { initialRegion, regionToBounds, type Bounds } from '../src/map/region';
 import { useI18n } from '../src/i18n';
 import { useLocationStore } from '../src/store/locationStore';
@@ -116,10 +117,10 @@ export default function Stores(): JSX.Element {
     );
   }
 
-  if (stores.isLoading) return <Loading label={t.stores.searching} />;
+  if (stores.isLoading) return <SkeletonList count={5} />;
 
   if (stores.isError) {
-    return <ErrorView message={t.errors.generic} onRetry={() => void stores.refetch()} />;
+    return <ErrorView error={stores.error} onRetry={() => void stores.refetch()} />;
   }
 
   return (

@@ -12,6 +12,8 @@ import {
 import { ReasonModal } from '../components/ReasonModal';
 import { EmptyState, ErrorState, Spinner } from '../components/Spinner';
 import { phone as formatPhone } from '../lib/format';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const TABS: Array<{ value: StoreStatus; label: string }> = [
   { value: 'pending', label: 'Kutilmoqda' },
@@ -56,32 +58,32 @@ function StoreCard({
             <div className="h-11 w-11 rounded-xl border border-dashed border-borderStrong" />
           )}
           <div>
-            <h2 className="font-semibold text-white">{store.name}</h2>
+            <h2 className="font-semibold text-foreground">{store.name}</h2>
             <p className="text-xs text-dim">
               {store.city}, {store.country} ·{' '}
               {new Date(store.createdAt).toLocaleDateString('uz-UZ')}
             </p>
           </div>
         </div>
-        <span className="text-xs text-muted">{store.status}</span>
+        <span className="text-xs text-muted-foreground">{store.status}</span>
       </div>
 
       <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
         <div>
           <dt className="label">Egasi</dt>
-          <dd className="mt-1 text-white">{store.owner.name ?? '—'}</dd>
+          <dd className="mt-1 text-foreground">{store.owner.name ?? '—'}</dd>
           <dd>
-            <a href={`tel:${store.owner.phone}`} className="text-accent hover:underline">
+            <a href={`tel:${store.owner.phone}`} className="text-brand hover:underline">
               {formatPhone(store.owner.phone)}
             </a>
           </dd>
         </div>
         <div>
           <dt className="label">Manzil</dt>
-          <dd className="mt-1 text-white">{store.address}</dd>
+          <dd className="mt-1 text-foreground">{store.address}</dd>
           <dd>
             <a
-              className="text-accent hover:underline"
+              className="text-brand hover:underline"
               href={`https://maps.google.com/?q=${store.location.lat},${store.location.lng}`}
               target="_blank"
               rel="noreferrer"
@@ -93,13 +95,13 @@ function StoreCard({
       </dl>
 
       <div className="mt-4 flex flex-wrap gap-4 border-t border-border pt-3 text-xs">
-        <span className="text-muted">
+        <span className="text-muted-foreground">
           {store.productCount} mahsulot · {store.orderCount} buyurtma
         </span>
         <span className={responseTone(store.avgResponseMin)}>
           javob: {store.avgResponseMin === null ? '—' : `${store.avgResponseMin} daq`}
         </span>
-        <span className="text-muted">
+        <span className="text-muted-foreground">
           tasdiq: {store.confirmRate === null ? '—' : `${Math.round(store.confirmRate * 100)}%`}
         </span>
       </div>
@@ -112,19 +114,19 @@ function StoreCard({
 
       <div className="mt-4 flex flex-wrap justify-end gap-2">
         {store.status === 'pending' ? (
-          <button type="button" className="btn-danger" disabled={busy} onClick={onReject}>
+          <Button variant="destructive" type="button" disabled={busy} onClick={onReject}>
             Rad etish
-          </button>
+          </Button>
         ) : null}
         {store.status === 'active' ? (
-          <button type="button" className="btn-ghost" disabled={busy} onClick={onSuspend}>
+          <Button variant="outline" type="button" disabled={busy} onClick={onSuspend}>
             To'xtatish
-          </button>
+          </Button>
         ) : null}
         {store.status !== 'active' ? (
-          <button type="button" className="btn-primary" disabled={busy} onClick={onApprove}>
+          <Button type="button" disabled={busy} onClick={onApprove}>
             {store.status === 'pending' ? 'Tasdiqlash' : 'Qayta faollashtirish'}
-          </button>
+          </Button>
         ) : null}
       </div>
     </article>
@@ -151,27 +153,26 @@ export function StoresPage(): JSX.Element {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-semibold text-white">Do'konlar</h1>
+        <h1 className="text-xl font-semibold text-foreground">Do'konlar</h1>
         <p className="mt-1 text-sm text-dim">
           Tasdiqlashdan oldin tekshiring: manzil xaritada haqiqiymi, telefon ishlaydimi, nom va logo
           mos keladimi.
         </p>
       </div>
 
-      <div className="flex gap-1 overflow-x-auto rounded-xl border border-border bg-surface p-1">
-        {TABS.map((item) => (
-          <button
-            key={item.value}
-            type="button"
-            onClick={() => setTab(item.value)}
-            className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition ${
-              tab === item.value ? 'bg-primary text-white' : 'text-muted hover:text-white'
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      <Tabs value={tab} onValueChange={(value) => setTab(value as StoreStatus)}>
+        <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto border border-border bg-surface p-1">
+          {TABS.map((item) => (
+            <TabsTrigger
+              key={item.value}
+              value={item.value}
+              className="whitespace-nowrap rounded-lg px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              {item.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {act.isError ? (
         <p className="text-sm text-danger">

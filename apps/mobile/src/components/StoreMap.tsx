@@ -1,5 +1,6 @@
+import Constants from 'expo-constants';
 import { useCallback, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
 import { colors, radius, spacing, text } from '../theme/tokens';
@@ -23,6 +24,33 @@ import {
  * ⚠️ Kalitsiz Android'da xarita KO'K/BO'SH ko'rinadi, xato bermaydi —
  * eng chalkashtiradigan holat. `app.config.ts` va RUNBOOK'ga qarang.
  */
+
+/**
+ * Provayder KALIT BORLIGIGA QARAB tanlanadi.
+ *
+ * ⚠️ NEGA MAJBURAN GOOGLE BO'LMAYDI: `app.config.ts` Google Maps kalitini
+ * faqat u mavjud bo'lganda `ios.config.googleMapsApiKey` ga yozadi. Kalit
+ * bo'lmasa SDK ilovaga umuman ulanmaydi va `AIRGoogleMap` yerli komponenti
+ * ro'yxatdan o'tmaydi. Shunda `provider={PROVIDER_GOOGLE}` berilsa ilova
+ * qulaydi:
+ *
+ *     Cannot read property 'bubblingEventTypes' of null
+ *
+ * Xato chalg'ituvchi — u xarita haqida hech narsa aytmaydi va React'ning
+ * ichki qatlamiga ishora qiladi.
+ *
+ * iOS'da yechim oddiy: standart provayder — Apple Maps, u kalitsiz
+ * ishlaydi. Android'da esa Google yagona variant, shuning uchun u yerda
+ * kalitsiz xarita bo'sh qoladi (lekin qulamaydi).
+ */
+function mapProvider(): typeof PROVIDER_GOOGLE | undefined {
+  if (Platform.OS === 'android') return PROVIDER_GOOGLE;
+
+  const key = Constants.expoConfig?.ios?.config?.googleMapsApiKey;
+  return typeof key === 'string' && key.length > 0 ? PROVIDER_GOOGLE : undefined;
+}
+
+const PROVIDER = mapProvider();
 
 /**
  * Qorong'i uslub — ilova fonidan (#0A0A0F) ajralib turmasligi uchun.
@@ -96,10 +124,17 @@ export function StoreMap({
     <View style={styles.container}>
       <MapView
         ref={mapRef}
-        provider={PROVIDER_GOOGLE}
+        provider={PROVIDER}
         style={StyleSheet.absoluteFill}
         initialRegion={region}
-        customMapStyle={DARK_STYLE}
+        /*
+         * `customMapStyle` faqat Google'da ishlaydi. Apple Maps uni
+         * e'tiborsiz qoldiradi, shuning uchun u yerda qorong'i ko'rinish
+         * `userInterfaceStyle` orqali beriladi — aks holda oq xarita
+         * qorong'i ilovada ko'zni qamashtiradi.
+         */
+        customMapStyle={PROVIDER === PROVIDER_GOOGLE ? DARK_STYLE : undefined}
+        userInterfaceStyle="dark"
         showsUserLocation
         showsMyLocationButton={false}
         // Places API yoqilmagani uchun POI'lar bosilmaydi ham

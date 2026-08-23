@@ -38,7 +38,7 @@ export function App(): JSX.Element {
     return (
       <main className="flex min-h-full items-center justify-center px-4 text-center">
         <div className="max-w-sm space-y-3">
-          <h1 className="text-lg font-semibold text-white">Bu panel administratorlar uchun</h1>
+          <h1 className="text-lg font-semibold text-foreground">Bu panel administratorlar uchun</h1>
           <p className="text-sm text-dim">
             Do'kon egalari uchun alohida kabinet bor: store.looksave.app
           </p>

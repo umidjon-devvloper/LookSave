@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 
 import { useAuth } from '../hooks/useAuth';
+import { Button } from '@/components/ui/button';
 
 const NAV = [
   { to: '/', label: 'Umumiy holat', end: true },
@@ -20,24 +21,25 @@ export function Shell(): JSX.Element {
   return (
     <div className="flex min-h-full flex-col lg:flex-row">
       <header className="flex items-center justify-between border-b border-border bg-surface px-4 py-3 lg:hidden">
-        <span className="text-xs font-semibold uppercase tracking-wordmark text-accent">
+        <span className="text-xs font-semibold uppercase tracking-wordmark text-brand">
           LookSave
         </span>
-        <button
+        <Button
+          variant="outline"
           type="button"
-          className="btn-ghost px-3 py-1.5"
+          className="px-3 py-1.5"
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((open) => !open)}
         >
           {menuOpen ? 'Yopish' : 'Menyu'}
-        </button>
+        </Button>
       </header>
 
       <aside
         className={`${menuOpen ? 'block' : 'hidden'} border-b border-border bg-surface lg:sticky lg:top-0 lg:block lg:h-screen lg:w-60 lg:shrink-0 lg:border-b-0 lg:border-r`}
       >
         <div className="hidden px-5 py-5 lg:block">
-          <span className="text-xs font-semibold uppercase tracking-wordmark text-accent">
+          <span className="text-xs font-semibold uppercase tracking-wordmark text-brand">
             LookSave
           </span>
           <p className="mt-1 text-xs text-dim">Admin panel</p>
@@ -53,8 +55,8 @@ export function Shell(): JSX.Element {
               className={({ isActive }) =>
                 `rounded-xl px-3 py-2.5 text-sm font-medium transition ${
                   isActive
-                    ? 'bg-primary/15 text-accent'
-                    : 'text-muted hover:bg-surface2 hover:text-white'
+                    ? 'bg-primary/15 text-brand'
+                    : 'text-muted-foreground hover:bg-surface2 hover:text-foreground'
                 }`
               }
             >
@@ -64,10 +66,10 @@ export function Shell(): JSX.Element {
         </nav>
 
         <div className="space-y-3 border-t border-border p-4 lg:absolute lg:bottom-0 lg:w-60">
-          <p className="truncate text-sm text-white">{user?.fullName ?? user?.phone}</p>
-          <button type="button" className="btn-ghost w-full" onClick={() => void signOut()}>
+          <p className="truncate text-sm text-foreground">{user?.fullName ?? user?.phone}</p>
+          <Button variant="outline" type="button" className="w-full" onClick={() => void signOut()}>
             Chiqish
-          </button>
+          </Button>
         </div>
       </aside>
 

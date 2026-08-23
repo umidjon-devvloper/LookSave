@@ -14,6 +14,9 @@ import {
 import { Spinner } from '../components/Spinner';
 import { ImageUploader } from '../components/products/ImageUploader';
 import { VariantEditor, emptyVariant } from '../components/products/VariantEditor';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 /** Faqat `slot` bor kategoriyalarga mahsulot qo'shish mumkin — 3D avatar uchun kerak. */
 function flatten(categories: Category[], depth = 0): Array<{ id: string; label: string }> {
@@ -97,7 +100,7 @@ export function NewProductPage(): JSX.Element {
   return (
     <form className="max-w-3xl space-y-6" onSubmit={(event) => submit(event, 'pending')}>
       <div>
-        <h1 className="text-xl font-semibold text-white">Yangi mahsulot</h1>
+        <h1 className="text-xl font-semibold text-foreground">Yangi mahsulot</h1>
         <p className="mt-1 text-sm text-dim">
           Qoralama sifatida saqlab, keyinroq to'ldirishingiz mumkin. Tekshiruvga yuborilganda
           administrator ko'rib chiqadi va katalogda paydo bo'ladi.
@@ -107,8 +110,8 @@ export function NewProductPage(): JSX.Element {
       <section className="card space-y-4 p-5">
         <label className="block">
           <span className="label">Nomi</span>
-          <input
-            className="field mt-2"
+          <Input
+            className="mt-2"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             placeholder="Nike Air Max 90"
@@ -120,8 +123,8 @@ export function NewProductPage(): JSX.Element {
 
         <label className="block">
           <span className="label">Tavsif</span>
-          <textarea
-            className="field mt-2 min-h-24"
+          <Textarea
+            className="mt-2 min-h-24"
             value={description}
             maxLength={2000}
             onChange={(event) => setDescription(event.target.value)}
@@ -178,8 +181,8 @@ export function NewProductPage(): JSX.Element {
 
           <label className="block">
             <span className="label">Teglar</span>
-            <input
-              className="field mt-2"
+            <Input
+              className="mt-2"
               value={tags}
               onChange={(event) => setTags(event.target.value)}
               placeholder="yozgi, sport, yangi"
@@ -188,8 +191,8 @@ export function NewProductPage(): JSX.Element {
 
           <label className="block">
             <span className="label">Narx</span>
-            <input
-              className="field mt-2 tabular-nums"
+            <Input
+              className="mt-2 tabular-nums"
               inputMode="decimal"
               value={basePrice}
               onChange={(event) => setBasePrice(event.target.value)}
@@ -200,8 +203,8 @@ export function NewProductPage(): JSX.Element {
 
           <label className="block">
             <span className="label">Eski narx (chegirma uchun)</span>
-            <input
-              className="field mt-2 tabular-nums"
+            <Input
+              className="mt-2 tabular-nums"
               inputMode="decimal"
               value={oldPrice}
               onChange={(event) => setOldPrice(event.target.value)}
@@ -222,13 +225,13 @@ export function NewProductPage(): JSX.Element {
       </section>
 
       <section className="card space-y-3 p-5">
-        <h2 className="text-sm font-semibold text-white">Rasmlar</h2>
+        <h2 className="text-sm font-semibold text-foreground">Rasmlar</h2>
         <ImageUploader images={images} onChange={setImages} />
       </section>
 
       <section className="card space-y-4 p-5">
         <div>
-          <h2 className="text-sm font-semibold text-white">Ranglar va o'lchamlar</h2>
+          <h2 className="text-sm font-semibold text-foreground">Ranglar va o'lchamlar</h2>
           <p className="mt-1 text-xs text-dim">
             Har rang alohida variant. Ombor miqdori xaridor buyurtma berganda kamayadi.
           </p>
@@ -245,7 +248,7 @@ export function NewProductPage(): JSX.Element {
             onChange={(event) => setRequest3d(event.target.checked)}
           />
           <span>
-            <span className="font-medium text-white">3D model so'rash</span>
+            <span className="font-medium text-foreground">3D model so'rash</span>
             <span className="mt-0.5 block text-xs text-dim">
               Mahsulot navbatga qo'yiladi. 3D bilan mahsulotlar ilovada kiyib ko'rish mumkin bo'ladi
               va ko'proq buyurtma oladi.
@@ -261,17 +264,18 @@ export function NewProductPage(): JSX.Element {
       ) : null}
 
       <div className="flex flex-wrap gap-3">
-        <button
+        <Button
+          variant="outline"
           type="button"
-          className="btn-ghost"
+
           disabled={save.isPending}
           onClick={(event) => submit(event, 'draft')}
         >
           Qoralama sifatida saqlash
-        </button>
-        <button type="submit" className="btn-primary" disabled={save.isPending || !canPublish}>
+        </Button>
+        <Button type="submit" disabled={save.isPending || !canPublish}>
           {save.isPending ? 'Saqlanmoqda…' : 'Tekshiruvga yuborish'}
-        </button>
+        </Button>
         {!canPublish ? (
           <p className="w-full text-xs text-dim">
             Tekshiruvga yuborish uchun kamida 3 ta rasm kerak.

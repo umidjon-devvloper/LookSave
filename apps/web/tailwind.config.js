@@ -1,0 +1,19 @@
+import preset from '@looksave/design-system/tailwind-preset';
+
+/** @type {import('tailwindcss').Config} */
+/*
+ * Ranglar, radiuslar, animatsiyalar — hammasi presetda
+ * (`packages/design-system/tailwind-preset.js`). Bu yerda faqat marketing
+ * saytiga xos farqlar qoladi.
+ *
+ * ⚠️ PANEL VARIANTIDAN FARQI: bu marketing sayti, ma'lumot paneli emas.
+ * Shuning uchun asos shrift 16px (panelda 14px) va `shadow-glow` ishlatiladi —
+ * deckdagi "nurlanuvchi binafsha" hissi aynan shundan keladi.
+ *
+ * ⚠️ `npx shadcn add` bu faylga keyframes/animation qo'shib yuboradi —
+ * ular presetda allaqachon bor, takrorini o'chirib tashlang.
+ */
+export default {
+  presets: [preset],
+  content: ['./index.html', './src/**/*.{ts,tsx}'],
+};

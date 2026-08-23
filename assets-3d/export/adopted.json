@@ -1,10 +1,12 @@
 {
   "male": {
-    "source": "Base Mesh Pro_LP.fbx",
-    "triangles": 53124
+    "source": "avatar_bodies.blend (M__)",
+    "triangles": 13540,
+    "note": "Blender'da yasalgan: 15 mesh, 52 suyak, 8 socket, mt_*/fm_* shape key. blender_scripts/export_bodies.py bilan eksport qilinadi."
   },
   "female": {
-    "source": "NewChar.fbx",
-    "triangles": 5666
+    "source": "avatar_bodies.blend (F__)",
+    "triangles": 13540,
+    "note": "Blender'da yasalgan: 15 mesh, 52 suyak, 8 socket, mt_*/fm_* shape key. blender_scripts/export_bodies.py bilan eksport qilinadi."
   }
 }

@@ -1,5 +1,7 @@
 import type { VariantInput } from '../../api/products';
 import { ImageUploader } from './ImageUploader';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface Props {
   variants: VariantInput[];
@@ -59,8 +61,8 @@ export function VariantEditor({ variants, onChange }: Props): JSX.Element {
 
               <label className="block flex-1">
                 <span className="label">Rang nomi</span>
-                <input
-                  className="field mt-2"
+                <Input
+                  className="mt-2"
                   placeholder="Qora"
                   value={variant.colorName?.['uz'] ?? ''}
                   onChange={(event) => update(index, { colorName: { uz: event.target.value } })}
@@ -69,8 +71,8 @@ export function VariantEditor({ variants, onChange }: Props): JSX.Element {
 
               <label className="block w-40">
                 <span className="label">Narx farqi</span>
-                <input
-                  className="field mt-2 tabular-nums"
+                <Input
+                  className="mt-2 tabular-nums"
                   inputMode="decimal"
                   value={variant.priceDelta}
                   onChange={(event) => update(index, { priceDelta: event.target.value })}
@@ -79,13 +81,15 @@ export function VariantEditor({ variants, onChange }: Props): JSX.Element {
             </div>
 
             {variants.length > 1 ? (
-              <button
+              <Button
+                variant="link"
+                size="sm"
                 type="button"
-                className="text-sm text-dim hover:text-danger"
+                className="h-auto p-0 text-sm text-dim hover:text-danger"
                 onClick={() => onChange(variants.filter((_, i) => i !== index))}
               >
                 O'chirish
-              </button>
+              </Button>
             ) : null}
           </div>
 
@@ -98,18 +102,20 @@ export function VariantEditor({ variants, onChange }: Props): JSX.Element {
                 .map((size) => {
                   const selected = variant.sizes.find((item) => item.size === size);
                   return (
-                    <button
+                    <Button
+                      variant="link"
+                      size="sm"
                       key={size}
                       type="button"
                       onClick={() => toggleSize(index, size)}
                       className={`rounded-lg border px-3 py-1.5 text-sm transition ${
                         selected
-                          ? 'border-primary bg-primary/15 text-white'
+                          ? 'border-primary bg-primary/15 text-foreground'
                           : 'border-border bg-surface text-dim hover:border-borderStrong'
                       }`}
                     >
                       {size}
-                    </button>
+                    </Button>
                   );
                 })}
             </div>
@@ -118,12 +124,12 @@ export function VariantEditor({ variants, onChange }: Props): JSX.Element {
               <div className="mt-3 grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
                 {variant.sizes.map((item) => (
                   <label key={item.size} className="flex items-center gap-2 text-sm">
-                    <span className="w-10 text-muted">{item.size}</span>
-                    <input
+                    <span className="w-10 text-muted-foreground">{item.size}</span>
+                    <Input
                       type="number"
                       min={0}
                       max={9999}
-                      className="field py-2 tabular-nums"
+                      className="py-2 tabular-nums"
                       value={item.stock}
                       onChange={(event) =>
                         setStock(index, item.size, Math.max(0, Number(event.target.value)))
@@ -148,13 +154,14 @@ export function VariantEditor({ variants, onChange }: Props): JSX.Element {
         </div>
       ))}
 
-      <button
+      <Button
+        variant="outline"
         type="button"
-        className="btn-ghost w-full"
+        className="w-full"
         onClick={() => onChange([...variants, emptyVariant()])}
       >
         + Yana rang qo'shish
-      </button>
+      </Button>
     </div>
   );
 }

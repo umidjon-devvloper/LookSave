@@ -41,6 +41,19 @@ const REQUIRED_BODY_PARTS = [
   'body_foot_R',
 ];
 
+/*
+ * Kiyim yashira oladigan qismlar.
+ *
+ * ⚠️ `REQUIRED_BODY_PARTS` DAN ALOHIDA. U — skeletga bog'langan 15 ta gavda
+ * mesh'i va uning UZUNLIGI mesh sonini tekshirishda ishlatiladi; ichki kiyim
+ * esa 16-mesh emas, u ixtiyoriy. Ikkisini bitta ro'yxatga qo'shsak, ayol
+ * tanasi (14 mesh) yolg'ondan yiqiladi.
+ *
+ * Ilovadagi `applyHiddenParts` shu ikkalasini `^(body_|underwear_)` qolipi
+ * bilan qamrab oladi.
+ */
+const HIDEABLE_PARTS = [...REQUIRED_BODY_PARTS, 'underwear_briefs'];
+
 const REQUIRED_SOCKETS = [
   'socket_head',
   'socket_face',
@@ -188,7 +201,7 @@ for (const garment of manifest.garments) {
 // ── Kiyim yashiradigan qismlar haqiqatan mavjudmi ──
 for (const garment of manifest.garments) {
   for (const part of garment.hideBodyParts) {
-    if (!REQUIRED_BODY_PARTS.includes(part)) {
+    if (!HIDEABLE_PARTS.includes(part)) {
       fail(garment.file, `hideBodyParts da mavjud bo'lmagan qism: ${part}`);
     }
   }
@@ -304,7 +317,20 @@ for (const garment of manifest.garments) {
   let tightest = Infinity;
   let tightestY = 0;
 
+  /*
+   * ⚠️ CHET DARAJALARI TEKSHIRILMAYDI. Kiyim biror balandlikda TUGAYDI —
+   * etak, yoqa, yeng uchi. O'sha oxirgi qatlamga faqat kesim chetining
+   * ichkariga qaragan nuqtalari tushadi (etakda — chov atrofi, radius
+   * kichik), gavda esa o'sha balandlikda to'liq kengligida turadi.
+   * Ularni solishtirish "kiyim tanaga botgan" degan yolg'on ogohlantirish
+   * beradi: futbolka etagi y=0.99 da tugaydi, tekshiruv esa uni y=0.98
+   * dagi son kengligi bilan taqqoslardi.
+   */
+  const levels = [...garmentRadius.keys()].sort((a, b) => a - b);
+  const edges = new Set([levels[0], levels[levels.length - 1]]);
+
   for (const [level, radius] of garmentRadius) {
+    if (edges.has(level)) continue;
     const body = bodyRadius.get(level);
     if (body === undefined) continue;
 

@@ -4,6 +4,8 @@ import { redis } from '../db/redis';
 import { notifyStatusChange } from '../integrations/notify';
 import { sendMessage } from '../integrations/telegram';
 import { logger } from '../logger';
+import { sweepStaleAvatars } from '../tryon/avatar';
+import { sweepStaleRenders } from '../tryon/render';
 
 /**
  * Avtomatik jarayonlar (01-arxitektura §"Avtomatik jarayonlar", 02-database §10.7-10.9).
@@ -186,6 +188,46 @@ export async function anonymizeAccounts(): Promise<number> {
 }
 
 // ============================================================
+// 7) Do'kon arizalarini avtomatik tasdiqlash — har daqiqada
+// ============================================================
+
+/**
+ * `pending` do'konlar 5 daqiqadan keyin `active` bo'ladi.
+ *
+ * ⚠️ QO'LDA TEKSHIRUV YO'Q. Bu ATAYIN qabul qilingan qaror: sotuvchi
+ * ariza berib kutib o'tirmasin, darhol ishlay boshlasin. Kutish ko'p
+ * sotuvchini yo'qotadi — ular boshqa platformaga ketadi.
+ *
+ * ⚠️ NEGA DARHOL EMAS, 5 DAQIQA: bu oyna admin uchun qoldirilgan. Soxta
+ * yoki noto'g'ri ariza ko'rinsa, u shu vaqt ichida `reject` yoki
+ * `suspend` qila oladi va do'kon umuman ochilmaydi. Darhol tasdiqlansa
+ * bunday imkoniyat qolmasdi.
+ *
+ * ⚠️ TASDIQLANGANDAN KEYIN HAM NAZORAT BOR: admin istalgan vaqtda
+ * `suspend` qila oladi va do'kon katalogdan yo'qoladi. Ya'ni bu
+ * "tekshiruvsiz" emas, "keyin tekshirish" modeli.
+ *
+ * Mahsulot qo'shish uchun do'kon `active` bo'lishi shart
+ * (`products.ts` dagi `WHERE status = 'active'`), shuning uchun bu
+ * vazifa butun oqimni ochib beradi.
+ */
+export async function autoApproveStores(): Promise<number> {
+  const { rows } = await pool.query<{ id: string; name: string }>(
+    `UPDATE stores
+        SET status = 'active'
+      WHERE status = 'pending'
+        AND created_at < now() - interval '5 minutes'
+      RETURNING id, name`,
+  );
+
+  if (rows.length > 0) {
+    logger.info({ count: rows.length, stores: rows.map((r) => r.name) }, 'do`konlar tasdiqlandi');
+  }
+
+  return rows.length;
+}
+
+// ============================================================
 // 6) Oylik komissiya hisoboti (02-database §10.9)
 // ============================================================
 
@@ -223,6 +265,23 @@ async function run(name: string, task: () => Promise<unknown>): Promise<void> {
 
 async function tick(): Promise<void> {
   const { hour, day, dateKey, monthKey } = utcNow();
+
+  /*
+   * Tashlab ketilgan AI kiyintirishlar — har daqiqada.
+   *
+   * ⚠️ NEGA TEZ-TEZ: bu ish uchun PUL TO'LANGAN. Odatda natijani ilovaning
+   * o'zi so'rab oladi, lekin foydalanuvchi ekranni yopsa yoki internet
+   * uzilsa, ish "processing" bo'lib qolib ketadi — to'lov ketgan, natija
+   * esa hech qachon olinmagan. Bu esa uni qutqaradi.
+   *
+   * Qulf 50 soniya: keyingi tick yangisini oladi.
+   */
+  if (await acquire('tryon-sweep', 50)) {
+    await run('tryon-sweep', sweepStaleRenders);
+    await run('avatar-sweep', sweepStaleAvatars);
+    // Do'kon arizalari — 5 daqiqalik oynadan keyin
+    await run('store-approve', autoApproveStores);
+  }
 
   // Har 5 daqiqada. Qulf 4 daqiqa — keyingi tick'da yangisi olinadi.
   if (await acquire('expire', 240)) {

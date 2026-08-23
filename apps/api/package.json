@@ -15,6 +15,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1109.0",
     "@aws-sdk/s3-request-presigner": "^3.1109.0",
+    "@imgly/background-removal-node": "^1.4.5",
     "@looksave/shared-types": "*",
     "@looksave/validation": "*",
     "cors": "^2.8.5",

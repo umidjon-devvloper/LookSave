@@ -2,11 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    color-scheme: dark;
-  }
+/*
+ * Rang tokenlari (`--background`, `--primary`, ...) bu yerda emas —
+ * `packages/design-system/tailwind-preset.js` ularni `addBase` orqali quyadi.
+ * Panelning foni presetdagi `--panel` ga tailwind.config.js da bog'langan.
+ */
 
+@layer base {
   html,
   body,
   #root {
@@ -14,13 +16,12 @@
   }
 
   body {
-    @apply bg-panel text-white antialiased;
-    font-family: Inter, system-ui, sans-serif;
+    font-family: theme('fontFamily.sans');
   }
 
   /* Klaviatura bilan yurish ko'rinib tursin */
   :focus-visible {
-    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-panel;
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
 
   ::-webkit-scrollbar {
@@ -28,7 +29,7 @@
     height: 10px;
   }
   ::-webkit-scrollbar-track {
-    @apply bg-panel;
+    @apply bg-background;
   }
   ::-webkit-scrollbar-thumb {
     @apply rounded-full bg-borderStrong;
@@ -36,34 +37,33 @@
 }
 
 @layer components {
+  /* Panellarda takrorlanadigan mayda sarlavhacha — jadval ustunlari, form yorliqlari */
   .label {
     @apply text-[11px] font-semibold uppercase tracking-label text-dim;
   }
 
+  /*
+   * `.card` va `.field` — shadcn/ui ning `Card` va `Input` komponentlari
+   * QO'LLAYDIGAN AYNAN O'SHA utilitalar.
+   *
+   * Nega komponent emas, sinf: bular oddiy konteyner `div` va `select`
+   * elementlariga qo'yiladi, ya'ni komponent hech qanday xulq-atvor
+   * qo'shmaydi — faqat shu sinflarni yozadi. Tugma va matn maydonlari esa
+   * `<Button>` va `<Input>` ga o'tkazilgan, chunki ular fokus halqasi,
+   * variantlar va `asChild` kabi haqiqiy xulq beradi.
+   *
+   * ⚠️ Sinflar shadcn bilan BIR XIL bo'lib qolishi shart. Ular ajralib
+   * ketsa panel ikki xil ko'rinishga bo'linadi.
+   */
   .card {
-    @apply rounded-card border border-border bg-surface;
-  }
-
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm
-           font-semibold transition disabled:cursor-not-allowed disabled:opacity-50;
-  }
-
-  .btn-primary {
-    @apply btn bg-primary text-white hover:bg-primaryDim;
-  }
-
-  .btn-ghost {
-    @apply btn border border-borderStrong bg-transparent text-muted hover:bg-surface2 hover:text-white;
-  }
-
-  .btn-danger {
-    @apply btn border border-danger/40 bg-danger/10 text-danger hover:bg-danger/20;
+    @apply rounded-lg border bg-card text-card-foreground shadow-sm;
   }
 
   .field {
-    @apply w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-white
-           placeholder:text-dim focus:border-primary focus:outline-none;
+    @apply flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm
+           shadow-sm transition-colors placeholder:text-muted-foreground
+           focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring
+           disabled:cursor-not-allowed disabled:opacity-50;
   }
 }
 

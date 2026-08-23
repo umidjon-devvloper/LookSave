@@ -59,7 +59,7 @@ export function OrdersPage(): JSX.Element {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-white">Buyurtmalar</h1>
+        <h1 className="text-xl font-semibold text-foreground">Buyurtmalar</h1>
         {act.isError ? (
           <p className="text-sm text-danger">
             {act.error instanceof Error ? act.error.message : 'Amal bajarilmadi'}
@@ -74,7 +74,9 @@ export function OrdersPage(): JSX.Element {
             type="button"
             onClick={() => setTab(item.value)}
             className={`flex-1 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition ${
-              tab === item.value ? 'bg-primary text-white' : 'text-muted hover:text-white'
+              tab === item.value
+                ? 'bg-primary text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             {item.label}

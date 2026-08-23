@@ -39,6 +39,8 @@ Deckda bu yo'q edi, lekin eng kuchli tomon shu: **geolokatsiya + mahalliy do'kon
 | 08 | `08-deployment.md` | docker-compose, .env, VPS sozlash, backup, CI/CD | ✅ |
 | 09 | `09-integrations.md` | Telegram bot, SMS, Gemini, Google Maps, R2 | ✅ |
 | 10 | `10-roadmap.md` | Fazalar, sprintlar, milestone'lar, risklar | ✅ |
+| 11 | `11-deck-audit.md` | Deck ↔ kod solishtiruvi, nomuvofiqliklar | ✅ |
+| 12 | `12-tz.md` | Kamchiliklar reyestri (D-01…D-35), ish paketlari (IP-00…IP-10) | ✅ |
 | 11 | `11-shartnoma.md` | Mijoz uchun ko'lam, narx, istisnolar | ⏳ |
 
 ---

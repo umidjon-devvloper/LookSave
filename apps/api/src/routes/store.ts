@@ -17,12 +17,14 @@ import {
   variantInputSchema,
 } from '@looksave/validation';
 import { Router } from 'express';
+import { z } from 'zod';
 import type { Request, Response } from 'express';
 
 import { decodeCursor, paginate } from '../catalog/cursor';
 import { env } from '../config/env';
 import { openStoreStream } from '../integrations/events';
 import { getAnalytics, getInvoices, type Period } from '../store/analytics';
+import { prepareGarmentImage } from '../store/garment-image';
 import { getStoreProfile, updateStoreProfile } from '../store/profile';
 import {
   addMember,
@@ -432,5 +434,25 @@ storePanelRouter.post(
   route({ body: presignSchema }, async (input, req, res) => {
     storeOf(req, res);
     sendData(res, await presignUpload(input.body));
+  }),
+);
+
+/**
+ * POST /v1/store/uploads/prepare — kiyim suratini kiyintirish uchun tayyorlash.
+ *
+ * ⚠️ NEGA ALOHIDA QADAM: surat R2 ga TO'G'RIDAN-TO'G'RI yuklanadi va server
+ * uning baytlarini ko'rmaydi. Ishlov berish uchun uni qaytarib olish kerak,
+ * shuning uchun bu yuklashdan keyingi alohida chaqiruv.
+ *
+ * ⚠️ CHEGARA QAT'IY: fon olib tashlash protsessorni band qiladi (bir necha
+ * soniya). Chegarasiz bir do'kon ko'p rasm yuborib butun API'ni sekinlashtira
+ * olardi.
+ */
+storePanelRouter.post(
+  '/store/uploads/prepare',
+  rateLimit({ windowSec: 60, max: 15, prefix: 'store:prepare' }),
+  route({ body: z.object({ url: z.string().url().max(500) }) }, async (input, req, res) => {
+    storeOf(req, res);
+    sendData(res, await prepareGarmentImage(input.body.url));
   }),
 );

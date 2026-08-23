@@ -10,6 +10,8 @@ import {
 import { ReasonModal } from '../components/ReasonModal';
 import { EmptyState, ErrorState, Spinner } from '../components/Spinner';
 import { money } from '../lib/format';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const TABS = [
   { value: 'pending', label: 'Moderatsiyada' },
@@ -40,27 +42,26 @@ export function ProductsPage(): JSX.Element {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-semibold text-white">Mahsulotlar</h1>
+        <h1 className="text-xl font-semibold text-foreground">Mahsulotlar</h1>
         <p className="mt-1 text-sm text-dim">
           Rasmlar haqiqiy mahsulotnikimi, nom va narx mos keladimi, o'lchamlar to'g'rimi — shuni
           tekshiring.
         </p>
       </div>
 
-      <div className="flex gap-1 overflow-x-auto rounded-xl border border-border bg-surface p-1">
-        {TABS.map((item) => (
-          <button
-            key={item.value}
-            type="button"
-            onClick={() => setTab(item.value)}
-            className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition ${
-              tab === item.value ? 'bg-primary text-white' : 'text-muted hover:text-white'
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)}>
+        <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto border border-border bg-surface p-1">
+          {TABS.map((item) => (
+            <TabsTrigger
+              key={item.value}
+              value={item.value}
+              className="whitespace-nowrap rounded-lg px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              {item.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {products.isLoading ? <Spinner /> : null}
       {products.isError ? (
@@ -78,13 +79,13 @@ export function ProductsPage(): JSX.Element {
           <article key={product.id} className="card p-4 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="font-semibold text-white">{product.title}</h2>
+                <h2 className="font-semibold text-foreground">{product.title}</h2>
                 <p className="text-xs text-dim">
                   {product.store.name} · {product.categorySlug}
                   {product.brandName ? ` · ${product.brandName}` : ''}
                 </p>
               </div>
-              <p className="text-base font-bold tabular-nums text-white">
+              <p className="text-base font-bold tabular-nums text-foreground">
                 {money(product.price, product.currency)}
               </p>
             </div>
@@ -105,10 +106,12 @@ export function ProductsPage(): JSX.Element {
             )}
 
             {product.description ? (
-              <p className="mt-3 line-clamp-3 text-sm text-muted">{product.description}</p>
+              <p className="mt-3 line-clamp-3 text-sm text-muted-foreground">
+                {product.description}
+              </p>
             ) : null}
 
-            <div className="mt-3 flex flex-wrap gap-4 border-t border-border pt-3 text-xs text-muted">
+            <div className="mt-3 flex flex-wrap gap-4 border-t border-border pt-3 text-xs text-muted-foreground">
               <span>{product.variantCount} rang</span>
               <span>{product.totalStock} dona ombor</span>
               <span>{product.gender}</span>
@@ -117,24 +120,25 @@ export function ProductsPage(): JSX.Element {
 
             <div className="mt-4 flex flex-wrap justify-end gap-2">
               {product.status !== 'rejected' ? (
-                <button
+                <Button
+                  variant="destructive"
                   type="button"
-                  className="btn-danger"
+
                   disabled={act.isPending}
                   onClick={() => setRejecting(product)}
                 >
                   Rad etish
-                </button>
+                </Button>
               ) : null}
               {product.status !== 'active' ? (
-                <button
+                <Button
                   type="button"
-                  className="btn-primary"
+
                   disabled={act.isPending || product.images.length === 0}
                   onClick={() => act.mutate(() => approveProduct(product.id))}
                 >
                   Nashr qilish
-                </button>
+                </Button>
               ) : null}
             </div>
           </article>

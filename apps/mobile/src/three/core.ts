@@ -111,31 +111,41 @@ export class FpsMonitor {
   }
 }
 
+/** Slot holati uchun buyumdan talab qilinadigan yagona narsa. */
+export interface Wearable {
+  hideBodyParts: string[];
+}
+
 /**
  * Slot holati. Bir slotda bitta mahsulot — 3D avatarda ikkita
  * ko'ylakni bir vaqtda kiyib bo'lmaydi.
+ *
+ * Buyum tipi parametrlangan: serverdan kelgan `TryonItem` ham, ilova
+ * ichiga joylashtirilgan namoyish modeli ham bir xil mantiqdan
+ * foydalanadi. Standart qiymat `TryonItem` — mavjud chaqiruvlar
+ * o'zgarishsiz ishlaydi.
  */
-export class SlotState {
-  private readonly equipped = new Map<Slot, TryonItem>();
+export class SlotState<T extends Wearable = TryonItem> {
+  private readonly equipped = new Map<Slot, T>();
 
-  get(slot: Slot): TryonItem | null {
+  get(slot: Slot): T | null {
     return this.equipped.get(slot) ?? null;
   }
 
   /** Almashtirilgan eski mahsulot qaytadi — uni tozalash kerak. */
-  equip(slot: Slot, item: TryonItem): TryonItem | null {
+  equip(slot: Slot, item: T): T | null {
     const previous = this.equipped.get(slot) ?? null;
     this.equipped.set(slot, item);
     return previous;
   }
 
-  unequip(slot: Slot): TryonItem | null {
+  unequip(slot: Slot): T | null {
     const previous = this.equipped.get(slot) ?? null;
     this.equipped.delete(slot);
     return previous;
   }
 
-  list(): Array<{ slot: Slot; item: TryonItem }> {
+  list(): Array<{ slot: Slot; item: T }> {
     return [...this.equipped.entries()].map(([slot, item]) => ({ slot, item }));
   }
 
@@ -151,7 +161,7 @@ export class SlotState {
     return [...parts];
   }
 
-  clear(): TryonItem[] {
+  clear(): T[] {
     const items = [...this.equipped.values()];
     this.equipped.clear();
     return items;

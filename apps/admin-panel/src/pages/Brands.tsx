@@ -10,6 +10,10 @@ import {
   type BrandInput,
 } from '../api/admin';
 import { EmptyState, ErrorState, Spinner } from '../components/Spinner';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 
 const EMPTY: BrandInput = {
   name: '',
@@ -59,8 +63,7 @@ function BrandForm({
     >
       <label className="grid gap-1">
         <span className="label">Nomi</span>
-        <input
-          className="field"
+        <Input
           value={form.name}
           onChange={(event) => set('name', event.target.value)}
           placeholder="Nike"
@@ -72,8 +75,7 @@ function BrandForm({
 
       <label className="grid gap-1">
         <span className="label">Slug</span>
-        <input
-          className="field"
+        <Input
           value={form.slug ?? ''}
           onChange={(event) => set('slug', event.target.value)}
           placeholder="nomdan avtomatik yasaladi"
@@ -84,8 +86,7 @@ function BrandForm({
 
       <label className="grid gap-1 sm:col-span-2">
         <span className="label">Logotip havolasi</span>
-        <input
-          className="field"
+        <Input
           value={form.logoUrl ?? ''}
           onChange={(event) => set('logoUrl', event.target.value)}
           placeholder="https://…/nike.webp"
@@ -95,8 +96,8 @@ function BrandForm({
 
       <label className="grid gap-1 sm:col-span-2">
         <span className="label">Tavsif</span>
-        <textarea
-          className="field min-h-[64px]"
+        <Textarea
+          className="min-h-[64px]"
           value={form.description ?? ''}
           onChange={(event) => set('description', event.target.value)}
           maxLength={500}
@@ -105,8 +106,7 @@ function BrandForm({
 
       <label className="grid gap-1">
         <span className="label">Tartib raqami</span>
-        <input
-          className="field"
+        <Input
           type="number"
           min={0}
           max={9999}
@@ -121,21 +121,17 @@ function BrandForm({
           checked={form.isPartner}
           onChange={(event) => set('isPartner', event.target.checked)}
         />
-        <span className="text-sm text-white">Hamkor brend (shartnoma bor)</span>
+        <span className="text-sm text-foreground">Hamkor brend (shartnoma bor)</span>
       </label>
 
       <div className="flex gap-2 sm:col-span-2">
-        <button
-          className="btn-primary"
-          type="submit"
-          disabled={busy || form.name.trim().length < 2}
-        >
+        <Button type="submit" disabled={busy || form.name.trim().length < 2}>
           {busy ? 'Saqlanmoqda…' : submitLabel}
-        </button>
+        </Button>
         {onCancel ? (
-          <button className="btn-ghost" type="button" onClick={onCancel}>
+          <Button variant="outline" type="button" onClick={onCancel}>
             Bekor qilish
-          </button>
+          </Button>
         ) : null}
       </div>
     </form>
@@ -168,12 +164,15 @@ function BrandRow({
       )}
 
       <div className="min-w-[140px] flex-1">
-        <h2 className="font-semibold text-white">
+        <h2 className="font-semibold text-foreground">
           {brand.name}
           {brand.isPartner ? (
-            <span className="ml-2 rounded-full border border-accent px-2 py-0.5 text-[10px] uppercase tracking-wider text-accent">
+            <Badge
+              variant="outline"
+              className="ml-2 rounded-full border-brand px-2 py-0.5 text-[10px] uppercase tracking-wider text-brand"
+            >
               Hamkor
-            </span>
+            </Badge>
           ) : null}
         </h2>
         <p className="text-xs text-dim">
@@ -182,11 +181,12 @@ function BrandRow({
       </div>
 
       <div className="flex gap-2">
-        <button className="btn-ghost" type="button" onClick={onEdit} disabled={busy}>
+        <Button variant="outline" type="button" onClick={onEdit} disabled={busy}>
           Tahrirlash
-        </button>
-        <button
-          className="btn-ghost text-danger"
+        </Button>
+        <Button
+          variant="outline"
+          className="text-danger"
           type="button"
           onClick={onDelete}
           disabled={busy || brand.productCount > 0}
@@ -198,7 +198,7 @@ function BrandRow({
           }
         >
           O&apos;chirish
-        </button>
+        </Button>
       </div>
     </article>
   );
@@ -242,16 +242,16 @@ export function BrandsPage(): JSX.Element {
     <section className="grid gap-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Brendlar</h1>
+          <h1 className="text-xl font-semibold text-foreground">Brendlar</h1>
           <p className="text-sm text-dim">
             Ilovaning bosh sahifasidagi «TOP BRANDS» qatori shu ro&apos;yxatdan quriladi. Tartib
             raqami kichik bo&apos;lgani birinchi chiqadi.
           </p>
         </div>
         {!adding && !editing ? (
-          <button className="btn-primary" type="button" onClick={() => setAdding(true)}>
+          <Button type="button" onClick={() => setAdding(true)}>
             Brend qo&apos;shish
-          </button>
+          </Button>
         ) : null}
       </header>
 
@@ -263,7 +263,7 @@ export function BrandsPage(): JSX.Element {
 
       {adding ? (
         <div className="card p-4">
-          <h2 className="mb-3 font-semibold text-white">Yangi brend</h2>
+          <h2 className="mb-3 font-semibold text-foreground">Yangi brend</h2>
           <BrandForm
             initial={EMPTY}
             busy={busy}
@@ -279,7 +279,7 @@ export function BrandsPage(): JSX.Element {
 
       {editing ? (
         <div className="card p-4">
-          <h2 className="mb-3 font-semibold text-white">{editing.name} — tahrirlash</h2>
+          <h2 className="mb-3 font-semibold text-foreground">{editing.name} — tahrirlash</h2>
           <BrandForm
             initial={{
               name: editing.name,

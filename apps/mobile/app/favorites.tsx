@@ -3,8 +3,11 @@ import { useRouter } from 'expo-router';
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getFavorites, removeFavorite } from '../src/api/endpoints';
-import { Empty, ErrorView, Loading, Screen } from '../src/components/ui';
+import { Empty, ErrorView, Screen } from '../src/components/ui';
+import { SignInRequired } from '../src/components/SignInRequired';
+import { SkeletonGrid } from '../src/components/Skeleton';
 import { useI18n } from '../src/i18n';
+import { useAuthStore } from '../src/store/authStore';
 import { money } from '../src/theme/format';
 import { colors, radius, spacing, text } from '../src/theme/tokens';
 
@@ -13,7 +16,17 @@ export default function Favorites(): JSX.Element {
   const queryClient = useQueryClient();
   const t = useI18n((state) => state.t);
 
-  const favorites = useQuery({ queryKey: ['favorites'], queryFn: getFavorites });
+  /*
+   * ⚠️ QOROVUL BARCHA HOOKLARDAN KEYIN QAYTARADI, lekin holat SHU YERDA
+   * o'qiladi: erta `return` hooklar tartibini buzadi va React qulaydi.
+   */
+  const signedIn = useAuthStore((state) => state.status) === 'signedIn';
+
+  const favorites = useQuery({
+    queryKey: ['favorites'],
+    queryFn: getFavorites,
+    enabled: signedIn,
+  });
 
   const remove = useMutation({
     mutationFn: removeFavorite,
@@ -22,9 +35,18 @@ export default function Favorites(): JSX.Element {
     },
   });
 
-  if (favorites.isLoading) return <Loading />;
+  // Kirmagan foydalanuvchiga xato emas, sabab ko'rsatiladi
+  if (!signedIn) {
+    return (
+      <Screen>
+        <SignInRequired />
+      </Screen>
+    );
+  }
+
+  if (favorites.isLoading) return <SkeletonGrid count={4} />;
   if (favorites.isError) {
-    return <ErrorView message={t.errors.generic} onRetry={() => void favorites.refetch()} />;
+    return <ErrorView error={favorites.error} onRetry={() => void favorites.refetch()} />;
   }
 
   return (

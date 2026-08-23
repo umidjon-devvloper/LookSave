@@ -10,6 +10,8 @@ import {
   type MorphTargets,
 } from '../../src/api/endpoints';
 import { Button, ErrorView, Field, Loading, Screen } from '../../src/components/ui';
+import { SignInRequired } from '../../src/components/SignInRequired';
+import { useAuthStore } from '../../src/store/authStore';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 
 /**
@@ -49,7 +51,17 @@ const MORPH_LABELS: Array<{ key: keyof MorphTargets; label: string }> = [
 
 export default function MeasurementsScreen(): JSX.Element {
   const queryClient = useQueryClient();
-  const profile = useQuery({ queryKey: ['profile'], queryFn: getFullProfile });
+
+  /*
+   * ⚠️ QOROVUL BARCHA HOOKLARDAN KEYIN QAYTARADI, lekin holat SHU YERDA
+   * o'qiladi: erta `return` hooklar tartibini buzadi va React qulaydi.
+   */
+  const signedIn = useAuthStore((state) => state.status) === 'signedIn';
+  const profile = useQuery({
+    queryKey: ['profile'],
+    queryFn: getFullProfile,
+    enabled: signedIn,
+  });
 
   const [values, setValues] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -113,6 +125,15 @@ export default function MeasurementsScreen(): JSX.Element {
       );
     },
   });
+
+  // Kirmagan foydalanuvchiga xato emas, sabab ko'rsatiladi
+  if (!signedIn) {
+    return (
+      <Screen>
+        <SignInRequired />
+      </Screen>
+    );
+  }
 
   if (profile.isLoading) return <Loading />;
   if (profile.isError || !profile.data) {

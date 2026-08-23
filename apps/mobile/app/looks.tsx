@@ -2,8 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { deleteLook, getLooks, type Look } from '../src/api/endpoints';
-import { Empty, ErrorView, Loading, Screen } from '../src/components/ui';
+import { Empty, ErrorView, Screen } from '../src/components/ui';
+import { SignInRequired } from '../src/components/SignInRequired';
+import { SkeletonList } from '../src/components/Skeleton';
 import { useI18n } from '../src/i18n';
+import { useAuthStore } from '../src/store/authStore';
 import { money } from '../src/theme/format';
 import { colors, radius, spacing, text } from '../src/theme/tokens';
 
@@ -31,7 +34,13 @@ function totalPrice(look: Look): { amount: string; currency: string } {
 export default function Looks(): JSX.Element {
   const queryClient = useQueryClient();
   const t = useI18n((state) => state.t);
-  const looks = useQuery({ queryKey: ['looks'], queryFn: getLooks });
+
+  /*
+   * ⚠️ QOROVUL BARCHA HOOKLARDAN KEYIN QAYTARADI, lekin holat SHU YERDA
+   * o'qiladi: erta `return` hooklar tartibini buzadi va React qulaydi.
+   */
+  const signedIn = useAuthStore((state) => state.status) === 'signedIn';
+  const looks = useQuery({ queryKey: ['looks'], queryFn: getLooks, enabled: signedIn });
 
   const remove = useMutation({
     mutationFn: deleteLook,
@@ -40,9 +49,18 @@ export default function Looks(): JSX.Element {
     },
   });
 
-  if (looks.isLoading) return <Loading />;
+  // Kirmagan foydalanuvchiga xato emas, sabab ko'rsatiladi
+  if (!signedIn) {
+    return (
+      <Screen>
+        <SignInRequired />
+      </Screen>
+    );
+  }
+
+  if (looks.isLoading) return <SkeletonList count={3} />;
   if (looks.isError) {
-    return <ErrorView message={t.errors.generic} onRetry={() => void looks.refetch()} />;
+    return <ErrorView error={looks.error} onRetry={() => void looks.refetch()} />;
   }
 
   return (
