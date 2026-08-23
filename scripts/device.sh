@@ -46,6 +46,32 @@ else
   echo "$DEVICES" | sed 's/^/  /'
 fi
 
+# ⚠️ UDID `xctrace` DAN OLINADI, `devicectl` DAN EMAS. Ikkalasi HAR XIL
+# identifikator beradi: devicectl — CoreDevice UUID (51E2…), xctrace esa
+# qurilmaning haqiqiy UDID'i (00008030-…). `expo run:ios --device` ichida
+# xctrace ishlatiladi, ya'ni faqat ikkinchisini tanadi.
+#
+# ⚠️ QIYMATSIZ `--device` ISHLAMAYDI: u qurilmani interaktiv so'raydi va
+# skriptdan chaqirilganda "Input is required, but 'npx expo' is in
+# non-interactive mode" bilan yiqiladi.
+UDID="$(xcrun xctrace list devices 2>/dev/null \
+        | grep -iE "^iphone|^ipad" \
+        | grep -oE '\(00[0-9A-Fa-f]{6}-[0-9A-Fa-f]{16}\)|\([0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}\)' \
+        | head -1 | tr -d '()')"
+
+if [ -n "$UDID" ]; then
+  ok "UDID: $UDID"
+else
+  warn "UDID aniqlanmadi — build qurilmani o'zi so'raydi (interaktiv)"
+fi
+
+# `xctrace` "Devices Offline" ro'yxati — qulflangan yoki Trust berilmagan
+if xcrun xctrace list devices 2>/dev/null | awk '/Devices Offline/,/^$/' | grep -qiE "iphone|ipad"; then
+  warn "xctrace qurilmani OFFLINE deb ko'rsatyapti"
+  dim "Telefonni USB bilan ulang, QULFNI OCHING va 'Trust' ni tasdiqlang."
+  dim "Wi-Fi orqali ulanish build uchun yetarli emas."
+fi
+
 # ── 2. Tarmoq manzili ────────────────────────────────────────────────────
 step "2/4  API manzili"
 
@@ -94,4 +120,8 @@ fi
 
 dim "birinchi build 10-20 daqiqa olishi mumkin"
 cd apps/mobile
+
+if [ -n "$UDID" ]; then
+  exec npx expo run:ios --no-install --device "$UDID"
+fi
 exec npx expo run:ios --no-install --device

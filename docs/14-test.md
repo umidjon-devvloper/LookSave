@@ -167,6 +167,39 @@ avval qurilmada tekshiring.
 `--check` uchta narsani ko'radi: qurilma ulanganmi, `.env` dagi API manzili
 Mac'ning hozirgi LAN IP'siga to'g'ri keladimi, Xcode team ID o'rnidami.
 
+### ⚠️ `--device` ga QIYMAT berish shart
+
+`npx expo run:ios --device` (qiymatsiz) qurilmani **interaktiv so'raydi** va
+skriptdan chaqirilganda shunday yiqiladi:
+
+```
+CommandError: Input is required, but 'npx expo' is in non-interactive mode.
+```
+
+`device.sh` UDID ni o'zi topadi. Qo'lda kerak bo'lsa:
+
+```bash
+xcrun xctrace list devices
+```
+
+⚠️ **Ikki xil identifikator bor va ular ALMASHTIRILMAYDI:**
+
+| Vosita | Nima beradi | Namuna |
+|---|---|---|
+| `xcrun devicectl list devices` | CoreDevice UUID | `51E23A0D-8168-57B7-…` |
+| `xcrun xctrace list devices` | **Qurilma UDID'i** | `00008030-001864381A8B802E` |
+
+`expo run:ios` ichida **xctrace** ishlatiladi — ya'ni faqat ikkinchisi
+qabul qilinadi. Birinchisini bersangiz qurilma «topilmadi» bo'ladi.
+
+### ⚠️ «Devices Offline»
+
+`xctrace` qurilmani `Devices Offline` bo'limida ko'rsatsa, `devicectl`
+«available (paired)» desa ham build o'tmaydi. Sabab odatda: telefon
+**Wi-Fi orqali** ulangan (USB emas), qulflangan, yoki `Trust`
+tasdiqlanmagan. Uchalasini ham tekshiring — `device.sh` bu holatni
+ogohlantirish bilan aytadi.
+
 ### Uchta nostandart qadam
 
 | # | Nima | Nega |
@@ -240,4 +273,6 @@ Har release oldidan bosib chiqiladi. Har qadamda: ishladi / ishlamadi.
 | `dev-up.sh` migratsiyada to'xtadi | Qaydnoma bo'sh — `--adopt` yoki `--fresh` (§3) |
 | `smoke.sql` birinchi `INSERT` da yiqiladi | Fikstura telefon raqami haqiqiy akkaunt bilan to'qnashgan. Rezerv diapazon: `+998999000xxx` |
 | `pod install` 13 daqiqa 0% CPU da turibdi | `expo run:ios` ning ichki chaqiruvi — `--no-install` ishlating (§5.2) |
+| `Input is required, but 'npx expo' is in non-interactive mode` | `--device` ga UDID berilmagan (§5.2) |
+| Qurilma UDID berildi, lekin «topilmadi» | `devicectl` ning UUID'i berilgan — `xctrace` niki kerak (§5.2) |
 | Blender «faylni o'qib bo'lmadi» | **Eskirgan sabab.** git-lfs endi ishlatilmaydi (12-tz.md D-37) — pointer muammosi yo'q |
