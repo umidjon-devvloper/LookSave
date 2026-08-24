@@ -1,5 +1,5 @@
 import {
-  presignSchema,
+  profilePresignSchema,
   deviceRegisterSchema,
   idParamSchema,
   measurementsSchema,
@@ -125,7 +125,9 @@ profileRouter.post(
   '/profile/uploads/presign',
   requireAuth,
   rateLimit({ windowSec: 60, max: 20, prefix: 'profile:presign' }),
-  route({ body: presignSchema }, async (input, _req, res) => {
-    sendData(res, await presignUpload({ ...input.body, purpose: 'avatar' }));
+  route({ body: profilePresignSchema }, async (input, _req, res) => {
+    // Maqsad mijozdan keladi, lekin sxema uni shaxsiy to'plam bilan
+    // cheklaydi — `product`/`store` bu marshrutdan o'tmaydi
+    sendData(res, await presignUpload(input.body));
   }),
 );

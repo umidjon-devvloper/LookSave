@@ -1,7 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { extname } from 'node:path';
 
-import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import type { PresignInput } from '@looksave/validation';
 
@@ -59,6 +64,47 @@ const CACHE_CONTROL: Record<PresignInput['purpose'], string> = {
   body: 'private, max-age=3600',
 };
 
+/**
+ * Shaxsiy maqsadlar — ular ALOHIDA bucketga boradi.
+ *
+ * ⚠️ `avatar` BU RO'YXATDA YO'Q va bu ataylab: profil surati
+ * foydalanuvchi o'zi ko'rsatish uchun qo'yadigan rasm, u ro'yxatlarda va
+ * do'kon panelida ko'rinishi kerak. `face` va `body` esa faqat egasiga
+ * va kiyintirish provayderiga.
+ */
+const PRIVATE_PURPOSES = new Set<PresignInput['purpose']>(['face', 'body']);
+
+/** Shaxsiy bucket sozlanganmi. */
+export function hasPrivateBucket(): boolean {
+  return env().R2_BUCKET_PRIVATE.length > 0;
+}
+
+/**
+ * Obyekt qaysi bucketga tushishi.
+ *
+ * Shaxsiy bucket sozlanmagan bo'lsa hammasi eskicha `R2_BUCKET_ASSETS` ga
+ * boradi — ya'ni sozlash tugamaguncha hech narsa buzilmaydi.
+ */
+function bucketFor(purpose: PresignInput['purpose']): string {
+  if (PRIVATE_PURPOSES.has(purpose) && hasPrivateBucket()) {
+    return env().R2_BUCKET_PRIVATE;
+  }
+  return env().R2_BUCKET_ASSETS;
+}
+
+/**
+ * Kalit shaxsiy prefiksdami.
+ *
+ * ⚠️ PREFIKS — YAGONA BELGI. Bazada to'liq havola saqlanadi va u qaysi
+ * bucketda ekanini aytmaydi. Kalit esa aytadi: `presignUpload` uni
+ * `${purpose}/...` ko'rinishida yasaydi. Shu sabab prefiks nomlari maqsad
+ * nomlari bilan bir xil bo'lishi SHART.
+ */
+export function isPrivateKey(key: string): boolean {
+  const prefix = key.split('/')[0];
+  return prefix !== undefined && PRIVATE_PURPOSES.has(prefix as PresignInput['purpose']);
+}
+
 const EXTENSIONS: Record<PresignInput['contentType'], string> = {
   'image/webp': '.webp',
   'image/jpeg': '.jpg',
@@ -94,7 +140,7 @@ export async function presignUpload(input: PresignInput): Promise<PresignResult>
   const uploadUrl = await getSignedUrl(
     r2(),
     new PutObjectCommand({
-      Bucket: env().R2_BUCKET_ASSETS,
+      Bucket: bucketFor(input.purpose),
       Key: key,
       ContentType: input.contentType,
       CacheControl: CACHE_CONTROL[input.purpose],
@@ -158,7 +204,16 @@ export async function uploadObject(input: {
  * maqsad "fayl yo'q bo'lsin", "men uni o'chirdim" emas.
  */
 export async function deleteObject(key: string): Promise<void> {
-  await r2().send(new DeleteObjectCommand({ Bucket: env().R2_BUCKET_ASSETS, Key: key }));
+  /*
+   * Bucket kalit prefiksidan aniqlanadi. Aks holda shaxsiy fayl ochiq
+   * bucketda qidirilardi va "yo'q" deb hisoblanardi — `DeleteObject`
+   * yo'q obyekt uchun ham muvaffaqiyat qaytaradi, ya'ni xato ham
+   * ko'rinmasdi va fayl joyida qolaverardi.
+   */
+  const bucket =
+    isPrivateKey(key) && hasPrivateBucket() ? env().R2_BUCKET_PRIVATE : env().R2_BUCKET_ASSETS;
+
+  await r2().send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
 }
 
 /**
@@ -193,6 +248,51 @@ export async function deleteByUrl(url: string | null | undefined): Promise<void>
     await deleteObject(key);
   } catch (error) {
     logger.warn({ err: error, key }, 'R2 obyektini o`chirib bo`lmadi');
+  }
+}
+
+/**
+ * Shaxsiy obyekt uchun VAQTINCHALIK o'qish havolasi.
+ *
+ * ⚠️ NEGA KERAK. Shaxsiy bucketning ommaviy manzili yo'q, ya'ni bazada
+ * saqlangan `${CDN_BASE_URL}/face/…` havolasi u yerda ochilmaydi. O'qish
+ * faqat imzolangan havola bilan bo'ladi.
+ *
+ * ⚠️ HAVOLA BAZAGA YOZILMAYDI. U muddatli va tez eskiradi; saqlangani
+ * bir kundan keyin ishlamay qolardi va sabab tashqaridan ko'rinmasdi.
+ * Bazada doim KANONIK havola turadi, imzo esa har o'qishda yasaladi.
+ *
+ * Shaxsiy bucket sozlanmagan yoki kalit shaxsiy emas bo'lsa havola
+ * O'ZGARISHSIZ qaytadi — ya'ni bu funksiyani hamma joyda xavfsiz
+ * chaqirish mumkin.
+ *
+ * `expiresIn` — 1 soat. Ko'rsatish uchun ham, provayder ishi uchun ham
+ * (5–17 soniya) yetarli, lekin havola tarqalsa umrboqiy bo'lmaydi.
+ */
+export async function presignRead(
+  url: string | null | undefined,
+  expiresIn = 3600,
+): Promise<string | null> {
+  if (!url) return null;
+
+  const key = keyFromCdnUrl(url);
+  if (!key || !isPrivateKey(key) || !hasPrivateBucket()) return url;
+
+  try {
+    return await getSignedUrl(
+      r2(),
+      new GetObjectCommand({ Bucket: env().R2_BUCKET_PRIVATE, Key: key }),
+      { expiresIn },
+    );
+  } catch (error) {
+    /*
+     * Imzo yasalmasa havolani O'ZGARISHSIZ qaytaramiz. Sabab: `null`
+     * qaytarsak ekranda "surat yo'q" bo'lib ko'rinardi — holbuki surat
+     * bor va muammo faqat imzolashda. Eski (ochiq bucketdagi) fayllar
+     * uchun esa bu havola baribir ishlaydi.
+     */
+    logger.warn({ err: error, key }, 'imzolangan o`qish havolasi yasalmadi');
+    return url;
   }
 }
 

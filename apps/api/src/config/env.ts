@@ -72,6 +72,19 @@ const envSchema = z.object({
   R2_SECRET_ACCESS_KEY: z.string().default(''),
   R2_ENDPOINT: z.string().default(''),
   R2_BUCKET_ASSETS: z.string().default('looksave-assets'),
+  /*
+   * Shaxsiy suratlar uchun ALOHIDA bucket (12-tz.md D-43).
+   *
+   * ⚠️ NEGA `Cache-Control: private` YETMAYDI. `R2_BUCKET_ASSETS` ning
+   * ommaviy `r2.dev` manzili bor va u kesh sarlavhasiga QARAMAYDI —
+   * obyekt baribir kalitsiz o'qiladi. Ya'ni yuz surati ochiq turadi.
+   *
+   * Bo'sh bo'lsa hamma narsa eskicha ishlaydi (`R2_BUCKET_ASSETS`),
+   * faqat ishga tushishda ogohlantirish chiqadi. To'ldirilgach `face/`
+   * va `body/` shu bucketga boradi va o'qish imzolangan havola bilan
+   * bo'ladi.
+   */
+  R2_BUCKET_PRIVATE: z.string().default(''),
   CDN_BASE_URL: z.string().url().default('https://cdn.looksave.app'),
 
   // ── AI kiyintirish (FASHN) ──

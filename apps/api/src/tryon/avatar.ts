@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { pool } from '../db/pool';
 import { ApiError } from '../http/api-error';
 import { downloadResult, isFashnEnabled, pollTryon, submitAvatar } from '../integrations/fashn';
-import { uploadObject } from '../integrations/r2';
+import { presignRead, uploadObject } from '../integrations/r2';
 import { makeCutout } from '../store/cutout';
 import { logger } from '../logger';
 import {
@@ -165,7 +165,18 @@ export async function requestAvatar(userId: string): Promise<AvatarDto> {
 
   let job;
   try {
-    job = await submitAvatar({ facePhotoUrl: row.face_texture_url, prompt });
+    /*
+     * ⚠️ IMZO FAQAT SHU YERDA, XESHDAN KEYIN. Shaxsiy bucketdagi surat
+     * kalitsiz o'qilmaydi, provayder esa uni yuklab olishi kerak.
+     *
+     * ⚠️ XESHGA IMZOLANGAN HAVOLA BERILMAYDI: imzoda vaqt belgisi bor,
+     * ya'ni xesh har chaqiruvda o'zgarardi va kesh HECH QACHON
+     * ishlamasdi — har so'rov qaytadan to'lanardi.
+     */
+    job = await submitAvatar({
+      facePhotoUrl: (await presignRead(row.face_texture_url)) ?? row.face_texture_url,
+      prompt,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'noma`lum xato';
     logger.error({ err, userId }, 'avatar ishini boshlab bo`lmadi');
@@ -306,7 +317,18 @@ export async function requestAngle(userId: string, angle: AvatarAngle): Promise<
 
   let job;
   try {
-    job = await submitAvatar({ facePhotoUrl: row.face_texture_url, prompt });
+    /*
+     * ⚠️ IMZO FAQAT SHU YERDA, XESHDAN KEYIN. Shaxsiy bucketdagi surat
+     * kalitsiz o'qilmaydi, provayder esa uni yuklab olishi kerak.
+     *
+     * ⚠️ XESHGA IMZOLANGAN HAVOLA BERILMAYDI: imzoda vaqt belgisi bor,
+     * ya'ni xesh har chaqiruvda o'zgarardi va kesh HECH QACHON
+     * ishlamasdi — har so'rov qaytadan to'lanardi.
+     */
+    job = await submitAvatar({
+      facePhotoUrl: (await presignRead(row.face_texture_url)) ?? row.face_texture_url,
+      prompt,
+    });
   } catch (err) {
     logger.error({ err, userId, angle }, 'burchak ishini boshlab bo`lmadi');
     return toDto(row);

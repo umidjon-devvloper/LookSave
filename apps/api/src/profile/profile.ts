@@ -3,7 +3,7 @@ import type { MeasurementsInput, UpdateProfileInput } from '@looksave/validation
 
 import { env } from '../config/env';
 import { pool } from '../db/pool';
-import { deleteByUrl } from '../integrations/r2';
+import { deleteByUrl, presignRead } from '../integrations/r2';
 import { ApiError } from '../http/api-error';
 import {
   computeMorphTargets,
@@ -62,18 +62,31 @@ function hasMorphs(value: MorphTargets | null): value is MorphTargets {
 export async function getProfileExtras(userId: string) {
   const profile = await loadProfile(userId);
 
+  /*
+   * ⚠️ SHAXSIY SURATLARGA IMZOLANGAN HAVOLA. Shaxsiy bucket sozlangan
+   * bo'lsa `face/` va `body/` obyektlari kalitsiz o'qilmaydi — ilova
+   * ularni ko'rsatishi uchun muddatli havola kerak (12-tz.md D-43).
+   *
+   * Sozlanmagan bo'lsa `presignRead` havolani o'zgarishsiz qaytaradi,
+   * ya'ni hozirgi xatti-harakat aynan saqlanadi.
+   */
+  const [faceTextureUrl, bodyPhotoUrl] = await Promise.all([
+    presignRead(profile.face_texture_url),
+    presignRead(profile.body_photo_url),
+  ]);
+
   return {
     measurements: profile.measurements ?? {},
     // Profil to'ldirilmagan bo'lsa neytral avatar ko'rsatiladi
     morphTargets: hasMorphs(profile.morph_targets) ? profile.morph_targets : NEUTRAL,
-    faceTextureUrl: profile.face_texture_url,
+    faceTextureUrl,
     faceScanStatus: profile.face_scan_status,
     /*
      * AI kiyintirish shu suratsiz ishlamaydi. Ilova buni oldindan bilishi
      * kerak: tugmani bosib "surat yo'q" xatosini olish o'rniga darhol
      * suratga taklif qilinadi.
      */
-    bodyPhotoUrl: profile.body_photo_url,
+    bodyPhotoUrl,
     // Profil ekranidagi uchta raqam
     favoritesCount: Number(profile.favorites_count),
     looksCount: Number(profile.looks_count),
@@ -240,6 +253,11 @@ export async function getAvatarConfig(
     bodyGlbUrl: `${cdn}/avatar/${body}-base-${version}.glb`,
     skeletonVersion: version,
     morphTargets: hasMorphs(profile.morph_targets) ? profile.morph_targets : NEUTRAL,
+    /*
+     * ⚠️ 3D BU MAYDONNI ISHLATMAYDI (D-41). Qaytariladi, chunki
+     * kontrakt o'zgartirilmadi — lekin imzolanmaydi ham: shaxsiy
+     * havolani bekorga tarqatishning ma'nosi yo'q.
+     */
     faceTextureUrl: profile.face_texture_url,
     animations: {
       idle: `${cdn}/avatar/anim/idle-${version}.glb`,

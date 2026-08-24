@@ -4,6 +4,7 @@ import { createApp } from './app';
 import { env } from './config/env';
 import { closeDb } from './db/pool';
 import { closeRedis } from './db/redis';
+import { hasPrivateBucket } from './integrations/r2';
 import { startScheduler, stopScheduler } from './jobs/scheduler';
 import { logger } from './logger';
 
@@ -13,6 +14,22 @@ const port = env().PORT;
 const server: Server = app.listen(port, () => {
   // `version` logger base'ida bor — bu yerda takrorlanmaydi (JSON'da ikki xil kalit chiqmasin)
   logger.info({ port, env: env().NODE_ENV }, 'API ishga tushdi');
+
+  /*
+   * ⚠️ SHAXSIY BUCKET OGOHLANTIRISHI (12-tz.md D-43).
+   *
+   * Sozlanmagan bo'lsa yuz va gavda suratlari ommaviy bucketda qoladi va
+   * havolani bilgan har kim ocha oladi. Kod bunda ham ishlaydi — shuning
+   * uchun muammo jim o'tib ketishi mumkin. Ishga tushishda bir marta
+   * aytiladi: log'da ko'rinsa, sozlash esdan chiqmaydi.
+   */
+  if (!hasPrivateBucket()) {
+    logger.warn(
+      'R2_BUCKET_PRIVATE sozlanmagan — yuz va gavda suratlari OMMAVIY bucketda saqlanadi ' +
+        '(havolani bilgan har kim ocha oladi). Sozlash: docs/12-tz.md D-43',
+    );
+  }
+
   startScheduler();
 });
 

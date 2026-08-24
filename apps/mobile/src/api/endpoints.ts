@@ -345,13 +345,29 @@ interface PresignResult {
  * Profil surati to'g'ridan-to'g'ri R2 ga yuklanadi — server kanalini band
  * qilmaydi (09-integrations §4.2). Server faqat imzolangan havola beradi.
  */
-export async function uploadAvatar(localUri: string): Promise<string> {
+/**
+ * Suratni R2 ga yuklaydi.
+ *
+ * ⚠️ `purpose` NI TO'G'RI BERISH MUHIM. Server undan kesh siyosatini
+ * tanlaydi va shaxsiy suratlar boshqacha saqlanadi (12-tz.md D-43):
+ *
+ *   `avatar` — profil surati. Foydalanuvchi uni O'ZI ko'rsatish uchun
+ *              qo'yadi, shuning uchun ochiq va uzoq keshlanadi
+ *   `face`   — yuz skaneri. Shaxsiy: kesh `private` va qisqa
+ *
+ * Ilgari bu funksiya har doim `avatar` yuborardi va yuz surati ham ochiq
+ * keshda qolardi.
+ */
+export async function uploadAvatar(
+  localUri: string,
+  purpose: 'avatar' | 'face' = 'avatar',
+): Promise<string> {
   const fileName = localUri.split('/').pop() ?? 'avatar.jpg';
   const contentType = fileName.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
 
   const signed = await api<PresignResult>('/profile/uploads/presign', {
     method: 'POST',
-    body: { fileName, contentType, purpose: 'avatar' },
+    body: { fileName, contentType, purpose },
   });
 
   // `fetch` lokal `file://` havolasini blob'ga o'giradi — RN'da shu usul ishlaydi

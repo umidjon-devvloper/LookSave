@@ -648,7 +648,9 @@ function FaceStep({
       });
 
       stage = 'yuklash';
-      const url = await uploadAvatar(upright.uri);
+      // ⚠️ `face` — shaxsiy kesh. `avatar` bo'lsa surat ochiq va bir yil
+      // keshlanadigan qoidada saqlanardi (12-tz.md D-43)
+      const url = await uploadAvatar(upright.uri, 'face');
 
       stage = 'profilni saqlash';
       /*

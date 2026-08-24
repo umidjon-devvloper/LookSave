@@ -115,4 +115,23 @@ export type CreateProductInput = z.output<typeof createProductSchema>;
 export type UpdateProductInput = z.output<typeof updateProductSchema>;
 export type VariantInput = z.output<typeof variantInputSchema>;
 export type StoreProductsQuery = z.output<typeof storeProductsQuerySchema>;
+/**
+ * Profil marshruti uchun — FAQAT shaxsiy maqsadlar.
+ *
+ * ⚠️ NEGA ALOHIDA SXEMA. Ilgari marshrut `presignSchema` ni qabul qilib,
+ * keyin `purpose` ni `'avatar'` ga MAJBURAN almashtirardi. Maqsad to'g'ri
+ * edi (oddiy foydalanuvchi `product` yuklamasin), lekin oqibati yomon:
+ * mobil ilova `body` yuborardi va u ham `avatar` bo'lib ketardi. Natijada
+ * `face` va `body` uchun yozilgan `private` kesh qoidasi HECH QACHON
+ * ishlamagan — yuz va gavda surati `public, immutable` bilan saqlanardi
+ * (12-tz.md D-43).
+ *
+ * Yechim: almashtirish emas, CHEGARALASH. Ro'yxatda `product` va `store`
+ * yo'q, ya'ni himoya saqlanadi va mijozning tanlovi hisobga olinadi.
+ */
+export const profilePresignSchema = presignSchema.extend({
+  purpose: z.enum(['avatar', 'face', 'body']),
+});
+
 export type PresignInput = z.output<typeof presignSchema>;
+export type ProfilePresignInput = z.output<typeof profilePresignSchema>;

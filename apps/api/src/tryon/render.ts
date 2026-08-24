@@ -9,7 +9,7 @@ import {
   pollTryon,
   submitTryon,
 } from '../integrations/fashn';
-import { uploadObject } from '../integrations/r2';
+import { presignRead, uploadObject } from '../integrations/r2';
 import { makeCutout } from '../store/cutout';
 import { logger } from '../logger';
 import { env } from '../config/env';
@@ -313,7 +313,12 @@ export async function requestRender(
 
   try {
     const job = await submitTryon({
-      modelImageUrl: sources.bodyPhotoUrl,
+      /*
+       * ⚠️ IMZO XESHDAN KEYIN (yuqoridagi `sourceHash` kanonik manzilni
+       * oladi). Imzolangan havola xeshga tushsa kesh buzilardi va har
+       * so'rov qaytadan to'lanardi.
+       */
+      modelImageUrl: (await presignRead(sources.bodyPhotoUrl)) ?? sources.bodyPhotoUrl,
       garmentImageUrl: sources.garmentImageUrl,
       category: categoryForSlot(sources.slot),
     });
