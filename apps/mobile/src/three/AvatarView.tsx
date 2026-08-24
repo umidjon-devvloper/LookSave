@@ -88,6 +88,24 @@ export interface AvatarViewProps {
    * javob beradigan yagona joy (12-tz.md IP-01 qabul mezoni).
    */
   onFps?: (fps: number) => void;
+  /**
+   * GL holati haqidagi qator — sahna bo'sh bo'lganda sababni EKRANDA
+   * ko'rsatish uchun.
+   *
+   * ⚠️ NEGA KERAK VA NEGA EKRANGA. Sahna foni ilova foni bilan bir xil
+   * rang, shuning uchun «GL chizmayapti» va «chizyapti-yu obyekt yo'q»
+   * ekranda BIR XIL ko'rinadi. Ularni faqat raqamlar ajratadi:
+   *
+   *   bufer 0×0        → View balandligi nol, GLView'ga joy yo'q
+   *   chaqiruv 0        → three hech narsa chizmayapti (obyekt frustumdan
+   *                       tashqarida, ko'rinmas qilingan yoki kamera buzuq)
+   *   chaqiruv > 0      → chizilyapti; ekran bo'sh bo'lsa muammo GL
+   *                       sirtini ekranga ulashda, three'dan TASHQARIDA
+   *
+   * Bu chaqiruv UMUMAN bo'lmasligi ham javob: `onReady` ishlamagan,
+   * ya'ni GL konteksti yaratilmagan.
+   */
+  onDiagnostics?: (info: string) => void;
   /** Qaysi animatsiya o'ynasin. Berilmasa `idle`. */
   animation?: AnimationName;
   children?: ReactNode;
@@ -114,6 +132,7 @@ export const AvatarView = forwardRef<Scene3DHandle, AvatarViewProps>(function Av
     onPlaceholder,
     onSwipe,
     onFps,
+    onDiagnostics,
     animation,
     children,
   },
@@ -133,8 +152,22 @@ export const AvatarView = forwardRef<Scene3DHandle, AvatarViewProps>(function Av
    * yopiladi. Belgisi: logda "[avatar] haqiqiy model" o'nlab marta
    * takrorlanadi va birorta kadr chizilmaydi.
    */
-  const callbacks = useRef({ onBodyReady, onError, onPlaceholder, onQualityChange, onFps });
-  callbacks.current = { onBodyReady, onError, onPlaceholder, onQualityChange, onFps };
+  const callbacks = useRef({
+    onBodyReady,
+    onError,
+    onPlaceholder,
+    onQualityChange,
+    onFps,
+    onDiagnostics,
+  });
+  callbacks.current = {
+    onBodyReady,
+    onError,
+    onPlaceholder,
+    onQualityChange,
+    onFps,
+    onDiagnostics,
+  };
 
   /*
    * `config` ham ref orqali: `onReady` BARQAROR bo'lishi kerak, aks holda
@@ -384,8 +417,24 @@ export const AvatarView = forwardRef<Scene3DHandle, AvatarViewProps>(function Av
   }, [animation]);
 
   // ── Kadr ───────────────────────────────────────────────────────────────
-  const onFrame = useCallback((delta: number) => {
+  const frames = useRef(0);
+
+  const onFrame = useCallback((delta: number, context: SceneContext) => {
     rig.current?.update(delta);
+
+    /*
+     * Har 60-kadrda tashxis. Har kadrda hisoblash `renderer.info` ni
+     * o'qishni talab qiladi va bu bepul emas; sekundda bir marta yetarli.
+     */
+    frames.current += 1;
+    if (frames.current % 60 === 0) {
+      const info = context.renderer.info.render;
+      const size = context.size;
+      const children = context.scene.children.length;
+      callbacks.current.onDiagnostics?.(
+        `bufer ${size.width}×${size.height} · chaqiruv ${info.calls} · uch ${info.triangles} · bola ${children}`,
+      );
+    }
 
     /*
      * Namunada skelet yo'q, ya'ni animatsiya ham yo'q — mayda tebranish

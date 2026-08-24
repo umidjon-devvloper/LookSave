@@ -87,6 +87,11 @@ export default function TryOn(): JSX.Element {
   const [equipping, setEquipping] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [fps, setFps] = useState<number | null>(null);
+  /**
+   * GL tashxisi — sahna bo'sh bo'lsa sabab shu yerda ko'rinadi.
+   * Qator UMUMAN chiqmasa: GL konteksti yaratilmagan.
+   */
+  const [glInfo, setGlInfo] = useState<string | null>(null);
   const [, forceRender] = useState(0);
 
   /** Slot mantiqi `core.ts` da testlangan — bu yerda faqat ishlatiladi */
@@ -270,6 +275,7 @@ export default function TryOn(): JSX.Element {
           onPlaceholder={handlePlaceholder}
           onSwipe={move}
           onFps={setFps}
+          onDiagnostics={setGlInfo}
         />
 
         {/* Chapdagi boshqaruv (§6.10 maketi) */}
@@ -322,12 +328,20 @@ export default function TryOn(): JSX.Element {
           </View>
         ) : null}
 
-        {/* FPS — faqat DEV'da. Qator umuman chiqmasa: sahna chizmayapti. */}
+        {/*
+          FPS va GL tashxisi — faqat DEV'da.
+
+          ⚠️ QATOR UMUMAN CHIQMASA bu ham javob: `onReady` ishlamagan,
+          ya'ni GL konteksti yaratilmagan. Raqamlar esa ikki butunlay
+          boshqa sababni ajratadi — `bufer 0×0` (View'ga joy yo'q) va
+          `chaqiruv 0` (three chizmayapti).
+        */}
         {__DEV__ ? (
           <View style={[styles.fpsBadge, { top: insets.top + spacing.sm }]} pointerEvents="none">
             <Text style={styles.fpsText}>
               {fps === null ? 'FPS: —' : `${Math.round(fps)} FPS · ${quality}`}
             </Text>
+            <Text style={styles.fpsText}>{glInfo ?? 'GL: kontekst yaratilmadi'}</Text>
           </View>
         ) : null}
 
@@ -542,7 +556,9 @@ const styles = StyleSheet.create({
 
   fpsBadge: {
     position: 'absolute',
+    left: spacing.md,
     right: spacing.md,
+    alignItems: 'flex-end',
     paddingHorizontal: spacing.xs,
     borderRadius: radius.sm,
     backgroundColor: 'rgba(0,0,0,0.5)',
