@@ -6,24 +6,49 @@
 
 ---
 
-## ⚠️ 0. Birinchi haftada sinash kerak
+## ✅ 0. Siqish sinovi — BAJARILDI (2026-08-24)
 
-Kod yozishdan oldin, **100 ta model yasashdan oldin**, quyidagini real qurilmada sinang:
+**Qurilma:** iPhone 11 (iOS), Expo SDK 52, Hermes, eski arxitektura.
+**Usul:** uch variant bir xil geometriyadan (`optimize.mjs --variants`), CDN dan yuklab `GLTFLoader.parse` ga berildi. Ekran: `app/compression-test.tsx`.
 
-| Sinov | Nima uchun |
-|---|---|
-| Draco siqilgan GLB Expo'da ochiladimi | `DRACOLoader` WASM/JS decoder talab qiladi. Hermes'da WASM cheklangan |
-| KTX2 tekstura Expo'da ochiladimi | `KTX2Loader` basis transcoder (WASM) ishlatadi — RN'da ishonchsiz |
-| Meshopt siqilgan GLB ochiladimi | Draco'ga alternativa, kichikroq decoder |
-| 60k poligonli sahna eski Android'da necha FPS | Butun performance byudjeti shunga bog'liq |
+### ⛔ ASOSIY NATIJA: `WebAssembly` YO'Q
 
-**Nega bu muhim:** agar Draco yoki KTX2 ishlamasa, siqish strategiyasi butunlay o'zgaradi — poligonni ko'proq kamaytirish va WebP tekstura ishlatish kerak bo'ladi. Buni 100 ta model tayyorlab bo'lgandan keyin bilib qolsangiz, hammasini qayta qilasiz.
+Hermes'da `WebAssembly` **umuman mavjud emas**. Qolgan hamma natija shundan kelib chiqadi.
 
-**Zaxira reja (agar WASM ishlamasa):**
-- Geometriya: siqishsiz, lekin poligon ≤ 5 000
-- Tekstura: WebP 1024×1024 (three.js native qo'llab-quvvatlaydi)
-- Fayl hajmi: ~2-2.5 MB (Draco bilan 1.2 MB o'rniga)
-- Yechim: agressiv LOD + prefetch
+| Sinov | Natija | Sabab |
+|---|---|---|
+| Siqishsiz GLB | ✅ **ochildi** | Asos o'lchov — 209 KB, 3 004 uchburchak |
+| **Draco** | ❌ **YIQILDI** | `DRACOLoader` dekoder talab qiladi. WASM yo'q; 703 KB'lik JS dekoderi bor, lekin u alohida yetkazilishi kerak |
+| **Meshopt** | ❌ **YIQILDI** | `EXT_meshopt_compression` dekoderi **faqat WASM** — JS zaxirasi umuman yo'q |
+| KTX2 tekstura | ⏳ **sinalmadi** | Modellarda tekstura yo'q, ya'ni siqadigan narsa ham yo'q. Basis transcoder ham WASM'ga tayanadi — WASM yo'qligi sababli **ishlamasligi kutiladi** |
+| Eski Android'da 60k poligon FPS | ⏳ **sinalmadi** | Android build hech qachon qilinmagan (`apps/mobile/android/` bo'sh, 12-tz.md D-16) |
+
+### Nimaga hajm bo'yicha ega bo'lardik
+
+| Variant | Hajm | Foyda |
+|---|---|---|
+| Siqishsiz | 209 KB | — |
+| Draco | 175 KB | −16% |
+| Meshopt | **56 KB** | **−73%** |
+
+Meshopt eng katta foyda berardi va aynan u eng qat'iy yiqildi.
+
+### ✅ QABUL QILINGAN STRATEGIYA
+
+Zaxira reja endi **asosiy reja**:
+
+- **Geometriya: siqishsiz.** Poligon byudjeti bilan boshqariladi (§6 chegaralari), LOD bilan kamaytiriladi
+- **Tekstura: WebP** 1024×1024 — three.js va RN uni native qo'llab-quvvatlaydi. KTX2 ishlatilmaydi
+- **LOD majburiy:** `optimize.mjs` uch daraja beradi (lod0/lod1/lod2 — 100%/50%/25%)
+- **Prefetch:** §10 dagi mantiq saqlanadi
+
+**Hozirgi holat byudjetdan ancha past:** eng katta model `lod0` = 291 KB, chegara 1 536 KB. Ya'ni siqishning yo'qligi **hozircha muammo emas** — teksturalar qo'shilganda qayta o'lchash kerak.
+
+### Agar Draco kerak bo'lib qolsa
+
+Yagona yo'l — 703 KB'lik **JS dekoderini** ilovaga yetkazish (`three/examples/jsm/libs/draco/draco_decoder.js`) va `DRACOLoader.setDecoderConfig({ type: 'js' })` bilan ishlatish. Foyda −16%, narxi 703 KB bundle. **Hozir arziydigan savdo emas.**
+
+⚠️ **Bu sinov `optimize.mjs` da qulflangan:** siqish sukut bo'yicha **o'chirilgan** (`--compress=none`). Yoqishdan oldin bu jadvalni qayta o'lchang.
 
 ---
 
