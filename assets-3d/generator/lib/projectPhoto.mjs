@@ -1,8 +1,8 @@
 import { NodeIO } from '@gltf-transform/core';
-import sharp from 'sharp';
 
 /**
- * Mahsulot suratini kiyim OLD tomoniga proyeksiya qiladi.
+ * Kiyim OLD tomoniga PLANAR UV qo'yadi — mahsulot suratini ilova
+ * o'sha UV bo'yicha qo'llashi uchun.
  *
  * ⚠️ NEGA PLANAR PROYEKSIYA, MESH UV'SI EMAS. Kiyim qobig'ining o'z UV'si
  * silindrik (tana bo'ylab o'ralgan) — unga tekis mahsulot surati qo'yilsa
@@ -21,34 +21,24 @@ import sharp from 'sharp';
  * tushadi. To'liq yechim — fonni olib tashlash (`@imgly/background-removal`),
  * lekin u og'ir. Hozircha surat markazga kadrlanadi: kiyim odatda
  * markazda, fon esa chetda qoladi va planar proyeksiyada chetga suriladi.
+ *
+ * ⚠️ SURAT GLB'GA EMBED QILINMAYDI. RN/Hermes GLB ichidagi JPEG'ni dekod
+ * qila olmaydi (blob URL yo'q). Shuning uchun bu funksiya faqat UV va oq
+ * bazaviy rang qo'yadi; suratning O'ZINI ilova alohida yuklab, jpeg-js
+ * bilan dekod qilib qo'llaydi (`loader.ts`). Surat havolasi `assets_3d.
+ * texture_url` da (022 migratsiya).
  */
 
 /** Front-facing vertex normal chegarasi — bundan katta z-normal old deb hisoblanadi. */
 const FRONT_Z = 0.1;
 
 /**
- * @param {Buffer} garmentGlb  Qurilgan kiyim GLB (teksturasiz)
- * @param {Buffer} photoBytes  Mahsulot surati (jpg/png)
- * @returns {Promise<Buffer>}  Surat proyeksiya qilingan GLB
+ * @param {Buffer} garmentGlb  Qurilgan kiyim GLB
+ * @returns {Promise<Buffer>}  Planar UV + oq baza qo'yilgan GLB
  */
-export async function projectPhotoOntoGarment(garmentGlb, photoBytes) {
-  // ── Suratni tayyorlash: kvadrat, 512, JPEG ──
-  // Kvadrat — planar UV 0..1 kvadratга mos kelishi uchun. `cover` markazni
-  // saqlaydi (kiyim markazda).
-  const image = await sharp(photoBytes)
-    .rotate() // EXIF burilishi
-    .resize(512, 512, { fit: 'cover', position: 'centre' })
-    .jpeg({ quality: 85 })
-    .toBuffer();
-
+export async function projectPhotoOntoGarment(garmentGlb) {
   const io = new NodeIO();
   const doc = await io.readBinary(new Uint8Array(garmentGlb));
-
-  // ── Tekstura ──
-  const texture = doc
-    .createTexture('garment-photo')
-    .setImage(new Uint8Array(image))
-    .setMimeType('image/jpeg');
 
   // ── Umumiy chegara qutisi (barcha mesh bo'ylab) ──
   // Planar proyeksiya butun kiyim bo'ylab bir xil bo'lishi kerak — aks holda
@@ -112,15 +102,18 @@ export async function projectPhotoOntoGarment(garmentGlb, photoBytes) {
       const accessor = doc.createAccessor().setType('VEC2').setArray(uv);
       prim.setAttribute('TEXCOORD_0', accessor);
 
-      // Material: bazaviy rang teksturasi. Rangni oq qilamiz, aks holda u
-      // teksturaga ko'paytirilib qorong'ilashtiradi.
+      /*
+       * Bazaviy rang OQ. Ilova suratni DataTexture qilib `material.map`
+       * ga qo'yadi va u bazaviy rangga KO'PAYTIRILADI — oq bo'lmasa surat
+       * ranglari buziladi. Surat kelmasa (dekod xatosi) kiyim oq qoladi,
+       * bu maqbul zaxira.
+       */
       let material = prim.getMaterial();
       if (!material) {
         material = doc.createMaterial('garment');
         prim.setMaterial(material);
       }
       material.setBaseColorFactor([1, 1, 1, 1]);
-      material.setBaseColorTexture(texture);
       material.setRoughnessFactor(0.85);
       material.setMetallicFactor(0);
     }

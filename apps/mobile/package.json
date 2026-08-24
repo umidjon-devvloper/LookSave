@@ -43,6 +43,7 @@
     "expo-splash-screen": "~0.29.24",
     "expo-status-bar": "~2.0.1",
     "expo-three": "~8.0.0",
+    "jpeg-js": "^0.4.4",
     "lucide-react-native": "^1.31.0",
     "react": "18.3.1",
     "react-native": "0.76.5",

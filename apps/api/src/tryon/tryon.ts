@@ -61,6 +61,7 @@ interface TryonRow {
   price: string;
   currency: string;
   thumbnail: string | null;
+  texture_url: string | null;
   glb_url: string | null;
   lod_urls: unknown;
   file_size_bytes: number | null;
@@ -122,7 +123,7 @@ export async function getSlotItems(slot: Slot, query: TryonSlotQuery) {
     `SELECT v.id AS variant_id, p.id AS product_id, p.title, p.base_price AS price,
             p.currency, p.tryon_count,
             v.color_hex, v.color_name,
-            a.thumbnail_url AS thumbnail, a.glb_url, a.lod_urls, a.file_size_bytes,
+            a.thumbnail_url AS thumbnail, a.texture_url, a.glb_url, a.lod_urls, a.file_size_bytes,
             a.hide_body_parts, a.has_morphs,
             s.id AS store_id, s.name AS store_name,
             ${distanceExpr} AS distance_m
@@ -150,6 +151,8 @@ export function toTryonDto(row: TryonRow, locale: Locale) {
     price: row.price,
     currency: row.currency,
     thumbnail: row.thumbnail,
+    /** Mahsulot surati — ilova uni dekod qilib kiyim old tomoniga qo'yadi */
+    textureUrl: row.texture_url,
     glbUrl: row.glb_url,
     lodUrls: row.lod_urls,
     fileSizeBytes: row.file_size_bytes,

@@ -24,6 +24,8 @@ export interface TryonItem {
   price: string;
   currency: string;
   thumbnail: string | null;
+  /** Mahsulot surati — bo'lsa kiyim old tomoniga dekod qilib qo'yiladi (planar UV GLB'da) */
+  textureUrl: string | null;
   glbUrl: string | null;
   lodUrls: Partial<Record<LodLevel, string>> | null;
   fileSizeBytes: number | null;

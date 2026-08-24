@@ -22,6 +22,7 @@ function item(over: Partial<TryonItem> = {}): TryonItem {
     price: '1250000.00',
     currency: 'UZS',
     thumbnail: null,
+    textureUrl: null,
     glbUrl: 'https://cdn/base.glb',
     lodUrls: { lod0: 'https://cdn/0.glb', lod1: 'https://cdn/1.glb', lod2: 'https://cdn/2.glb' },
     fileSizeBytes: 1_180_000,

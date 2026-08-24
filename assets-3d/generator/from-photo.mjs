@@ -271,18 +271,17 @@ for (const row of rows) {
      * Proyeksiya YASHIL yo'lda: xato bo'lsa rangli qolip qoladi, butun
      * generatsiya to'xtamaydi.
      */
-    let projected = false;
+    let textureUrl = null;
     if (photo && PROJECT_SLOTS.has(row.slot)) {
       try {
-        const response = await fetch(photo);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const photoBytes = Buffer.from(await response.arrayBuffer());
-        const textured = await projectPhotoOntoGarment(readFileSync(path), photoBytes);
-        writeFileSync(path, textured);
-        size = textured.length;
-        projected = true;
+        // Faqat planar UV qo'yiladi — suratning O'ZI ilova tomonda
+        // dekod qilinadi (GLB embed RN'da ishlamaydi, 022 migratsiya).
+        const uvGlb = await projectPhotoOntoGarment(readFileSync(path));
+        writeFileSync(path, uvGlb);
+        size = uvGlb.length;
+        textureUrl = photo;
       } catch (error) {
-        console.log(`     ⚠️ surat proyeksiyasi o'tmadi (rangli qolip qoldi): ${error.message}`);
+        console.log(`     ⚠️ UV proyeksiyasi o'tmadi (rangli qolip qoldi): ${error.message}`);
       }
     }
 
@@ -297,7 +296,7 @@ for (const row of rows) {
 
     console.log(
       `  ${APPLY ? '↑' : '·'} ${label} → ${builder}, ${hex(colour)} (${source})` +
-        `${projected ? ' + SURAT' : ''}, ${Math.round(size / 1024)} KB, ${triangles} uchburchak`,
+        `${textureUrl ? ' + SURAT' : ''}, ${Math.round(size / 1024)} KB, ${triangles} uchburchak`,
     );
 
     if (APPLY) {
@@ -314,10 +313,10 @@ for (const row of rows) {
       await pool.query(
         `UPDATE assets_3d
             SET glb_url = $2, poly_count = $3, file_size_bytes = $4,
-                hide_body_parts = $5, has_morphs = true,
+                hide_body_parts = $5, has_morphs = true, texture_url = $6,
                 status = 'ready', completed_at = now(), error_message = NULL
           WHERE id = $1`,
-        [row.id, url, triangles, size, spec.hideBodyParts],
+        [row.id, url, triangles, size, spec.hideBodyParts, textureUrl],
       );
     }
 

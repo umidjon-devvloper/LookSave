@@ -27,7 +27,8 @@ import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js
 import { CACHE_BUDGET_MB, ModelCache, pickModelUrl, type Quality, type TryonItem } from './core';
 import { patchNavigatorUserAgent } from './glCompat';
 import { fabricKindForSlot, fabricMaterial } from './textures';
-import { Mesh, Vector2 } from 'three';
+import { ClampToEdgeWrapping, DataTexture, Mesh, RGBAFormat, SRGBColorSpace, Vector2 } from 'three';
+import { decode as decodeJpeg } from 'jpeg-js';
 
 // GLTFLoader yaratilishidan OLDIN — aks holda birinchi parse yiqiladi
 patchNavigatorUserAgent();
@@ -288,6 +289,55 @@ export function clearClipCache(): void {
  * pastga hisoblanadi va busiz yuz teskari tushadi.
  */
 
+/**
+ * Mahsulot suratini yuklab, kiyim OLD tomoniga qo'yiladigan
+ * `DataTexture` ga aylantiradi.
+ *
+ * ⚠️ NEGA `jpeg-js`, GLB EMBED EMAS. RN/Hermes GLB ichidagi JPEG'ni dekod
+ * qila olmaydi (`GLTFLoader` blob URL yasaydi, RN uni ocholmaydi). Mato
+ * normal va teri esa ishlaydi, chunki ular `DataTexture` — XOM PIKSEL.
+ * Shu sabab surat ham xom pikselga aylantiriladi: `jpeg-js` sof JS
+ * (WASM'siz, Hermes'da ishlaydi) va JPEG'ni RGBA ga ochadi.
+ *
+ * Kesh: bir mahsulot bir necha marta kiyilishi mumkin, dekod esa qimmat.
+ */
+const photoTextureCache = new Map<string, DataTexture>();
+
+export async function loadPhotoTexture(url: string): Promise<DataTexture | null> {
+  const cached = photoTextureCache.get(url);
+  if (cached) return cached;
+
+  try {
+    const bytes = new Uint8Array(await download(url));
+    // `useTArray` — Buffer emas, Uint8Array qaytaradi (Hermes'da Buffer yo'q)
+    const { width, height, data } = decodeJpeg(bytes, { useTArray: true });
+
+    // Yangi Uint8Array — jpeg-js qaytargan bufer tipi DataTexture bilan
+    // to'liq mos kelmaydi (ArrayBufferLike). Nusxa toza ArrayBuffer beradi.
+    const rgba = new Uint8Array(data);
+    const texture = new DataTexture(rgba, width, height, RGBAFormat);
+    texture.colorSpace = SRGBColorSpace;
+    // Planar UV 0..1 dan tashqariga chiqmaydi, lekin chetda takror
+    // bo'lmasligi uchun qirqib qo'yamiz
+    texture.wrapS = ClampToEdgeWrapping;
+    texture.wrapT = ClampToEdgeWrapping;
+    /*
+     * ⚠️ `flipY = false`. `DataTexture` xom piksel — yuqoridan pastga.
+     * `projectPhoto` UV'si ham shunday (V = 1 - y). Ikkalasi mos, aks
+     * holda surat teskari tushardi.
+     */
+    texture.flipY = false;
+    texture.needsUpdate = true;
+
+    photoTextureCache.set(url, texture);
+    return texture;
+  } catch (error) {
+    // Dekod xatosi — kiyim oq/rangli qoladi, bu buzilish emas
+    console.warn('[garment] surat dekod bo`lmadi', url, error);
+    return null;
+  }
+}
+
 export async function loadGarment(
   item: TryonItem,
   quality: Quality,
@@ -319,6 +369,15 @@ export async function loadGarment(
   const kind = fabricKindForSlot(slot ?? 'top');
   const fabric = fabricMaterial(kind);
 
+  /*
+   * Mahsulot surati bo'lsa — uni dekod qilib kiyim old tomoniga qo'yamiz.
+   * Kiyim GLB'sida planar UV bor (`projectPhoto.mjs`), surat esa shu
+   * yerda DataTexture bo'lib keladi (GLB embed RN'da ishlamaydi).
+   *
+   * Dekod xatosi `null` beradi — kiyim oq/rangli qoladi, buzilmaydi.
+   */
+  const photo = item.textureUrl ? await loadPhotoTexture(item.textureUrl) : null;
+
   scene.traverse((child) => {
     const mesh = child as THREE.Mesh;
     if (!mesh.isMesh) return;
@@ -326,17 +385,14 @@ export async function loadGarment(
     const material = (mesh.material as THREE.MeshStandardMaterial).clone();
 
     /*
-     * ⚠️ MAHSULOT SURATI USTIGA YOZMAYMIZ. `from-photo` ba'zi kiyimlarga
-     * mahsulot suratini albedo qilib proyeksiya qiladi (haqiqiy logo/
-     * naqsh). Bunday kiyimda `material.map` allaqachon bor — uni mato
-     * to'qimasi bilan almashtirsak, mahsulot surati yo'qolardi.
-     *
-     * Shu holda faqat RELYEF (normal) qo'shamiz: surat qoladi, ustiga
-     * mayda mato notekisligi tushadi.
+     * ⚠️ MAHSULOT SURATI USTIGA MATO YOZMAYMIZ. Surat bo'lsa uni
+     * `material.map` ga qo'yamiz (haqiqiy logo/naqsh) va faqat RELYEF
+     * (normal) qo'shamiz — mato albedo'si suratni yashirib qo'yardi.
      */
-    const hasPhoto = material.map != null;
-
-    if (!hasPhoto) {
+    if (photo) {
+      material.map = photo;
+      material.color.setRGB(1, 1, 1); // oq — surat ranglari to'g'ri chiqsin
+    } else {
       /*
        * Har material o'z UV takrorini talab qiladi. `Texture.repeat` bir
        * nusxada umumiy bo'lgani uchun teksturaning O'ZI ham nusxalanadi —
