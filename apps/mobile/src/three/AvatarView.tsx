@@ -59,6 +59,12 @@ export interface AvatarConfig {
    * batafsil izoh pastda, effekt o'rnida.
    */
   faceTextureUrl: string | null;
+  /**
+   * Selfidan olingan teri rangi (#RRGGBB). Bosh, bo'yin va qo'l materiali
+   * shunga bo'yaladi — avatar foydalanuvchining teri rangida ko'rinadi.
+   * Bo'sh bo'lsa modelning asl rangi qoladi.
+   */
+  skinTone?: string | null;
   /** Animatsiya nomi → GLB manzili. `GET /avatar/config` qaytaradi. */
   animations?: Record<string, string>;
 }
@@ -244,6 +250,17 @@ export const AvatarView = forwardRef<Scene3DHandle, AvatarViewProps>(function Av
        * kerak, aks holda ikkalasi bir xil sirt bo'lib ko'rinadi.
        */
       if (!isPlaceholder) {
+        /*
+         * Teri rangi selfidan (`skinTone`). Bosh/bo'yin/qo'l — TERI, shim
+         * ostidagi ichki kiyim EMAS. Ichki kiyimni ham bo'yasak avatar
+         * butunlay bir rangда bo'lib qolardi.
+         *
+         * ⚠️ RANG KO'PAYTIRILADI, ALMASHTIRILMAYDI. Modelning asl teri
+         * materiali normal va roughness'ni belgilaydi; skinTone faqat
+         * tusni beradi. `null` bo'lsa asl rang qoladi.
+         */
+        const skin = current.skinTone ? new THREE.Color(current.skinTone) : null;
+
         scene.traverse((child) => {
           const mesh = child as THREE.Mesh;
           if (!mesh.isMesh) return;
@@ -256,6 +273,9 @@ export const AvatarView = forwardRef<Scene3DHandle, AvatarViewProps>(function Av
             isUnderwear ? 0.7 : 0.35,
           );
           material.roughness = isUnderwear ? 0.92 : 0.62;
+
+          if (skin && !isUnderwear) material.color = skin;
+
           material.needsUpdate = true;
           mesh.material = material;
         });

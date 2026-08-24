@@ -7,7 +7,9 @@ import { deleteByUrl, presignRead } from '../integrations/r2';
 import { ApiError } from '../http/api-error';
 import {
   computeMorphTargets,
+  mergeMorphs,
   NEUTRAL,
+  type FaceMorphs,
   suggestQuality,
   type Measurements,
   type MorphTargets,
@@ -19,6 +21,8 @@ import {
 interface ProfileRow {
   measurements: Measurements | null;
   morph_targets: MorphTargets | null;
+  skin_tone: string | null;
+  face_morphs: FaceMorphs | null;
   face_texture_url: string | null;
   face_scan_status: string;
   body_photo_url: string | null;
@@ -35,7 +39,8 @@ async function loadProfile(userId: string): Promise<ProfileRow> {
     `SELECT COALESCE(p.measurements, '{}')::jsonb   AS measurements,
             COALESCE(p.morph_targets, '{}')::jsonb  AS morph_targets,
             p.face_texture_url, p.face_scan_status, p.avatar_preset,
-            p.body_photo_url,
+            p.body_photo_url, p.skin_tone,
+            COALESCE(p.face_morphs, '{}')::jsonb AS face_morphs,
             u.gender,
             t.is_restricted,
             (SELECT COUNT(*) FROM orders o
@@ -78,7 +83,15 @@ export async function getProfileExtras(userId: string) {
   return {
     measurements: profile.measurements ?? {},
     // Profil to'ldirilmagan bo'lsa neytral avatar ko'rsatiladi
-    morphTargets: hasMorphs(profile.morph_targets) ? profile.morph_targets : NEUTRAL,
+    /*
+     * Tana + yuz morflari BIRGA. Tana neytrali 0.5, yuz neytrali 0 —
+     * `mergeMorphs` ikkalasini to'g'ri birlashtiradi (morphs.ts).
+     */
+    morphTargets: mergeMorphs(
+      hasMorphs(profile.morph_targets) ? profile.morph_targets : NEUTRAL,
+      profile.face_morphs,
+    ),
+    skinTone: profile.skin_tone,
     faceTextureUrl,
     faceScanStatus: profile.face_scan_status,
     /*
@@ -239,7 +252,10 @@ export async function getAvatarConfig(
 ): Promise<{
   bodyGlbUrl: string;
   skeletonVersion: string;
-  morphTargets: MorphTargets;
+  /** Tana + yuz morflari birga — prefikssiz kalitlar (`mergeMorphs`). */
+  morphTargets: Record<string, number>;
+  /** Selfidan olingan teri rangi. Ilova bosh/qo'l materialini bo'yaydi. */
+  skinTone: string | null;
   faceTextureUrl: string | null;
   animations: Record<string, string>;
   qualityHint: QualityHint;
@@ -252,11 +268,20 @@ export async function getAvatarConfig(
   return {
     bodyGlbUrl: `${cdn}/avatar/${body}-base-${version}.glb`,
     skeletonVersion: version,
-    morphTargets: hasMorphs(profile.morph_targets) ? profile.morph_targets : NEUTRAL,
     /*
-     * ⚠️ 3D BU MAYDONNI ISHLATMAYDI (D-41). Qaytariladi, chunki
-     * kontrakt o'zgartirilmadi — lekin imzolanmaydi ham: shaxsiy
-     * havolani bekorga tarqatishning ma'nosi yo'q.
+     * Tana + yuz morflari BIRGA. Tana neytrali 0.5, yuz neytrali 0 —
+     * `mergeMorphs` ikkalasini to'g'ri birlashtiradi (morphs.ts). Ilova
+     * `bakeForExpoGl` da morf nomining prefiksini olib tashlab qidiradi.
+     */
+    morphTargets: mergeMorphs(
+      hasMorphs(profile.morph_targets) ? profile.morph_targets : NEUTRAL,
+      profile.face_morphs,
+    ),
+    skinTone: profile.skin_tone,
+    /*
+     * ⚠️ YUZ TEKSTURASI 3D DA ISHLATILMAYDI (D-41) — dog' bo'lardi.
+     * O'rniga yuz SHAKLI `face_morphs` orqali beriladi. Bu maydon AI
+     * oqimi uchun qaytariladi; imzolanmaydi (shaxsiy havola).
      */
     faceTextureUrl: profile.face_texture_url,
     animations: {

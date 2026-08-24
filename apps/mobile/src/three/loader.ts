@@ -447,7 +447,9 @@ export function bakeForExpoGl(root: THREE.Object3D, morphs: Record<string, numbe
       const defaults = mesh.morphTargetInfluences ?? [];
 
       const applied = Object.entries(mesh.morphTargetDictionary).map(([key, index]) => {
-        const override = morphs[key.replace(/^mt_/, '')];
+        // Prefiksni olib qidiramiz: `mt_height`→`height`, `fm_faceWidth`→`faceWidth`.
+        // Tana (mt_) va yuz (fm_) morflari bitta tekis map'da keladi.
+        const override = morphs[key.replace(/^(mt|fm)_/, '')];
         return [index, override ?? defaults[index] ?? 0] as const;
       });
 

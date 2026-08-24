@@ -45,6 +45,54 @@ export const NEUTRAL: MorphTargets = {
   hips: 0.5,
 };
 
+/**
+ * Yuz SHAKLI morflari — bosh mesh'idagi `fm_*` (021 migratsiya).
+ *
+ * ⚠️ NEYTRAL 0, mt_* DAN FARQLI (u 0.5). `export_bodies.py` fm_* ni 0 ga
+ * qo'yadi: asos geometriya neytral yuz, morf uni chetga suradi. Ya'ni
+ * qiymat qancha katta — xususiyat shuncha kuchli.
+ */
+export interface FaceMorphs {
+  faceLength: number;
+  faceWidth: number;
+  jawWidth: number;
+  chinShape: number;
+  noseWidth: number;
+  noseLength: number;
+  eyeDistance: number;
+  lipFullness: number;
+}
+
+/** Yuz neytral — barcha fm_* nol (asos yuz o'zgarmaydi). */
+export const NEUTRAL_FACE: FaceMorphs = {
+  faceLength: 0,
+  faceWidth: 0,
+  jawWidth: 0,
+  chinShape: 0,
+  noseWidth: 0,
+  noseLength: 0,
+  eyeDistance: 0,
+  lipFullness: 0,
+};
+
+function hasFaceMorphs(value: unknown): value is FaceMorphs {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    typeof (value as FaceMorphs).faceWidth === 'number'
+  );
+}
+
+/**
+ * Avatar config uchun BIRLASHGAN morf map — tana + yuz bitta tekis
+ * obyektda. Ilova `bakeForExpoGl` da morf nomining prefiksini olib
+ * tashlab qidiradi: `mt_height` → `height`, `fm_faceWidth` → `faceWidth`.
+ * Shuning uchun kalitlar prefikssiz.
+ */
+export function mergeMorphs(body: MorphTargets, face: FaceMorphs | null): Record<string, number> {
+  return { ...body, ...(hasFaceMorphs(face) ? face : NEUTRAL_FACE) };
+}
+
 function clamp01(value: number): number {
   if (Number.isNaN(value)) return 0.5;
   return Math.min(1, Math.max(0, Math.round(value * 100) / 100));
