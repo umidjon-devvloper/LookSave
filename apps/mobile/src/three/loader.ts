@@ -117,7 +117,7 @@ function cacheName(url: string): string {
  * `expo-file-system` esa aynan shu ish uchun: faylni diskka yuklaydi va
  * keshda qoldiradi — ikkinchi marta tarmoqqa chiqilmaydi.
  */
-async function download(url: string): Promise<ArrayBuffer> {
+export async function download(url: string): Promise<ArrayBuffer> {
   /*
    * `file://` — model allaqachon qurilmada: ilova ichiga joylashtirilgan
    * yoki oldin yuklab olingan. Uni keshga qayta nusxalash ortiqcha ish va

@@ -69,13 +69,27 @@ export default function AiDesigner(): JSX.Element {
           yopadi va ishlab chiqarish to'plamiga tushmaydi.
         */}
         {__DEV__ ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push('/ai/studio')}
-            style={styles.devLink}
-          >
-            <Text style={styles.devLinkText}>DEV · 3D studiya</Text>
-          </Pressable>
+          <View style={styles.devRow}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/ai/studio')}
+              style={styles.devLink}
+            >
+              <Text style={styles.devLinkText}>DEV · 3D studiya</Text>
+            </Pressable>
+            {/*
+              Siqish sinovi — 04-3d-pipeline §0, roadmapning 1-raqamli
+              kritik yo'li. Marshrutga ilova ichidan havola bo'lmasa uni
+              ochishning yagona yo'li deep link bo'lardi.
+            */}
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/compression-test')}
+              style={styles.devLink}
+            >
+              <Text style={styles.devLinkText}>DEV · siqish sinovi</Text>
+            </Pressable>
+          </View>
         ) : null}
         <Text style={styles.lead}>
           Uslubingiz, kayfiyatingiz yoki tadbir haqida ayting — AI siz uchun mos komplekt yasaydi.
@@ -195,6 +209,7 @@ const styles = StyleSheet.create({
   cta: { marginTop: spacing.lg },
 
   // ⚠️ Faqat dev — `__DEV__` bilan o'ralgan
+  devRow: { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap', justifyContent: 'center' },
   devLink: {
     alignSelf: 'center',
     marginTop: spacing.xs,
