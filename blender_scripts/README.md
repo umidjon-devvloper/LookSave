@@ -19,6 +19,7 @@ Spetsifikatsiya: [`docs/04-3d-pipeline.md`](../docs/04-3d-pipeline.md)
 | `rig_template.py`    | ❌ Blender'da ishga tushirilmagan                            |
 | `transfer_morphs.py` | ✅ Ishlaydi — 6 kalit ko'chirildi, o'lchov bilan tasdiqlandi |
 | `build_garment.py`   | ✅ Ishlaydi — kiyim 1.5 soniyada yasaladi                    |
+| `export_bodies.py`   | ✅ Ishlaydi — 15 mesh, 52 suyak, 6/6 `mt_*` (2026-08-24)     |
 
 Qoidalar (nomlar, byudjetlar, tekshiruvlar) testlangan.
 
