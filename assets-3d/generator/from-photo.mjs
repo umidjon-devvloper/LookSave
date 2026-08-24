@@ -274,14 +274,42 @@ for (const row of rows) {
     let textureUrl = null;
     if (photo && PROJECT_SLOTS.has(row.slot)) {
       try {
-        // Faqat planar UV qo'yiladi — suratning O'ZI ilova tomonda
-        // dekod qilinadi (GLB embed RN'da ishlamaydi, 022 migratsiya).
+        // 1) Kiyimga planar UV — surat old tomondan tushishi uchun
         const uvGlb = await projectPhotoOntoGarment(readFileSync(path));
         writeFileSync(path, uvGlb);
         size = uvGlb.length;
-        textureUrl = photo;
+
+        /*
+         * 2) KICHIK TEKSTURA. Mahsulot surati 3000px bo'lishi mumkin —
+         * telefon uni dekod qilolmaydi (24 MB RGBA, GPU chegarasi). Shu
+         * yerda 512² ga siqib, ALOHIDA JPEG sifatida yuklaymiz. Ilova aynan
+         * SHUNI oladi — kichik, tez dekod, GPU-ga xavfsiz.
+         */
+        const response = await fetch(photo);
+        if (!response.ok) throw new Error(`surat HTTP ${response.status}`);
+        const small = await sharp(Buffer.from(await response.arrayBuffer()))
+          .rotate()
+          .resize(512, 512, { fit: 'cover', position: 'centre' })
+          .jpeg({ quality: 82 })
+          .toBuffer();
+
+        const texHash = createHash('sha256').update(small).digest('hex').slice(0, 8);
+        const texKey = `models/auto/${row.variant_id}-tex.jpg`;
+        if (APPLY) {
+          await client.send(
+            new PutObjectCommand({
+              Bucket: BUCKET,
+              Key: texKey,
+              Body: small,
+              ContentType: 'image/jpeg',
+              CacheControl: 'public, max-age=31536000, immutable',
+            }),
+          );
+        }
+        textureUrl = `${CDN}/${texKey}?v=${texHash}`;
       } catch (error) {
-        console.log(`     ⚠️ UV proyeksiyasi o'tmadi (rangli qolip qoldi): ${error.message}`);
+        console.log(`     ⚠️ surat teksturasi o'tmadi (rangli qolip qoldi): ${error.message}`);
+        textureUrl = null;
       }
     }
 
