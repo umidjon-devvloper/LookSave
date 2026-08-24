@@ -155,7 +155,7 @@ export default function TryOn(): JSX.Element {
       setNotice(null);
 
       try {
-        const model = await loadGarment(item, quality);
+        const model = await loadGarment(item, quality, target);
         if (!model) {
           setNotice('Bu mahsulotning 3D modeli hali tayyor emas');
           slots.equip(target, item);

@@ -202,7 +202,7 @@ export default function Dressing(): JSX.Element {
       setNotice(null);
 
       try {
-        const model = await loadGarment(item, quality);
+        const model = await loadGarment(item, quality, slot);
         if (!model) {
           setNotice('Bu mahsulotning 3D modeli hali tayyor emas');
           // Model bo'lmasa ham tanlovni eslab qolamiz: komplekt saqlanganda

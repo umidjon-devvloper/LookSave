@@ -26,8 +26,8 @@ import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js
 
 import { CACHE_BUDGET_MB, ModelCache, pickModelUrl, type Quality, type TryonItem } from './core';
 import { patchNavigatorUserAgent } from './glCompat';
-import { fabricNormal } from './textures';
-import { Mesh } from 'three';
+import { fabricKindForSlot, fabricMaterial } from './textures';
+import { Mesh, Vector2 } from 'three';
 
 // GLTFLoader yaratilishidan OLDIN — aks holda birinchi parse yiqiladi
 patchNavigatorUserAgent();
@@ -288,27 +288,60 @@ export function clearClipCache(): void {
  * pastga hisoblanadi va busiz yuz teskari tushadi.
  */
 
-export async function loadGarment(item: TryonItem, quality: Quality): Promise<THREE.Group | null> {
+export async function loadGarment(
+  item: TryonItem,
+  quality: Quality,
+  slot?: string,
+): Promise<THREE.Group | null> {
   const url = pickModelUrl(item, quality);
   if (!url) return null;
 
   const { scene } = await loadModel(`${item.variantId}:${quality}`, url, item.fileSizeBytes ?? 0);
 
   /*
-   * Mato relyefi — barcha kiyim shu funksiyadan o'tadi, shuning uchun
-   * shu yerda beriladi. Modelga singdirilmaydi: relyef takrorlanuvchi va
-   * mayda, uni har GLB ichida saqlash faylni bekorga kattalashtirardi.
+   * Mato materiali — ALBEDO + normal + g'adir-budurlik. Barcha kiyim shu
+   * funksiyadan o'tadi, shuning uchun shu yerda beriladi. Modelga
+   * singdirilmaydi: teksturalar takrorlanuvchi va mayda, ularni har GLB
+   * ichida saqlash faylni bekorga kattalashtirardi.
+   *
+   * ⚠️ ALBEDO ENG MUHIMI. Ilgari bu yerda faqat normal map bor edi va
+   * kiyim TEKIS rangda qolardi — plastmassaga o'xshardi. Albedo asos
+   * rangni to'qima naqshi bilan modulyatsiya qiladi (`textures.ts`).
+   *
+   * ⚠️ ALBEDO `material.color` NI ALMASHTIRMAYDI, UNGA KO'PAYTIRILADI.
+   * Ya'ni GLB dagi kiyim rangi saqlanadi (oq, binafsha, ko'k) va ustiga
+   * to'qima tushadi. Rang tekstura ichida bo'lmagani uchun bitta tekstura
+   * hamma rangga yaraydi.
    *
    * Material NUSXALANADI: kesh bitta modelni bir necha marta qaytaradi va
    * materialni joyida o'zgartirish keshdagi asl nusxaga ham ta'sir qilardi.
    */
-  const normalMap = fabricNormal();
+  const kind = fabricKindForSlot(slot ?? 'top');
+  const fabric = fabricMaterial(kind);
+
   scene.traverse((child) => {
     const mesh = child as THREE.Mesh;
     if (!mesh.isMesh) return;
 
     const material = (mesh.material as THREE.MeshStandardMaterial).clone();
-    material.normalMap = normalMap;
+
+    /*
+     * Har material o'z UV takrorini talab qiladi. `Texture.repeat` bir
+     * nusxada umumiy bo'lgani uchun teksturaning O'ZI ham nusxalanadi —
+     * aks holda oxirgi kiyimning takrori hammasiga tarqalardi.
+     */
+    const albedo = fabric.albedo.clone();
+    albedo.needsUpdate = true;
+    albedo.repeat.set(fabric.repeat, fabric.repeat);
+
+    const normal = fabric.normal.clone();
+    normal.needsUpdate = true;
+    normal.repeat.set(fabric.repeat, fabric.repeat);
+
+    material.map = albedo;
+    material.normalMap = normal;
+    material.normalScale = new Vector2(fabric.normalScale, fabric.normalScale);
+    material.roughness = fabric.roughness;
     material.needsUpdate = true;
     mesh.material = material;
   });
