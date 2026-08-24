@@ -1,4 +1,5 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +13,7 @@ import { makeAt, readAdoptedBones } from './lib/adoptedSkeleton.mjs';
 import { buildBody } from './lib/body.mjs';
 import { loadBodyParts, shellFromMeshes } from './lib/bodyShell.mjs';
 import { buildGarment, CATALOG } from './lib/garments.mjs';
+import { projectPhotoOntoGarment } from './lib/projectPhoto.mjs';
 import { writeGlb } from './lib/glb.mjs';
 
 /**
@@ -57,6 +59,13 @@ const BUILDER_FOR_SLOT = {
   head: 'cap',
   wrist: 'watch',
 };
+
+/**
+ * Surat OLD tomonga proyeksiya qilinadigan slotlar. Bularда old ko'rinish
+ * muhim (logo, bosma, naqsh). Poyabzal/soat/kepka uchun old proyeksiya
+ * g'alati bo'lardi — ular faqat rang oladi.
+ */
+const PROJECT_SLOTS = new Set(['top', 'outer', 'bottom']);
 
 /** Qolip uchun `hideBodyParts` — katalogdagi tayyor qiymatdan olinadi. */
 function hiddenFor(builder) {
@@ -221,16 +230,17 @@ for (const row of rows) {
   }
 
   try {
-    // Sotuvchi rangni ko'rsatgan bo'lsa o'sha ishonchliroq — surat
-    // yoritilishiga qarab o'zgaradi, kiritilgan qiymat esa aniq
+    // Surat DOIM olinadi: rang uchun ham, proyeksiya uchun ham.
+    const photo = firstImage(row.variant_images) ?? firstImage(row.product_images);
+
+    // Rang: sotuvchi kiritgani ishonchliroq (surat yoritilishiga bog'liq),
+    // bo'lmasa suratdan. Bu qobiqning asosiy (orqa/yon) tusi bo'ladi.
     let colour;
     let source;
-
     if (typeof row.color_hex === 'string' && /^#?[0-9a-f]{6}$/i.test(row.color_hex)) {
       colour = parseInt(row.color_hex.replace('#', ''), 16);
       source = 'variant rangi';
     } else {
-      const photo = firstImage(row.variant_images) ?? firstImage(row.product_images);
       if (!photo) throw new Error('na rang, na surat bor');
       colour = await dominantColour(photo);
       source = 'suratdan';
@@ -248,14 +258,46 @@ for (const row of rows) {
     const scene = new THREE.Scene();
     scene.add(garment);
 
-    const file = `models/auto/${row.variant_id}-${VERSION}.glb`;
     const path = join(temp, `${row.variant_id}.glb`);
-    const size = await writeGlb(scene, path);
+    let size = await writeGlb(scene, path);
     const triangles = countTriangles(garment);
 
+    /*
+     * ⚠️ SURATNI OLD TOMONGA PROYEKSIYA. Old-muhim slotlarda (top/outer/
+     * bottom) mahsulot surati kiyim oldiga tekstura bo'lib tushadi — logo,
+     * bosma, naqsh ko'rinadi. Bu 3D ni "rangli qolip"dan "haqiqiy
+     * mahsulotga o'xshash"ga ko'taradi (12-tz.md).
+     *
+     * Proyeksiya YASHIL yo'lda: xato bo'lsa rangli qolip qoladi, butun
+     * generatsiya to'xtamaydi.
+     */
+    let projected = false;
+    if (photo && PROJECT_SLOTS.has(row.slot)) {
+      try {
+        const response = await fetch(photo);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const photoBytes = Buffer.from(await response.arrayBuffer());
+        const textured = await projectPhotoOntoGarment(readFileSync(path), photoBytes);
+        writeFileSync(path, textured);
+        size = textured.length;
+        projected = true;
+      } catch (error) {
+        console.log(`     ⚠️ surat proyeksiyasi o'tmadi (rangli qolip qoldi): ${error.message}`);
+      }
+    }
+
+    /*
+     * ⚠️ MAZMUN XESHI — MODEL YANGILANISHINING YAGONA YO'LI (D-44). Fayl
+     * nomi `-v1` da qotgan, kesh `immutable`, ilova esa URL xeshi bo'yicha
+     * saqlaydi. Xeshsiz yangi model ilovaga yetmasdi.
+     */
+    const version = createHash('sha256').update(readFileSync(path)).digest('hex').slice(0, 8);
+    const file = `models/auto/${row.variant_id}-${VERSION}.glb`;
+    const url = `${CDN}/${file}?v=${version}`;
+
     console.log(
-      `  ${APPLY ? '↑' : '·'} ${label} → ${builder}, ${hex(colour)} (${source}), ` +
-        `${Math.round(size / 1024)} KB, ${triangles} uchburchak`,
+      `  ${APPLY ? '↑' : '·'} ${label} → ${builder}, ${hex(colour)} (${source})` +
+        `${projected ? ' + SURAT' : ''}, ${Math.round(size / 1024)} KB, ${triangles} uchburchak`,
     );
 
     if (APPLY) {
@@ -275,7 +317,7 @@ for (const row of rows) {
                 hide_body_parts = $5, has_morphs = true,
                 status = 'ready', completed_at = now(), error_message = NULL
           WHERE id = $1`,
-        [row.id, `${CDN}/${file}`, triangles, size, spec.hideBodyParts],
+        [row.id, url, triangles, size, spec.hideBodyParts],
       );
     }
 

@@ -326,19 +326,32 @@ export async function loadGarment(
     const material = (mesh.material as THREE.MeshStandardMaterial).clone();
 
     /*
-     * Har material o'z UV takrorini talab qiladi. `Texture.repeat` bir
-     * nusxada umumiy bo'lgani uchun teksturaning O'ZI ham nusxalanadi —
-     * aks holda oxirgi kiyimning takrori hammasiga tarqalardi.
+     * ⚠️ MAHSULOT SURATI USTIGA YOZMAYMIZ. `from-photo` ba'zi kiyimlarga
+     * mahsulot suratini albedo qilib proyeksiya qiladi (haqiqiy logo/
+     * naqsh). Bunday kiyimda `material.map` allaqachon bor — uni mato
+     * to'qimasi bilan almashtirsak, mahsulot surati yo'qolardi.
+     *
+     * Shu holda faqat RELYEF (normal) qo'shamiz: surat qoladi, ustiga
+     * mayda mato notekisligi tushadi.
      */
-    const albedo = fabric.albedo.clone();
-    albedo.needsUpdate = true;
-    albedo.repeat.set(fabric.repeat, fabric.repeat);
+    const hasPhoto = material.map != null;
+
+    if (!hasPhoto) {
+      /*
+       * Har material o'z UV takrorini talab qiladi. `Texture.repeat` bir
+       * nusxada umumiy bo'lgani uchun teksturaning O'ZI ham nusxalanadi —
+       * aks holda oxirgi kiyimning takrori hammasiga tarqalardi.
+       */
+      const albedo = fabric.albedo.clone();
+      albedo.needsUpdate = true;
+      albedo.repeat.set(fabric.repeat, fabric.repeat);
+      material.map = albedo;
+    }
 
     const normal = fabric.normal.clone();
     normal.needsUpdate = true;
     normal.repeat.set(fabric.repeat, fabric.repeat);
 
-    material.map = albedo;
     material.normalMap = normal;
     material.normalScale = new Vector2(fabric.normalScale, fabric.normalScale);
     material.roughness = fabric.roughness;
