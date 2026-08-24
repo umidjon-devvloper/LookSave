@@ -87,6 +87,7 @@ export default function TryOn(): JSX.Element {
   const [equipping, setEquipping] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [fps, setFps] = useState<number | null>(null);
+  const [texStatus, setTexStatus] = useState<string>('—');
   /**
    * GL tashxisi — sahna bo'sh bo'lsa sabab shu yerda ko'rinadi.
    * Qator UMUMAN chiqmasa: GL konteksti yaratilmagan.
@@ -155,7 +156,7 @@ export default function TryOn(): JSX.Element {
       setNotice(null);
 
       try {
-        const model = await loadGarment(item, quality, target);
+        const model = await loadGarment(item, quality, target, (s) => setTexStatus(s));
         if (!model) {
           setNotice('Bu mahsulotning 3D modeli hali tayyor emas');
           slots.equip(target, item);
@@ -342,6 +343,7 @@ export default function TryOn(): JSX.Element {
               {fps === null ? 'FPS: —' : `${Math.round(fps)} FPS · ${quality}`}
             </Text>
             <Text style={styles.fpsText}>{glInfo ?? 'GL: kontekst yaratilmadi'}</Text>
+            <Text style={styles.fpsText}>tex: {texStatus}</Text>
           </View>
         ) : null}
 

@@ -350,10 +350,13 @@ export async function loadPhotoTexture(url: string): Promise<DataTexture | null>
   }
 }
 
+export type PhotoStatus = 'none' | 'loaded' | 'failed';
+
 export async function loadGarment(
   item: TryonItem,
   quality: Quality,
   slot?: string,
+  onPhoto?: (status: PhotoStatus) => void,
 ): Promise<THREE.Group | null> {
   const url = pickModelUrl(item, quality);
   if (!url) return null;
@@ -389,6 +392,7 @@ export async function loadGarment(
    * Dekod xatosi `null` beradi — kiyim oq/rangli qoladi, buzilmaydi.
    */
   const photo = item.textureUrl ? await loadPhotoTexture(item.textureUrl) : null;
+  onPhoto?.(item.textureUrl ? (photo ? 'loaded' : 'failed') : 'none');
 
   scene.traverse((child) => {
     const mesh = child as THREE.Mesh;
