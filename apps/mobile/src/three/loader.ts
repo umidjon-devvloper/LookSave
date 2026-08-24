@@ -28,7 +28,19 @@ import { CACHE_BUDGET_MB, ModelCache, pickModelUrl, type Quality, type TryonItem
 import { patchNavigatorUserAgent } from './glCompat';
 import { fabricKindForSlot, fabricMaterial } from './textures';
 import { ClampToEdgeWrapping, DataTexture, Mesh, RGBAFormat, SRGBColorSpace, Vector2 } from 'three';
-import { decode as decodeJpeg } from 'jpeg-js';
+/*
+ * ⚠️ FAQAT DEKODER, `jpeg-js` INDEXI EMAS. Index encoder'ni ham tortadi
+ * va u modul darajasida `Buffer` ishlatadi — Hermes'da `Buffer` yo'q,
+ * ilova ishga tushishda yiqilardi. Dekoder esa `Buffer` siz (useTArray).
+ */
+// @ts-expect-error — jpeg-js/lib/decoder tip e'lonisiz; qaytishi quyida tiplanadi
+import decodeJpeg from 'jpeg-js/lib/decoder';
+
+interface JpegDecoded {
+  width: number;
+  height: number;
+  data: Uint8Array;
+}
 
 // GLTFLoader yaratilishidan OLDIN — aks holda birinchi parse yiqiladi
 patchNavigatorUserAgent();
@@ -310,7 +322,7 @@ export async function loadPhotoTexture(url: string): Promise<DataTexture | null>
   try {
     const bytes = new Uint8Array(await download(url));
     // `useTArray` — Buffer emas, Uint8Array qaytaradi (Hermes'da Buffer yo'q)
-    const { width, height, data } = decodeJpeg(bytes, { useTArray: true });
+    const { width, height, data } = decodeJpeg(bytes, { useTArray: true }) as JpegDecoded;
 
     // Yangi Uint8Array — jpeg-js qaytargan bufer tipi DataTexture bilan
     // to'liq mos kelmaydi (ArrayBufferLike). Nusxa toza ArrayBuffer beradi.
