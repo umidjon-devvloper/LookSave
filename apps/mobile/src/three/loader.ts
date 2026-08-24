@@ -1,5 +1,4 @@
 import * as FileSystem from 'expo-file-system';
-import { loadTextureAsync } from 'expo-three';
 import type * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
@@ -257,25 +256,16 @@ export function clearClipCache(): void {
   clipCache.clear();
 }
 
-/**
- * Yuz suratini boshga tekstura qilib yuklaydi.
+/*
+ * ── `loadFaceTexture` OLIB TASHLANDI (D-41, 2026-08-24) ──
  *
- * ⚠️ three'ning `TextureLoader` i TO'G'RIDAN-TO'G'RI ISHLAMAYDI: u brauzer
- * `Image` obyektiga tayanadi, React Native'da esa u yo'q. `expo-three` shu
- * bo'shliqni to'ldiradi — RN'ning o'z rasm quvuridan foydalanadi.
+ * U selfini 3D bosh mesh'iga tekstura qilib yuklardi, lekin boshda yuz
+ * UV joylashuvi yo'q va natija dog' bo'lib chiqardi. Yagona chaqiruvchi
+ * `AvatarView` edi — sabab va qaytarish shartlari o'sha yerda yozilgan.
  *
- * ⚠️ `flipY = false` SHART: glTF UV koordinatalari yuqoridan pastga
- * hisoblanadi, three esa sukut bo'yicha rasmni ag'daradi. Ag'darilsa yuz
- * teskari tushadi va buni faqat ko'z bilan sezish mumkin.
+ * `flipY = false` shartini esdan chiqarmang: glTF UV'lari yuqoridan
+ * pastga hisoblanadi va busiz yuz teskari tushadi.
  */
-export async function loadFaceTexture(url: string): Promise<THREE.Texture> {
-  const texture = (await loadTextureAsync({ asset: url })) as THREE.Texture;
-
-  texture.flipY = false;
-  texture.needsUpdate = true;
-
-  return texture;
-}
 
 export async function loadGarment(item: TryonItem, quality: Quality): Promise<THREE.Group | null> {
   const url = pickModelUrl(item, quality);

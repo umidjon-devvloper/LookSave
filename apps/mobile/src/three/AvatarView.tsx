@@ -4,14 +4,7 @@ import * as THREE from 'three';
 import { AnimationRig, isAnimationName, type AnimationName } from './animation';
 import { adjustQuality, type Quality } from './core';
 import { mountGarment, unmountGarment } from './garment';
-import {
-  applyHiddenParts,
-  bakeForExpoGl,
-  disposeObject,
-  loadClips,
-  loadFaceTexture,
-  loadModel,
-} from './loader';
+import { applyHiddenParts, bakeForExpoGl, disposeObject, loadClips, loadModel } from './loader';
 import { createPlaceholderAvatar } from './placeholder';
 import { Scene3D, type Scene3DHandle, type SceneContext } from './Scene3D';
 import { fabricNormal, skinNormal } from './textures';
@@ -59,6 +52,12 @@ const QUALITY_COOLDOWN_MS = 10_000;
 export interface AvatarConfig {
   bodyGlbUrl: string;
   morphTargets: Record<string, number>;
+  /**
+   * ⚠️ 3D DA ISHLATILMAYDI (D-41). Server uni `/avatar/config` da
+   * qaytaraveradi, chunki AI oqimi shu maydonga tayanadi. Bu qatlam esa
+   * unga tegmaydi: yuz UV joylashuvi yo'q va natija dog' bo'lardi —
+   * batafsil izoh pastda, effekt o'rnida.
+   */
   faceTextureUrl: string | null;
   /** Animatsiya nomi → GLB manzili. `GET /avatar/config` qaytaradi. */
   animations?: Record<string, string>;
@@ -297,49 +296,40 @@ export const AvatarView = forwardRef<Scene3DHandle, AvatarViewProps>(function Av
     if (live && ready) applyHiddenParts(live.body, hiddenParts);
   }, [hiddenParts, ready]);
 
-  // ── Yuz teksturasi ─────────────────────────────────────────────────────
   /*
-   * Tana yuklangandan KEYIN va alohida effektda: surat o'zgarganda butun
-   * modelni qayta yuklash shart emas. Xato bo'lsa avatar neytral yuz
-   * bilan qolaveradi — bu buzilish emas, foydalanuvchiga ko'rsatilmaydi.
+   * ── YUZ TEKSTURASI OLIB TASHLANDI (D-41, 2026-08-24) ──────────────────
+   *
+   * Bu yerda selfi `body_head` mesh'iga `material.map` bo'lib tushardi.
+   * Natija yuz emas, DOG' edi: bosh mesh'ida yuz UV joylashuvi yo'q —
+   * generator butun tanaga umumiy qobiq UV'sini beradi
+   * (`assets-3d/generator/lib/bodyShell.mjs`). To'rtburchak surat shu
+   * UV bo'ylab cho'ziladi va odam qiyofasi umuman chiqmaydi.
+   *
+   * Kod ishlagandek ko'rinardi — xato yo'q, tekstura yuklanardi — lekin
+   * ko'rinishi buzuq edi. Va 3D ekran qaytarilgach (IP-01) bu jonli
+   * muammoga aylandi.
+   *
+   * ⚠️ QAYTARISH UCHUN NIMA KERAK (12-tz.md D-41, B/C variantlari):
+   *   1. Boshda HAQIQIY yuz UV joylashuvi — Blender'da qo'lda yasaladi,
+   *      protsedural qobiq bunga yaramaydi
+   *   2. Suratni o'sha UV ga moslash: yuz nuqtalarini aniqlash
+   *      (MediaPipe / ARKit) va proyeksiya bilan tekstura pishirish.
+   *      Xom selfini qo'yish yetarli emas
+   *   3. Model yuz UV'siga ega ekanini BILDIRISHI kerak — aks holda
+   *      eski modelda yana dog' chiqadi. Ya'ni `/avatar/config` ga
+   *      bayroq qo'shiladi, kod esa unga qarab qaror qiladi
+   *
+   * ⚠️ SAQLANGAN BILIM: teksturada `flipY = false` SHART bo'lgan. glTF
+   * UV koordinatalari yuqoridan pastga hisoblanadi, three esa sukut
+   * bo'yicha rasmni ag'daradi — ag'darilsa yuz teskari tushadi va buni
+   * faqat ko'z bilan sezish mumkin. Bu qator o'chirilgan
+   * `loadFaceTexture` da bor edi; qayta yozilganda takrorlanmasin.
+   *
+   * Foydalanuvchi yuzi HOZIR HAM ISHLATILADI — lekin AI oqimida
+   * (`api/src/tryon/avatar.ts` → `face_reference`), 3D da emas. Q-1
+   * qarori bo'yicha 3D ning vazifasi tez svayp va o'lcham, fotorealistik
+   * yuz emas (K-09 ham «uncanny valley» dan ogohlantiradi).
    */
-  useEffect(() => {
-    const url = config.faceTextureUrl;
-    const live = world.current;
-    if (!live || !ready || !url) return;
-
-    let cancelled = false;
-    let texture: THREE.Texture | null = null;
-
-    void (async () => {
-      try {
-        texture = await loadFaceTexture(url);
-        if (cancelled) {
-          texture.dispose();
-          return;
-        }
-
-        live.body.traverse((child) => {
-          const mesh = child as THREE.Mesh;
-          if (mesh.name !== 'body_head' || !mesh.isMesh) return;
-
-          // Material qismlar orasida umumiy — nusxa olamiz, aks holda yuz
-          // teksturasi butun tanaga yopishadi
-          const material = (mesh.material as THREE.MeshStandardMaterial).clone();
-          material.map = texture;
-          material.needsUpdate = true;
-          mesh.material = material;
-        });
-      } catch (error) {
-        console.warn('[avatar] yuz teksturasi yuklanmadi', error);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      texture?.dispose();
-    };
-  }, [config.faceTextureUrl, ready]);
 
   // ── Animatsiya kliplari ────────────────────────────────────────────────
   /*
