@@ -161,7 +161,21 @@ if (existsSync(externalFile)) {
       continue;
     }
 
-    const { source: _source, ...entry } = garment;
+    const { source: _source, catalog, note: _note, ...entry } = garment;
+
+    /*
+     * ⚠️ `catalog: false` — fayl bor, lekin FOYDALANUVCHIGA KO'RSATILMAYDI.
+     *
+     * Sabab: qo'lda yasalgan model geometriyasi buzuq bo'lishi mumkin va
+     * uni `poke.mjs` o'lchaydi. Buzuq modelni katalogda qoldirsak,
+     * foydalanuvchi uni ko'radi; `export/` dan o'chirsak, eksport zanjiri
+     * sinovi yo'qoladi. Shu bayroq ikkisini ajratadi.
+     */
+    if (catalog === false) {
+      console.warn(`   ⏸  ${garment.file} — katalogdan tashqarida: ${garment.note ?? 'sabab yozilmagan'}`);
+      continue;
+    }
+
     manifest.push(entry);
     console.log(`   qo'lda yasalgan: ${garment.file} (${garment.source})`);
   }

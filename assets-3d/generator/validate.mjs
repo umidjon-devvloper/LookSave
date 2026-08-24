@@ -298,9 +298,22 @@ function radiusProfile(root, include, step = 0.02) {
  * va tekshiruv yolg'on ogohlantirish berdi: y≈1.0 da eng chetdagi nuqta —
  * pastga osilgan QO'L, futbolka esa uni qoplashi shart emas.
  *
- * Qo'l va oyoq yenglari bu yerda tekshirilmaydi: ular Y o'qidan uzoqda
- * turadi, shuning uchun o'z o'qiga nisbatan o'lchash kerak bo'ladi.
- * Ular hozircha ko'z bilan tekshiriladi.
+ * ⚠️ YENG VA SHTANINA BU YERDA TEKSHIRILMAYDI. Ular Y o'qidan uzoqda
+ * turadi va o'z o'qiga nisbatan o'lchash kerak bo'ladi — bu tekshiruvning
+ * silindr yaqinlashuvi bunga yaramaydi.
+ *
+ * ⚠️ "KO'Z BILAN TEKSHIRILADI" DEB QOLDIRISH YETMADI (12-tz.md D-40): bu
+ * tekshiruv "✅ hammasi mos" deb turgan holda krossovkada oraliq 0.0 mm,
+ * sonda 0.1 mm edi — ya'ni z-fighting. Silindr yaqinlashuvi mahalliy
+ * siqilishni yashiradi.
+ *
+ * Endi ular ALOHIDA vosita bilan o'lchanadi:
+ *
+ *     node assets-3d/generator/poke.mjs
+ *
+ * U har tana verteksidan ikki tomonga nur otadi va aytadi: qism kiyim
+ * ichidami, tashqarisidami, yoki kiyim u yerda yo'qmi. Modelni
+ * o'zgartirgandan keyin IKKALASINI ham yurgizing.
  */
 const bodyRadius = radiusProfile(bodyGltf.scene, (name) => name === 'body_torso');
 

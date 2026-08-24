@@ -8,9 +8,35 @@ modellashtirishga o'tish.
 ```bash
 node assets-3d/generator/build.mjs      # modellarni yasaydi → export/
 node assets-3d/generator/validate.mjs   # qaytadan yuklab tekshiradi
+node assets-3d/generator/poke.mjs       # tana kiyim ostidan chiqib turmayaptimi
 node assets-3d/generator/measure.mjs    # proporsiya va aylanalarni o'lchaydi
 node assets-3d/generator/publish.mjs    # R2 + bazaga (--apply bilan bajaradi)
 ```
+
+## ⚠️ `poke.mjs` — nega alohida vosita
+
+`validate.mjs` gavdani **silindr** sifatida o'lchaydi: har balandlikda eng
+chetdagi nuqtani oladi. Bu ikki narsani yashiradi va ikkalasi ham 2026-08-24
+da topildi (12-tz.md D-39, D-40):
+
+1. **Yeng va shtanina umuman tekshirilmaydi** — ular Y o'qidan uzoqda
+2. **Mahalliy siqilish ko'rinmaydi** — nominal oraliq 22 mm bo'lgan holda
+   deltasimon mushak ustida yoki chovda u 0.1 mm gacha tushadi
+
+Natijada `validate.mjs` «✅ hammasi mos» deb turgan holda krossovkada oraliq
+**0.0 mm** edi — ya'ni yuzalar ustma-ust va z-fighting.
+
+`poke.mjs` har tana verteksidan **ikki tomonga** nur otadi:
+
+| Natija | Ma'nosi |
+| --- | --- |
+| `+normal` da tegdi | vertex kiyim ichida ✅ |
+| faqat `−normal` da (6 mm ichida) tegdi | kiyim orqada, vertex tashqarida ❌ |
+| ikkalasida ham tegmadi | kiyim bu yerda yo'q — hisobga olinmaydi |
+
+Uchinchi holat muhim: yeng uchi ostidagi qo'l ochiq bo'lishi **normal**.
+Birinchi ikki urinish aynan shu farqni ajratmagani uchun yolg'on natija
+bergan (88% va 20%) — o'lchov usulini o'zgartirmasdan raqamga ishonmang.
 
 ## Shaklni qanday o'zgartirish
 

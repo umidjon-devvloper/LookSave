@@ -3,7 +3,8 @@
     "Blender'da QO'LDA modellashtirilgan kiyimlar.",
     "Generator ularni yasamaydi — faqat manifestga qo'shadi, shunda ilova",
     "ularni protsedural modellar bilan bir qatorda ko'radi.",
-    "Eksport: blender_scripts/export_garment.py"
+    "Eksport: blender_scripts/export_garment.py",
+    "⚠️ `catalog: false` — fayl eksport zanjirini sinash uchun qoladi, lekin manifestga tushmaydi va foydalanuvchi ko`rmaydi. `note` da sabab."
   ],
   "garments": [
     {
@@ -15,7 +16,9 @@
       "colorHex": "#EDEDF2",
       "hideBodyParts": [],
       "hasMorphs": true,
-      "source": "avatar_bodies.blend → demo_tshirt"
+      "source": "avatar_bodies.blend → demo_tshirt",
+      "catalog": false,
+      "note": "poke.mjs 2026-08-24: gavdaning 23% i futbolkadan tashqarida, eng tor oraliq 0.0 mm — tanaga botgan. Blender`da CLEARANCE bilan qayta modellash kerak. hideBodyParts yechim emas: futbolka y 0.93…1.36, body_torso 0.843…1.543 — yashirilsa ikki tomondan teshik qoladi."
     }
   ]
 }

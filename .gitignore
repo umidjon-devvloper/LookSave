@@ -72,5 +72,10 @@ apps/api/.env
 __pycache__/
 *.pyc
 
-# Web — `assets-3d/export` dan avtomatik ko`chiriladi (apps/web/scripts/sync-models.mjs)
+# Generatsiya natijasi — `assets-3d/export` dan avtomatik ko`chiriladi.
+# Manba bitta: `assets-3d/export`. Nusxalarni commit qilish har model
+# o`zgarishida ~8 MB binar diff beradi va tarixni bekorga shishiradi.
+#   sayt:  apps/web/scripts/sync-models.mjs      (predev / prebuild)
+#   mobil: apps/mobile/scripts/sync-models.mjs   (prestart / preios)
 apps/web/public/models/
+apps/mobile/assets/models/

@@ -28,8 +28,19 @@ import { addMorphTargets, attachMorphNames, boxAt, capsuleBetween, ellipsoidAt }
  * ⚠️ 0.014 KAM EDI. Tana yuqori aniqlikda (53 000 uchburchak), kiyim esa
  * silliq naycha — ular bir-biriga juda yaqin kelganda z-fighting boshlanadi
  * va yuzada teri bilan mato almashib turgan chipor dog'lar paydo bo'ladi.
+ *
+ * ⚠️ 0.022 HAM YETMADI. Bu qiymat RADIAL siljish va u qobiq profiliga
+ * qo'llanadi — ya'ni NOMINAL. Lokal joylarda (deltasimon mushak bo'rtigi,
+ * A-pozadagi qiya qo'l, chov) haqiqiy oraliq 0.1 mm gacha siqiladi.
+ * `poke.mjs` 2026-08-24 da o'lchagan: son 0.1 mm, yeng 1.1 mm, yoqa
+ * 0.6 mm — hammasi z-fighting chegarasida.
+ *
+ * ⚠️ NOMINAL QIYMATNI KO'TARISH — YAGONA VOSITA EMAS, lekin eng arzoni:
+ * kiyim 4 mm kengroq bo'ladi va bu ko'zga tashlanmaydi. Yashirish
+ * (`hideBodyParts`) faqat TO'LIQ qoplangan qism uchun ishlaydi, aks holda
+ * teshik qoladi — katalog izohiga qarang.
  */
-const CLEARANCE = 0.022;
+const CLEARANCE = 0.026;
 
 /**
  * Yoqa o'lchami.
@@ -486,6 +497,17 @@ const BUILDERS = {
  * Kiyim tanadan `CLEARANCE` qadar kengroq yasaladi, shuning uchun tanani
  * yashirmasa ham u kiyim ichida qoladi. Yagona istisno — oyoq kiyim:
  * krossovka juda past poligonli va panja undan chiqib turadi.
+ *
+ * ⚠️ TAXMIN QILMANG, O'LCHANG: `node assets-3d/generator/poke.mjs`.
+ * U har tana verteksidan ikki tomonga nur otadi va aytadi: qism kiyim
+ * ichidami, tashqarisidami, yoki kiyim u yerda umuman yo'qmi. Shu
+ * o'lchov 2026-08-24 da uchta xulosani berdi:
+ *
+ *   • `body_torso` — 0% tashqarida, eng tor oraliq 14 mm → yashirish
+ *     KERAK EMAS (va yuqorida aytilgan teshikni beradi)
+ *   • `body_foot_L/R` — 5% tashqarida, oraliq 0.0 mm → YASHIRILADI
+ *   • son, yeng, yoqa — 0.1…1.1 mm → yashirilmaydi, lekin oraliq kichik.
+ *     `CLEARANCE` shuning uchun ko'tarildi
  */
 export const CATALOG = [
   {
@@ -526,7 +548,27 @@ export const CATALOG = [
     colorName: "Ko'k",
     colorHex: '#3B5A8C',
     color: 0x3b5a8c,
-    hideBodyParts: [],
+    /*
+     * ⚠️ QO'L YASHIRILADI, GAVDA YASHIRILMAYDI — sabab o'lchovda.
+     *
+     * Kurtka yengi `fromT: -0.45 … toT: 0.97` bilan yelkadan kaftgacha
+     * boradi, ya'ni qo'lni TO'LIQ qoplaydi — yashirilsa teshik qolmaydi.
+     * Gavda esa boshqa: kurtka Y 0.90…1.46, `body_torso` 0.83…1.46 —
+     * yashirilsa son ustida ochiq teshik qolardi (katalog izohi).
+     *
+     * ⚠️ NEGA OFFSET YETMAYDI: yeng TO'G'RI o'q bilan yasaladi
+     * (`start: arm, end: hand`), qo'l esa tirsakda buriladi. Shuning
+     * uchun 47 mm nominal offset ham tirsakda 0.2 mm gacha siqiladi va
+     * radial offsetni oshirish bunga yordam bermaydi. To'g'ri yechim —
+     * yengni ikki bo'g'imga bo'lib qurish, lekin bu generator ishi;
+     * hozircha yashirish z-fightingni butunlay yo'q qiladi.
+     */
+    hideBodyParts: [
+      'body_upperArm_L',
+      'body_upperArm_R',
+      'body_forearm_L',
+      'body_forearm_R',
+    ],
   },
   {
     key: 'pants-graphite',
@@ -556,7 +598,16 @@ export const CATALOG = [
     colorName: 'Oq',
     colorHex: '#EDEDF2',
     color: 0xededf2,
-    hideBodyParts: [],
+    /*
+     * ⚠️ PANJA YASHIRILADI. Yuqoridagi izoh buni "yagona istisno" deb
+     * yozgan, lekin ro'yxat bo'sh qolgan edi. `poke.mjs` o'lchovi:
+     * panjaning 5% i krossovkadan tashqarida va eng tor oraliq 0.0 mm —
+     * ya'ni yuzalar ustma-ust tushadi va z-fighting beradi.
+     *
+     * Bu yerda teshik xavfi yo'q (gavdadan farqli): krossovka butun
+     * panjani qoplaydi, ochiq qoladigan qismi yo'q.
+     */
+    hideBodyParts: ['body_foot_L', 'body_foot_R'],
   },
   {
     key: 'sneakers-black',
@@ -566,7 +617,7 @@ export const CATALOG = [
     colorName: 'Qora',
     colorHex: '#201D28',
     color: 0x201d28,
-    hideBodyParts: [],
+    hideBodyParts: ['body_foot_L', 'body_foot_R'],
   },
   {
     key: 'watch-steel',

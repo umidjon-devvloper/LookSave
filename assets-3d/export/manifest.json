@@ -42,7 +42,12 @@
       "title": "Jinsi kurtka",
       "colorName": "Ko'k",
       "colorHex": "#3B5A8C",
-      "hideBodyParts": [],
+      "hideBodyParts": [
+        "body_upperArm_L",
+        "body_upperArm_R",
+        "body_forearm_L",
+        "body_forearm_R"
+      ],
       "hasMorphs": true
     },
     {
@@ -76,7 +81,10 @@
       "title": "Krossovka",
       "colorName": "Oq",
       "colorHex": "#EDEDF2",
-      "hideBodyParts": [],
+      "hideBodyParts": [
+        "body_foot_L",
+        "body_foot_R"
+      ],
       "hasMorphs": true
     },
     {
@@ -86,7 +94,10 @@
       "title": "Krossovka",
       "colorName": "Qora",
       "colorHex": "#201D28",
-      "hideBodyParts": [],
+      "hideBodyParts": [
+        "body_foot_L",
+        "body_foot_R"
+      ],
       "hasMorphs": true
     },
     {
@@ -126,16 +137,6 @@
       "title": "Kepka",
       "colorName": "Binafsha",
       "colorHex": "#8B5CF6",
-      "hideBodyParts": [],
-      "hasMorphs": true
-    },
-    {
-      "key": "tshirt-blender",
-      "file": "tshirt-blender-v1.glb",
-      "slot": "top",
-      "title": "Futbolka",
-      "colorName": "Oq",
-      "colorHex": "#EDEDF2",
       "hideBodyParts": [],
       "hasMorphs": true
     }

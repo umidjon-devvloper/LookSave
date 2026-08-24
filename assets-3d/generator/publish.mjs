@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -77,6 +78,24 @@ async function upload(file, key) {
   const body = readFileSync(path);
   const size = statSync(path).size;
 
+  /*
+   * ⚠️ MAZMUN XESHI — MODEL YANGILANISHINING YAGONA YO'LI (12-tz.md D-44).
+   *
+   * Fayl nomi `-v1` da qotib qolgan, kesh esa uzoq va `immutable`:
+   *   • CDN obyektni bir yil saqlaydi
+   *   • ilova esa `cacheName(url)` — URL XESHIDAN diskda saqlaydi
+   *     (`loader.ts`)
+   *
+   * Ya'ni geometriya o'zgarsa ham URL o'sha bo'lib qoladi va ilova ESKI
+   * modelni ishlataveradi. Bu jim xato: yangi model yuklandi, foydalanuvchi
+   * eskisini ko'radi va sabab hech qayerda ko'rinmaydi.
+   *
+   * Xesh `?v=` da beriladi, kalitga tegmaydi — shuning uchun qayta nomlash
+   * ham, migratsiya ham kerak emas. `keyFromCdnUrl` (r2.ts) so'rov qismini
+   * kesib tashlaydi, ya'ni o'chirish ham ishlaydi.
+   */
+  const version = createHash('sha256').update(body).digest('hex').slice(0, 8);
+
   if (APPLY) {
     await s3.send(
       new PutObjectCommand({
@@ -84,14 +103,14 @@ async function upload(file, key) {
         Key: key,
         Body: body,
         ContentType: 'model/gltf-binary',
-        // Model versiyalangan (`-v1`), shuning uchun uzoq kesh xavfsiz
+        // URL da mazmun xeshi bor (`?v=`), shuning uchun uzoq kesh xavfsiz
         CacheControl: 'public, max-age=31536000, immutable',
       }),
     );
   }
 
   console.log(`  ${APPLY ? '↑' : '·'} ${key}  (${Math.round(size / 1024)} KB)`);
-  return { url: `${CDN}/${key}`, size };
+  return { url: `${CDN}/${key}?v=${version}`, size };
 }
 
 console.log(`\n${APPLY ? '⚠️  BAJARILMOQDA' : 'REJA (--apply berilmagan, hech narsa o`zgarmaydi)'}\n`);
