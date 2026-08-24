@@ -431,9 +431,28 @@ export const AvatarView = forwardRef<Scene3DHandle, AvatarViewProps>(function Av
       const info = context.renderer.info.render;
       const size = context.size;
       const children = context.scene.children.length;
-      callbacks.current.onDiagnostics?.(
-        `bufer ${size.width}×${size.height} · chaqiruv ${info.calls} · uch ${info.triangles} · bola ${children}`,
-      );
+      const line = `bufer ${size.width}×${size.height} · chaqiruv ${info.calls} · uch ${info.triangles} · bola ${children}`;
+      callbacks.current.onDiagnostics?.(line);
+
+      /*
+       * ⚠️ KONSOLGA HAM — har 300-kadrda (~5 s).
+       *
+       * Ekrandagi qatorni faqat telefon qo'lida turgan odam ko'radi.
+       * Konsolga chiqsa u Metro chiqishiga tushadi va ishlab chiquvchi
+       * uni o'zi o'qiy oladi — muammoni tasvirlab berishni so'rash
+       * kerak bo'lmaydi.
+       *
+       * `warn` — loyiha qoidasi bo'yicha `console.log` taqiqlangan.
+       * Har 300-kadr: har kadrda yozish log kanalini bo'g'ib qo'yadi.
+       */
+      if (frames.current % 300 === 0) {
+        const camera = context.camera.position;
+        const nan = [camera.x, camera.y, camera.z].some((v) => !Number.isFinite(v));
+        console.warn(
+          `[TASHXIS] ${line} · kamera=(${camera.x.toFixed(2)}, ${camera.y.toFixed(2)}, ` +
+            `${camera.z.toFixed(2)})${nan ? ' ⚠️NaN' : ''}`,
+        );
+      }
     }
 
     /*

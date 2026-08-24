@@ -1,3 +1,24 @@
+/*
+ * ⚠️ YON-TA'SIR UCHUN IMPORT — O'CHIRMANG, hech narsa ishlatilmasa ham.
+ *
+ * `expo-three` ichida `@expo/browser-polyfill` bor va u three'ga kerak
+ * bo'lgan brauzer globallarini qo'yadi:
+ *
+ *   global.Image · HTMLCanvasElement · HTMLImageElement · ImageBitmap
+ *   WebGLRenderingContext · TextDecoder · TextEncoder
+ *
+ * ⚠️ BU XATO BIR MARTA QILINDI (D-41, 2026-08-24). O'sha kuni yuz
+ * teksturasi olib tashlandi va u bilan birga `loadTextureAsync` importi
+ * ham ketdi — `expo-three` ni olib keladigan YAGONA joy shu edi. Natija:
+ * model muvaffaqiyatli yuklandi, log toza, xato yo'q, EKRAN esa bo'sh.
+ * Sababi hech qayerdan ko'rinmasdi.
+ *
+ * Shuning uchun import ochiq va yon-ta'sir sifatida turadi: undan hech
+ * narsa olinmaydi, ya'ni "ishlatilmagan" deb o'chirib tashlash oson —
+ * shu izoh buni to'sadi.
+ */
+import 'expo-three';
+
 import * as FileSystem from 'expo-file-system';
 import type * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
