@@ -62,7 +62,17 @@ const boneNames = [...boneIndices].map((i) => nodes[i]?.name ?? `node${i}`);
 // ── Mesh'lar ──
 const rows = [];
 let totalTriangles = 0;
-let morphNames = null;
+/*
+ * ⚠️ BARCHA MESH'LARDAN YIG'ILADI, birinchisidan emas.
+ *
+ * Ilgari bu birinchi morphli mesh'ning nomlarini olardi
+ * (`!morphNames`). GLB da mesh'lar `body_calf` (2 morph) dan boshlanadi,
+ * shuning uchun butun fayl uchun "faqat 2 shape key" ko'rsatilardi va
+ * pastdagi "6/6" tekshiruvi shu yolg'on ustiga qurilgan edi. Aslida
+ * `body_torso` da 8 ta morph bor (2026-08-24 da o'lchandi). Bu D-40
+ * bilan bir xil ko'r nuqta: qism o'rniga butun to'plamni o'lchash kerak.
+ */
+const morphSet = new Set();
 
 for (const node of nodes) {
   if (node.mesh === undefined) continue;
@@ -81,7 +91,7 @@ for (const node of nodes) {
 
   const targets = mesh.primitives?.[0]?.targets ?? [];
   const names = mesh.extras?.targetNames ?? [];
-  if (targets.length > 0 && !morphNames) morphNames = names.length > 0 ? names : ['(nomsiz)'];
+  for (const name of names) morphSet.add(name);
 
   rows.push({
     nom: node.name ?? mesh.name ?? '(nomsiz)',
@@ -168,7 +178,10 @@ if (boneNames.length > 0) {
   console.log(`   Namuna: ${boneNames.slice(0, 8).join(', ')}`);
 }
 
-console.log(`\nShape key: ${morphNames ? morphNames.slice(0, 10).join(', ') : 'yo`q'}`);
+const morphNames = morphSet.size > 0 ? [...morphSet] : null;
+console.log(
+  `\nShape key (barcha mesh'lardan): ${morphNames ? morphNames.join(', ') : 'yo`q'}`,
+);
 
 // ── Tekstura ──
 const images = json.images ?? [];
