@@ -5,6 +5,41 @@ Blender modellari tayyor bo'lgunicha butun zanjirni ishga tushirib turadigan
 talab qiladi: bitta model bilan zanjirni sinab ko'rish, keyin 60 soatlik
 modellashtirishga o'tish.
 
+## ⭐ Avtomatik 3D: sotuvchi suratidan → 3D kiyim
+
+Bu — loyihaning asosiy g'oyasi: **qo'lda modellash yo'q**. Sotuvchi
+mahsulotni rasmi bilan qo'shib "3D so'rash" bosadi → tizim o'zi 3D yasaydi.
+
+```bash
+node assets-3d/generator/from-photo.mjs          # navbatni ko'rsatadi (quruq)
+node assets-3d/generator/from-photo.mjs --apply  # yasaydi
+node assets-3d/generator/worker-3d.mjs           # ⭐ AVTOMATIK: navbatni doim kuzatadi
+```
+
+**Qanday ishlaydi** (`from-photo.mjs`):
+1. `assets_3d` dagi `status='queued'` mahsulotlarni oladi
+2. Har biriga: mahsulot suratidan **asosiy rangni** chiqaradi (markazdan,
+   fon va soyani tashlab)
+3. Slotga mos kiyim qolipini **o'sha rangda**, tanaga moslangan holda,
+   6 shape key bilan yasaydi
+4. R2 ga yuklaydi, `status='ready'` qiladi
+5. Mahsulot 3D svayp ro'yxatida paydo bo'ladi
+
+**⚠️ NEGA SURATDAN TO'G'RIDAN-TO'G'RI MESH EMAS.** Meshy/Tripo kabi
+xizmatlar tanaga moslanmagan, morflarsiz "yopiq buyum" qaytaradi — u
+tanadan chetda osilib qoladi. Shuning uchun geometriya **tanadan**
+quriladi (moslik kafolatli), surat esa rangni beradi.
+
+**Cheklov:** bu haqiqiy rangdagi qolip, aniq mahsulotning piksel nusxasi
+emas. Bir tusli kiyim — a'lo; katta bosmali — faqat asosiy rang. Piksel
+nusxa uchun 2-bosqich "yaxshilash" (tashqi xizmat) yoki qo'lda modellash.
+
+`worker-3d.mjs` — `from-photo.mjs` ni davriy (standart 30 s) chaqiradigan
+worker. Ishlab chiqarishda alohida jarayon/konteyner
+(`infra/docker-compose.yml`, `08-deployment.md`).
+
+## Barcha skriptlar
+
 ```bash
 node assets-3d/generator/build.mjs      # modellarni yasaydi → export/
 node assets-3d/generator/validate.mjs   # qaytadan yuklab tekshiradi

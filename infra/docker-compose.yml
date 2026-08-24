@@ -61,6 +61,44 @@ services:
       driver: json-file
       options: { max-size: '20m', max-file: '5' }
 
+  # ── 3D generatsiya worker'i (assets-3d/generator/worker-3d.mjs) ──
+  #
+  # ⚠️ NEGA ALOHIDA XIZMAT, API ICHIDA EMAS. three.js va sharp'ni ishlatib
+  # geometriya quradi — og'ir bog'liqliklar. Ularni API imijiga qo'shsak,
+  # u har so'rovda shu yukni ko'tarardi. Worker mustaqil ishlaydi: navbatni
+  # poll qiladi (docs 09), sotuvchi "3D so'rash" bosgan mahsulotlarni
+  # avtomatik yasaydi.
+  #
+  # ⚠️ FAQAT BITTA NUSXA (`replicas: 1`). Ikki worker bir queued qatorni
+  # olib ikkita model yasashi mumkin.
+  #
+  # ⚠️ IMIJ HALI YO'Q. Bu xizmat generator + uning og'ir bog'liqliklari
+  # (three, sharp, @gltf-transform, draco3dgltf) va base tana GLB'sini
+  # o'z ichiga olgan alohida Dockerfile talab qiladi. U tayyorlanmaguncha
+  # bu blok izohda qoladi — worker'ni hozircha host'da qo'lda yoki
+  # systemd timer bilan yuriting:
+  #     node assets-3d/generator/worker-3d.mjs --interval=60
+  #
+  # worker-3d:
+  #   image: ghcr.io/${GH_OWNER}/looksave-worker-3d:${API_TAG:-latest}
+  #   container_name: looksave-worker-3d
+  #   restart: unless-stopped
+  #   env_file: .env
+  #   environment:
+  #     DATABASE_URL: postgres://looksave:${POSTGRES_PASSWORD}@postgres:5432/looksave
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   deploy:
+  #     replicas: 1
+  #     resources:
+  #       limits:
+  #         memory: 1G
+  #   networks: [internal]
+  #   logging:
+  #     driver: json-file
+  #     options: { max-size: '20m', max-file: '5' }
+
   postgres:
     image: postgis/postgis:16-3.4-alpine
     container_name: looksave-postgres
