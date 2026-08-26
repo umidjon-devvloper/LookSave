@@ -24,6 +24,14 @@ logs/
 .expo-shared/
 apps/mobile/ios/
 apps/mobile/android/
+
+# Xcode — foydalanuvchiga xos holat (D-38).
+# Bu fayllar oyna joylashuvi va ochiq tablarni saqlaydi: har mashinada
+# boshqacha va har ochilishda o'zgaradi. Ilgari `umidjon/` shablon
+# loyihasi bilan birga repoga tushib qolgan edi.
+**/xcuserdata/
+*.xcuserstate
+DerivedData/
 *.jks
 *.p8
 *.p12
