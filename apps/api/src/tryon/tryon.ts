@@ -62,6 +62,8 @@ interface TryonRow {
   currency: string;
   thumbnail: string | null;
   texture_url: string | null;
+  product_images: unknown;
+  variant_images: unknown;
   glb_url: string | null;
   lod_urls: unknown;
   file_size_bytes: number | null;
@@ -123,7 +125,9 @@ export async function getSlotItems(slot: Slot, query: TryonSlotQuery) {
     `SELECT v.id AS variant_id, p.id AS product_id, p.title, p.base_price AS price,
             p.currency, p.tryon_count,
             v.color_hex, v.color_name,
-            a.thumbnail_url AS thumbnail, a.texture_url, a.glb_url, a.lod_urls, a.file_size_bytes,
+            a.thumbnail_url AS thumbnail, a.texture_url,
+            p.images AS product_images, v.images AS variant_images,
+            a.glb_url, a.lod_urls, a.file_size_bytes,
             a.hide_body_parts, a.has_morphs,
             s.id AS store_id, s.name AS store_name,
             ${distanceExpr} AS distance_m
@@ -140,6 +144,22 @@ export async function getSlotItems(slot: Slot, query: TryonSlotQuery) {
   return rows;
 }
 
+/**
+ * Rasmlar ro'yxatidan birinchi haqiqiy havolani oladi. Element string
+ * yoki `{url}` bo'lishi mumkin (sxema vaqt o'tib o'zgargan).
+ */
+function firstImage(value: unknown): string | null {
+  if (!Array.isArray(value)) return null;
+  for (const item of value) {
+    if (typeof item === 'string' && item.length > 0) return item;
+    if (item && typeof item === 'object') {
+      const url = (item as { url?: string; src?: string }).url ?? (item as { src?: string }).src;
+      if (typeof url === 'string' && url.length > 0) return url;
+    }
+  }
+  return null;
+}
+
 export function toTryonDto(row: TryonRow, locale: Locale) {
   return {
     variantId: row.variant_id,
@@ -150,7 +170,12 @@ export function toTryonDto(row: TryonRow, locale: Locale) {
     // Pul — string
     price: row.price,
     currency: row.currency,
-    thumbnail: row.thumbnail,
+    /*
+     * ⚠️ KARTA RASMI ZAXIRASI. `assets_3d.thumbnail_url` ko'pincha bo'sh
+     * (generator uni yasamaydi). Bo'sh bo'lsa mahsulot/variant fotosiga
+     * tushamiz — aks holda kartada bo'sh kul-rang ikonka ko'rinardi.
+     */
+    thumbnail: row.thumbnail ?? firstImage(row.variant_images) ?? firstImage(row.product_images),
     /** Mahsulot surati — ilova uni dekod qilib kiyim old tomoniga qo'yadi */
     textureUrl: row.texture_url,
     glbUrl: row.glb_url,
