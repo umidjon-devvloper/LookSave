@@ -75,4 +75,18 @@ export default tseslint.config(
       eqeqeq: ['error', 'always', { null: 'ignore' }],
     },
   },
+
+  {
+    // Buyruq satri vositalari — `apps/<ilova>/scripts/` ichidagi TS fayllar.
+    // Ular natijani AYNAN terminalga chiqaradi, ya'ni `console.log` ularning
+    // ishi. Ilova kodida qoida kuchida qoladi: u yerda `logger` ishlatiladi.
+    //
+    // ⚠️ BU BLOK ENG OXIRIDA TURISHI SHART. Flat config'da keyingi mos blok
+    // yutadi — umumiy TS bloki bundan oldin tursa, u `no-console` ni
+    // qaytadan yoqib qo'yadi.
+    files: ['apps/*/scripts/**/*.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
 );

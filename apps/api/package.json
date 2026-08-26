@@ -10,7 +10,8 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "test:integration": "vitest run --config vitest.integration.config.ts"
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "check:private-bucket": "tsx --env-file=.env scripts/check-private-bucket.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1109.0",
