@@ -1,4 +1,15 @@
+import { Asset } from 'expo-asset';
+import * as FileSystem from 'expo-file-system';
+/*
+ * ⚠️ FAQAT DEKODER, `jpeg-js` INDEXI EMAS. Index encoder'ni ham tortadi
+ * va u modul darajasida `Buffer` ishlatadi — Hermes'da `Buffer` yo'q,
+ * ilova ishga tushishda yiqilardi (`loader.ts` da xuddi shu izoh).
+ */
+// @ts-expect-error — jpeg-js/lib/decoder tip e'lonisiz; qaytishi quyida tiplanadi
+import decodeJpeg from 'jpeg-js/lib/decoder';
 import * as THREE from 'three';
+
+import { base64ToBytes } from './base64';
 
 /**
  * Kod bilan yasaladigan mikro-relyef teksturalari.
@@ -192,6 +203,123 @@ export function fabricKindForSlot(slot: string): FabricKind {
 
 const FABRIC_TINT: [number, number, number] = [1, 1, 1];
 
+/**
+ * Haqiqiy mato suratlari (PolyHaven, CC0). Protsedural to'quv matoning
+ * qanday KO'RINISHINI taxmin qiladi; bular esa haqiqiy matoning skani —
+ * trikotaj ipi, denim diagonali, charm g'adir-budurligi.
+ *
+ * ⚠️ ALBEDO KULRANG. Ilova uni bazaviy rangga KO'PAYTIRADI, ya'ni rangli
+ * bo'lsa mahsulot rangi buziladi (oq futbolka jigarrang chiqardi). Kulrang
+ * variant faqat yorug'lik o'zgarishini beradi.
+ *
+ * ⚠️ SURATLAR QIRQIB OLINGAN, KICHRAYTIRILMAGAN. 1024→256 siqishda mayda
+ * to'quv averaging'da butunlay yo'qoladi — sinab ko'rildi, natija bir tekis
+ * rang bo'lib chiqdi. Shuning uchun asl o'lchamdan 256×256 bo'lak kesilgan.
+ */
+const FABRIC_FILES: Record<FabricKind, { albedo: number; normal: number }> = {
+  knit: {
+    albedo: require('../../assets/textures/knit-albedo.jpg'),
+    normal: require('../../assets/textures/knit-normal.jpg'),
+  },
+  denim: {
+    albedo: require('../../assets/textures/denim-albedo.jpg'),
+    normal: require('../../assets/textures/denim-normal.jpg'),
+  },
+  twill: {
+    albedo: require('../../assets/textures/twill-albedo.jpg'),
+    normal: require('../../assets/textures/twill-normal.jpg'),
+  },
+  smooth: {
+    albedo: require('../../assets/textures/smooth-albedo.jpg'),
+    normal: require('../../assets/textures/smooth-normal.jpg'),
+  },
+};
+
+interface JpegDecoded {
+  width: number;
+  height: number;
+  data: Uint8Array;
+}
+
+/** Ilova ichidagi JPEG ni XOM PIKSEL teksturaga aylantiradi. */
+async function loadJpegTexture(moduleId: number, srgb: boolean): Promise<THREE.Texture | null> {
+  try {
+    const asset = Asset.fromModule(moduleId);
+    await asset.downloadAsync();
+    if (!asset.localUri) return null;
+
+    const base64 = await FileSystem.readAsStringAsync(asset.localUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    /*
+     * ⚠️ `DataTexture`, `TextureLoader` EMAS. RN'da `TextureLoader` rasm
+     * uchun `fetch` va `Image` ga tayanadi va jimgina bo'sh tekstura
+     * qaytaradi (GLB ichidagi JPEG bilan aynan shu bo'lgan). Xom piksel
+     * esa Hermes'da ishonchli ishlaydi.
+     */
+    const bytes = base64ToBytes(base64);
+    const { width, height, data } = decodeJpeg(bytes, { useTArray: true }) as JpegDecoded;
+    const texture = new THREE.DataTexture(new Uint8Array(data), width, height, THREE.RGBAFormat);
+
+    // Xom piksel yuqoridan pastga — GL kutganining teskarisi emas
+    texture.flipY = false;
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    if (srgb) texture.colorSpace = THREE.SRGBColorSpace;
+    texture.needsUpdate = true;
+
+    return texture;
+  } catch {
+    // Zaxira: protsedural tekstura ishlatiladi — kiyim baribir chiziladi
+    return null;
+  }
+}
+
+const fileTextures = new Map<FabricKind, { albedo: THREE.Texture; normal: THREE.Texture }>();
+let preloaded: Promise<void> | null = null;
+
+/**
+ * Mato suratlarini bir marta yuklaydi. Kiyim yuklanishidan oldin
+ * chaqiriladi; ikkinchi chaqiruv o'sha va'dani qaytaradi.
+ */
+export function preloadFabricTextures(): Promise<void> {
+  preloaded ??= (async () => {
+    for (const kind of Object.keys(FABRIC_FILES) as FabricKind[]) {
+      const files = FABRIC_FILES[kind];
+      const [albedo, normal] = await Promise.all([
+        loadJpegTexture(files.albedo, true),
+        loadJpegTexture(files.normal, false),
+      ]);
+      if (albedo && normal) fileTextures.set(kind, { albedo, normal });
+    }
+
+    /*
+     * ⚠️ KESHNI TOZALASH SHART. `fabricMaterial` natijani keshlaydi va
+     * agar biror kiyim preload tugashidan oldin yuklangan bo'lsa, keshda
+     * PROTSEDURAL variant qolib ketardi — surat yuklangani bilan hech
+     * qachon ishlatilmasdi.
+     */
+    fabricCache.clear();
+  })();
+
+  return preloaded;
+}
+
+/**
+ * Nechta mato surati yuklandi — DEV ko'rsatkichi uchun.
+ *
+ * ⚠️ NEGA KERAK. Simulyator 3D ni umuman chizmaydi, ya'ni mato skani
+ * qo'llanganini KO'Z BILAN faqat qurilmada tekshirish mumkin. Surat
+ * yuklanmasa kod jimgina protsedural teksturaga tushadi — xato ham,
+ * farq ham ko'rinmaydi. Bu qator shu ko'r nuqtani yopadi.
+ */
+export function fabricTextureStatus(): string {
+  const total = Object.keys(FABRIC_FILES).length;
+  if (!preloaded) return 'kutilmoqda';
+  return fileTextures.size === 0 ? 'protsedural' : `surat ${fileTextures.size}/${total}`;
+}
+
 export function fabricMaterial(kind: FabricKind): FabricMaterial {
   const cached = fabricCache.get(kind);
   if (cached) return cached;
@@ -232,6 +360,25 @@ export function fabricMaterial(kind: FabricKind): FabricMaterial {
       normalScale: 0.7,
       roughness: 0.85,
       repeat: 10,
+    };
+  }
+
+  /*
+   * ⚠️ HAQIQIY SURAT USTUN. Yuklangan bo'lsa protsedural to'quv o'rniga
+   * mato skani ishlatiladi — qolgan parametrlar (roughness, repeat,
+   * normalScale) o'z joyida qoladi, ular mato TURINI belgilaydi.
+   *
+   * `repeat` esa KICHRAYTIRILADI: protsedural tekstura 128 px va juda
+   * mayda, surat 256 px va unda to'quv allaqachon o'z o'lchamida. Bir xil
+   * takrorlashda naqsh mayda nuqtaga aylanib, to'qima ko'rinmay qolardi.
+   */
+  const file = fileTextures.get(kind);
+  if (file) {
+    material = {
+      ...material,
+      albedo: file.albedo,
+      normal: file.normal,
+      repeat: Math.max(2, Math.round(material.repeat / 2.5)),
     };
   }
 

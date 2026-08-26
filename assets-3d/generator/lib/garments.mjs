@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 import { loft, verticalRings } from './loft.mjs';
 import { LIMB_RADIUS, measuredTorsoKeys, shellKeys, SHAPE, torsoKeys } from './profiles.mjs';
+import { weldNormals } from './bodyShell.mjs';
 import { addMorphTargets, attachMorphNames, boxAt, capsuleBetween, ellipsoidAt } from './shape.mjs';
 
 /**
@@ -75,6 +76,25 @@ function fabric(color, roughness = 0.86) {
 
 function part(name, geometry, material) {
   addMorphTargets(geometry);
+
+  /*
+   * ⚠️ MORFDAN KEYIN QAYTA PAYVANDLANADI — va aynan shu tartib muhim.
+   *
+   * `addMorphTargets` morf nishonlarini yasash uchun ASOS pozitsiyani
+   * suradi (og'ishlar yig'indisining yarmicha orqaga). Bu surish ba'zi
+   * vertekslarni bir-biriga yaqinlashtiradi va ular BIR o'ringa tushadi —
+   * lekin normallari har xil bo'lib qolaveradi.
+   *
+   * Natijada bitta nuqtada ikki yo'nalish qoladi va yorug'lik
+   * uchburchakdan uchburchakka sakraydi: ekranda bu son bo'ylab zigzag,
+   * yelkada arra tishli chok bo'lib ko'rinadi.
+   *
+   * Buni topish qiyin bo'ldi: `shellFromMeshes` ichida o'lchov 0 uzilish
+   * berardi (u yerda payvandlash to'g'ri ishlaydi), tayyor GLB da esa
+   * `pants_leg_L` da 122 uzilish — 38.6%, eng kattasi 85 daraja. Sabab
+   * qobiqda emas, undan KEYINGI bosqichda edi.
+   */
+  weldNormals(geometry);
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = name;
   return attachMorphNames(mesh);
@@ -165,13 +185,23 @@ const BUILDERS = {
        * yopiladi. Qo'ltiq ostidagi ortiqcha qism gavda ichida qoladi,
        * shuning uchun ko'rinmaydi.
        *
-       * ⚠️ OFFSET GAVDANIKIDAN KATTAROQ. Ikkalasi bir xil masofada bo'lsa,
-       * yelkada ular kesishib qoladi va bir xil chuqurlikdagi ikki yuza
-       * shtrixli naqsh (z-fighting) beradi.
+       * ⚠️ OFFSET GAVDANIKIDAN KICHIK — yeng gavda ICHIDAN chiqadi.
+       *
+       * Ilgari u kattaroq edi (`+0.005`), ya'ni yeng gavda USTIDA turardi.
+       * Yelka egri sirt: yeng u bilan goh ustma-ust tushib, goh ichiga
+       * kirib ketardi va qirqilgan cheti gavda sirtini kesib o'tardi —
+       * ekranda bu yelka bo'ylab arra tishli chok bo'lib ko'rinardi.
+       *
+       * Endi yeng butunlay gavda ostida boshlanadi va faqat qo'l qismida
+       * chiqadi. Ko'rinadigan chegara — gavdaning O'Z cheti, u tekis.
+       * Haqiqiy futbolkada ham chok ichkarida (yeng gavdaga tikiladi).
+       *
+       * ⚠️ `-0.005` gacha chuqurlashtirish qo'shimcha foyda bermadi
+       * (sinab ko'rildi, natija bir xil) — 2 mm yetarli.
        */
       const geometry = shell([`body_upperArm_${suffix}`], {
         axis: { start: arm.toArray(), end: fore.toArray(), fromT: -0.9, toT: 0.55 },
-        offset: CLEARANCE + 0.005,
+        offset: CLEARANCE - 0.002,
         thickness: 0.004,
       });
 

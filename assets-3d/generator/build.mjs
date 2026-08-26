@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
 
 import { makeAt, readAdoptedBones } from './lib/adoptedSkeleton.mjs';
-import { loadBodyParts, shellFromMeshes } from './lib/bodyShell.mjs';
+import { buildNormalAtlas, loadBodyParts, shellFromMeshes } from './lib/bodyShell.mjs';
 import { ANIMATION_NAMES, buildAnimation } from './lib/animations.mjs';
 import { buildBody } from './lib/body.mjs';
 import { buildGarment, CATALOG } from './lib/garments.mjs';
@@ -107,6 +107,15 @@ if (at !== fallbackAt) console.log(`   suyak o'rinlari tashqi modeldan: ${adopte
  * esa har bir qavariqni aynan takrorlaydi.
  */
 const bodyParts = await loadBodyParts(adoptedMale);
+
+/*
+ * ⚠️ KIYIMLARDAN OLDIN. Atlas butun tana bo'ylab yagona normal beradi va
+ * shu bilan ALOHIDA `shell()` chaqiruvlari tutashgan joydagi chokni yopadi
+ * (yelka = gavda+yeng, bel = shim beli+shtanina). Bunsiz har chaqiruv o'z
+ * normalini olib, qobiqlar turli tomonga surilardi.
+ */
+const atlasSize = buildNormalAtlas(bodyParts);
+console.log(`   normal atlasi: ${atlasSize} noyob o'rin`);
 
 /**
  * `shell(nomlar, sozlamalar)` — sanab o'tilgan tana qismlaridan kiyim

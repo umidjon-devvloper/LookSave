@@ -112,7 +112,17 @@ function prepare(source, smooth) {
   if (smooth > 0) smoothGeometry(geometry, smooth);
 
   geometry.computeVertexNormals();
-  weldNormals(geometry);
+  /*
+   * ⚠️ NORMAL PAYVANDLASH BU YERDA EMAS. Ilgari shu yerda `weldNormals`
+   * chaqirilardi va u FAQAT shu meshni ko'rardi. Natijada ikki tana qismi
+   * TUTASHGAN joyda (yelka = gavda+qo'l, tizza = son+boldir, to'piq =
+   * boldir+panja) har qism o'z normalini olardi va qobiq ikki tomonga
+   * surilardi — mato o'sha yerda yirtilib, ostidan teri chiqib turardi.
+   * Renderда bu aynan chegaralarda arra tishli chekka bo'lib ko'rinardi.
+   *
+   * Endi payvandlash `shellFromMeshes` da, BARCHA qismlar bir vaqtda
+   * tayyorlangach bajariladi.
+   */
 
   return geometry;
 }
@@ -212,6 +222,76 @@ function smoothGeometry(geometry, iterations, strength = 0.5) {
 /** Bir joydagi vertekslarni topish uchun koordinata yaxlitlanadi — 0.1 mm. */
 const WELD = 1e4;
 
+/** `x,y,z` → payvandlash kaliti. */
+const posKey = (x, y, z) =>
+  `${Math.round(x * WELD)},${Math.round(y * WELD)},${Math.round(z * WELD)}`;
+
+/**
+ * BUTUN TANA bo'ylab normal atlasi — `buildNormalAtlas` to'ldiradi.
+ *
+ * ⚠️ NEGA GLOBAL, HAR CHAQIRUVDA EMAS. Bitta kiyim bir nechta ALOHIDA
+ * `shellFromMeshes` chaqiruvidan yig'iladi: futbolka gavdasi
+ * `body_torso` dan, yengi esa `body_upperArm_*` dan. Har chaqiruv o'z
+ * ichida payvandlansa ham, YELKADA — ya'ni ikki chaqiruv tutashgan joyda —
+ * normallar mos kelmasdi va qobiqlar turli tomonga surilardi. Ekranda bu
+ * yelkadagi arra tishli chok bo'lib ko'rinardi (tizzada va bel-shtanina
+ * chegarasida ham xuddi shu).
+ *
+ * Atlas bir marta, hamma tana qismi bo'ylab quriladi; keyin har qanday
+ * chaqiruv o'sha yagona qiymatni oladi va chok yo'qoladi.
+ */
+let normalAtlas = null;
+
+/**
+ * Tana qismlarining HAMMASI bo'ylab yagona normal atlasini quradi.
+ * `build.mjs` da kiyimlar yasalishidan OLDIN bir marta chaqiriladi.
+ */
+export function buildNormalAtlas(bodyParts) {
+  const prepared = [...bodyParts.values()].map((geometry) => prepare(geometry, 0));
+  weldNormals(prepared);
+
+  const atlas = new Map();
+
+  for (const geometry of prepared) {
+    const position = geometry.attributes.position;
+    const normal = geometry.attributes.normal;
+
+    for (let i = 0; i < position.count; i++) {
+      atlas.set(posKey(position.getX(i), position.getY(i), position.getZ(i)), [
+        normal.getX(i),
+        normal.getY(i),
+        normal.getZ(i),
+      ]);
+    }
+  }
+
+  normalAtlas = atlas;
+  return atlas.size;
+}
+
+/**
+ * Atlasdagi yagona normalni geometriyaga yozadi.
+ *
+ * Topilmagan verteks O'Z normalini saqlaydi — `smooth` qo'llangan qobiqda
+ * (krossovka) o'rinlar siljigan bo'ladi va atlasда bunday kalit yo'q. Bu
+ * to'g'ri: silliqlangan sirt boshqa shakl, unga tananing normali yaramaydi.
+ */
+function applyAtlas(geometry) {
+  if (!normalAtlas) return;
+
+  const position = geometry.attributes.position;
+  const normal = geometry.attributes.normal;
+
+  for (let i = 0; i < position.count; i++) {
+    const found = normalAtlas.get(
+      posKey(position.getX(i), position.getY(i), position.getZ(i)),
+    );
+    if (found) normal.setXYZ(i, found[0], found[1], found[2]);
+  }
+
+  normal.needsUpdate = true;
+}
+
 /**
  * Bir nuqtadagi normallarni o'rtachalab, hammasiga bir xil qiymat yozadi.
  *
@@ -234,46 +314,61 @@ const WELD = 1e4;
  * qobiq butun qoladi. Mato uchun silliq normal to'g'ri ham: kiyimda o'tkir
  * qirra bo'lmaydi, chetlari esa qirqish bilan yasaladi, normal bilan emas.
  */
-function weldNormals(geometry) {
-  const position = geometry.attributes.position;
-  const normal = geometry.attributes.normal;
+export function weldNormals(geometries) {
+  const list = Array.isArray(geometries) ? geometries : [geometries];
 
+  /*
+   * Birinchi yurish — barcha mesh bo'ylab UMUMIY yig'indi. Ikkinchi
+   * yurishda har verteksga o'sha umumiy qiymat yoziladi.
+   */
   const sums = new Map();
-  const keys = new Array(position.count);
+  const keyLists = [];
 
-  for (let i = 0; i < position.count; i++) {
-    const key = `${Math.round(position.getX(i) * WELD)},${Math.round(
-      position.getY(i) * WELD,
-    )},${Math.round(position.getZ(i) * WELD)}`;
+  for (const geometry of list) {
+    const position = geometry.attributes.position;
+    const normal = geometry.attributes.normal;
+    const keys = new Array(position.count);
+    keyLists.push(keys);
 
-    keys[i] = key;
+    for (let i = 0; i < position.count; i++) {
+      const key = `${Math.round(position.getX(i) * WELD)},${Math.round(
+        position.getY(i) * WELD,
+      )},${Math.round(position.getZ(i) * WELD)}`;
 
-    const sum = sums.get(key);
+      keys[i] = key;
 
-    if (sum) {
-      sum.x += normal.getX(i);
-      sum.y += normal.getY(i);
-      sum.z += normal.getZ(i);
-    } else {
-      sums.set(key, { x: normal.getX(i), y: normal.getY(i), z: normal.getZ(i) });
+      const sum = sums.get(key);
+
+      if (sum) {
+        sum.x += normal.getX(i);
+        sum.y += normal.getY(i);
+        sum.z += normal.getZ(i);
+      } else {
+        sums.set(key, { x: normal.getX(i), y: normal.getY(i), z: normal.getZ(i) });
+      }
     }
   }
 
-  for (let i = 0; i < position.count; i++) {
-    const sum = sums.get(keys[i]);
-    const length = Math.hypot(sum.x, sum.y, sum.z);
+  for (let g = 0; g < list.length; g++) {
+    const normal = list[g].attributes.normal;
+    const keys = keyLists[g];
 
-    /*
-     * Uzunlik nolga yaqin — qarama-qarshi normallar bir-birini yo'q qilgan
-     * (yupqa devorning ikki tomoni). Bunday nuqtada yo'nalish aniqlanmaydi,
-     * shuning uchun asl qiymat qoldiriladi.
-     */
-    if (length < 1e-6) continue;
+    for (let i = 0; i < keys.length; i++) {
+      const sum = sums.get(keys[i]);
+      const length = Math.hypot(sum.x, sum.y, sum.z);
 
-    normal.setXYZ(i, sum.x / length, sum.y / length, sum.z / length);
+      /*
+       * Uzunlik nolga yaqin — qarama-qarshi normallar bir-birini yo'q qilgan
+       * (yupqa devorning ikki tomoni). Bunday nuqtada yo'nalish aniqlanmaydi,
+       * shuning uchun asl qiymat qoldiriladi.
+       */
+      if (length < 1e-6) continue;
+
+      normal.setXYZ(i, sum.x / length, sum.y / length, sum.z / length);
+    }
+
+    normal.needsUpdate = true;
   }
-
-  normal.needsUpdate = true;
 }
 
 /**
@@ -405,8 +500,17 @@ export function shellFromMeshes(
     return next;
   };
 
-  for (const source of sources) {
-    const geometry = prepare(source, smooth);
+  /*
+   * Avval HAMMA qism tayyorlanadi, keyin normallar ular bo'ylab BIRGALIKDA
+   * payvandlanadi — chegaradagi verteks ikki qismda ham bir xil yo'nalish
+   * oladi va qobiq butun qoladi (`weldNormals` izohiga qarang).
+   */
+  const prepared = sources.map((source) => prepare(source, smooth));
+  weldNormals(prepared);
+  // Butun tana bo'ylab yagona qiymat — alohida chaqiruvlar orasidagi chokni yopadi
+  for (const geometry of prepared) applyAtlas(geometry);
+
+  for (const geometry of prepared) {
     const position = geometry.attributes.position;
     const normal = geometry.attributes.normal;
     const uv = geometry.attributes.uv;
@@ -530,6 +634,31 @@ export function shellFromMeshes(
   shell.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
   shell.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   shell.setIndex(indices);
+
+  /*
+   * ⚠️ NORMAL SURILGAN SIRT BO'YICHA QAYTA HISOBLANADI.
+   *
+   * Yuqorida har verteksga TANANING normali yozildi — surish yo'nalishi
+   * sifatida u to'g'ri, lekin natijaviy qobiq BOSHQA shakl va uning
+   * yorug'ligi o'z sirtidan kelib chiqishi kerak.
+   *
+   * Nima uchun bu ko'zga tashlanadi: surish botiq joylarda (tizza orqasi,
+   * ichki son, qo'ltiq) vertekslarni bir-biriga yaqinlashtiradi va ular
+   * ba'zan bir o'ringa tushib qoladi — lekin normallari har xil bo'lgani
+   * uchun `addVertex` ularni ALOHIDA verteks deb yozadi. Natijada bitta
+   * nuqtada ikki xil yo'nalish qoladi va yorug'lik uchburchakdan
+   * uchburchakka sakraydi: ekranda bu son bo'ylab zigzag, yelkada esa
+   * arra tishli chok bo'lib ko'rinadi.
+   *
+   * O'lchandi (`diag_normals.py`): tuzatishdan oldin `pants_leg_L` da
+   * 38.6% o'rinda uzilish, eng kattasi 85 daraja.
+   *
+   * `weldNormals` esa qayta hisoblangan normalni bir o'rinda birlashtiradi
+   * — `computeVertexNormals` uni verteks INDEKSI bo'yicha hisoblaydi va
+   * UV choki bo'ylab yana ikkiga bo'linib ketardi.
+   */
+  shell.computeVertexNormals();
+  weldNormals(shell);
 
   return shell;
 }

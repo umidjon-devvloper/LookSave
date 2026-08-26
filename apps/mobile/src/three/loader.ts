@@ -26,7 +26,8 @@ import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js
 
 import { CACHE_BUDGET_MB, ModelCache, pickModelUrl, type Quality, type TryonItem } from './core';
 import { patchNavigatorUserAgent } from './glCompat';
-import { fabricKindForSlot, fabricMaterial } from './textures';
+import { base64ToBytes } from './base64';
+import { fabricKindForSlot, fabricMaterial, preloadFabricTextures } from './textures';
 import { ClampToEdgeWrapping, DataTexture, Mesh, RGBAFormat, SRGBColorSpace, Vector2 } from 'three';
 /*
  * ⚠️ FAQAT DEKODER, `jpeg-js` INDEXI EMAS. Index encoder'ni ham tortadi
@@ -99,33 +100,6 @@ export function disposeObject(root: THREE.Object3D): void {
   });
 
   root.removeFromParent();
-}
-
-/**
- * Base64 → bayt. Hermes'da `atob` ham, `Buffer` ham yo'q, shuning uchun
- * qo'lda. Faqat shu fayl uchun kerak — alohida paket olib kelishga arzimaydi.
- */
-const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-
-function base64ToBytes(input: string): Uint8Array {
-  const clean = input.replace(/[^A-Za-z0-9+/]/g, '');
-  const bytes = new Uint8Array((clean.length * 3) >> 2);
-
-  let byte = 0;
-  let bits = 0;
-  let out = 0;
-
-  for (let i = 0; i < clean.length; i++) {
-    byte = (byte << 6) | B64.indexOf(clean[i] as string);
-    bits += 6;
-
-    if (bits >= 8) {
-      bits -= 8;
-      bytes[out++] = (byte >> bits) & 0xff;
-    }
-  }
-
-  return bytes;
 }
 
 /** URL → keshdagi barqaror fayl nomi (djb2) */
@@ -382,6 +356,12 @@ export async function loadGarment(
    * materialni joyida o'zgartirish keshdagi asl nusxaga ham ta'sir qilardi.
    */
   const kind = fabricKindForSlot(slot ?? 'top');
+  /*
+   * Mato suratlari — birinchi kiyimdan oldin bir marta. Keyingi
+   * chaqiruvlar o'sha va'dani oladi, ya'ni kutish faqat bir marta bo'ladi.
+   */
+  await preloadFabricTextures();
+
   const fabric = fabricMaterial(kind);
 
   /*
