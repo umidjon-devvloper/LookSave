@@ -1,12 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRef } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getFullProfile, updateProfile } from '../../src/api/endpoints';
 import { Icon, type IconName } from '../../src/components/Icon';
 import { AvatarPicker } from '../../src/components/profile/AvatarPicker';
+import { ScrollFade } from '../../src/components/ScrollFade';
 import { SignInRequired } from '../../src/components/SignInRequired';
 import { Button, Screen } from '../../src/components/ui';
 import { rtlStyles, useI18n } from '../../src/i18n';
@@ -76,6 +78,13 @@ export default function Profile(): JSX.Element {
   const { locale, setLocale, t, isRTL } = useI18n();
 
   const insets = useSafeAreaInsets();
+
+  /*
+   * Scroll holati — tepadagi fon uchun. Usiz avatar doirasi va kamera
+   * tugmasi scroll qilinganda status bar ostidan chiqib, soat bilan
+   * ustma-ust tushardi (bu ekranda native header yo'q).
+   */
+  const scrollY = useRef(new Animated.Value(0)).current;
   const queryClient = useQueryClient();
 
   const signedIn = status === 'signedIn';
@@ -110,7 +119,14 @@ export default function Profile(): JSX.Element {
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <Animated.ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+          useNativeDriver: true,
+        })}
+      >
         {/* Sarlavha kartasi — surat, ism va uchta raqam */}
         <View style={[styles.header, { paddingTop: insets.top + spacing.lg }]}>
           <LinearGradient
@@ -237,7 +253,9 @@ export default function Profile(): JSX.Element {
           variant="danger"
           onPress={() => router.push('/settings/delete-account')}
         />
-      </ScrollView>
+      </Animated.ScrollView>
+
+      <ScrollFade scrollY={scrollY} height={insets.top + spacing.sm} />
     </Screen>
   );
 }

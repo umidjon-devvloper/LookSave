@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { Slot } from '@looksave/validation';
 import type * as THREE from 'three';
 
@@ -25,6 +26,7 @@ import { money } from '../../src/theme/format';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 import { AvatarView, type AvatarConfig } from '../../src/three/AvatarView';
 import { nextIndex, SlotState, type Quality, type TryonItem } from '../../src/three/core';
+import { fabricTextureStatus } from '../../src/three/textures';
 import {
   bakeForExpoGl,
   disposeObject,
@@ -306,23 +308,6 @@ export default function TryOn(): JSX.Element {
           </Pressable>
         ) : null}
 
-        {/*
-          AI oqimiga kirish (deck 03–06-slayd).
-
-          ⚠️ NEGA SHU YERDA: markaziy tab tugmasi endi 3D ga kiradi
-          (Q-1 qarori), ya'ni AI ga boshqa kirish nuqtasi qolmagan edi.
-          Mantiqan ham to'g'ri joyi shu: foydalanuvchi 3D da bepul tanlab
-          bo'lgach, yoqqanini AI da "menda qanday ko'rinadi" deb ko'radi.
-        */}
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.push('/ai')}
-          style={[styles.aiPill, { bottom: spacing.lg }]}
-        >
-          <Icon name="premium" size={14} color={colors.accent} />
-          <Text style={styles.aiPillText}>AI bilan ko‘rish</Text>
-        </Pressable>
-
         {placeholder && bodyReady ? (
           <View style={[styles.badge, { top: insets.top + spacing.sm }]}>
             <Text style={styles.badgeText}>Namuna avatar</Text>
@@ -343,7 +328,9 @@ export default function TryOn(): JSX.Element {
               {fps === null ? 'FPS: —' : `${Math.round(fps)} FPS · ${quality}`}
             </Text>
             <Text style={styles.fpsText}>{glInfo ?? 'GL: kontekst yaratilmadi'}</Text>
-            <Text style={styles.fpsText}>tex: {texStatus}</Text>
+            <Text style={styles.fpsText}>
+              tex: {texStatus} · mato: {fabricTextureStatus()}
+            </Text>
           </View>
         ) : null}
 
@@ -364,6 +351,36 @@ export default function TryOn(): JSX.Element {
           <Text style={styles.swipeHint}>← svayp qiling: {slot} almashadi →</Text>
         ) : null}
       </View>
+
+      {/*
+        AI — QAHRAMON YO'L (deck 03–06-slayd). Yuqoridagi 3D tez va BEPUL
+        "o'lcham/ko'rinish" beradi (stilizatsiya, protsedural). AI esa
+        foydalanuvchining O'Z suratiga kiyimni FOTOREALISTIK kiydiradi
+        (FASHN). Deckdagi "menda qanday ko'rinadi" va'dasini aynan shu yo'l
+        bajaradi — shuning uchun u kichik "pill" emas, asosiy chaqiruv.
+      */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="AI bilan o'zingizda ko'rish"
+        onPress={() => router.push('/ai')}
+      >
+        <LinearGradient
+          colors={[colors.primary, colors.primaryDim]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.aiHero}
+        >
+          <View style={styles.aiHeroIcon}>
+            <Icon name="tryon" size={20} color={colors.text} />
+          </View>
+          <View style={styles.aiHeroText}>
+            <Text style={styles.aiHeroTitle}>AI bilan o‘zingizda ko‘ring</Text>
+            <Text style={styles.aiHeroSub}>Fotorealistik natija · bir necha soniya</Text>
+          </View>
+          <Icon name="next" size={20} color={colors.text} />
+        </LinearGradient>
+      </Pressable>
+      <Text style={styles.tierNote}>Yuqorida — tez 3D ko‘rish (bepul)</Text>
 
       {/* Slot tanlash */}
       <View style={styles.slotBar}>
@@ -541,20 +558,33 @@ const styles = StyleSheet.create({
   },
   badgeText: { ...text.tiny, color: colors.limited },
 
-  aiPill: {
-    position: 'absolute',
-    alignSelf: 'center',
+  aiHero: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: spacing.sm,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.borderAccent,
-    backgroundColor: colors.primarySoft,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
   },
-  aiPillText: { ...text.small, color: colors.accent, fontWeight: '600' },
+  aiHeroIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  aiHeroText: { flex: 1 },
+  aiHeroTitle: { ...text.body, color: colors.text, fontWeight: '700' },
+  aiHeroSub: { ...text.small, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+  tierNote: {
+    ...text.small,
+    color: colors.textDim,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+  },
 
   fpsBadge: {
     position: 'absolute',

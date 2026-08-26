@@ -1,10 +1,12 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, type Href } from 'expo-router';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ImageSourcePropType } from 'react-native';
+import { useRef } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '../../src/components/Icon';
+import { ScrollFade } from '../../src/components/ScrollFade';
 import { Screen } from '../../src/components/ui';
 import { rtlStyles, useI18n } from '../../src/i18n';
 import { images } from '../../src/theme/images';
@@ -16,6 +18,12 @@ import { colors, radius, spacing, text } from '../../src/theme/tokens';
  * Kolleksiyalar `products.gender` va `products.is_limited` ustunlari bo'yicha
  * filtrlanadi (004_catalog.sql). Ya'ni bo'linish haqiqiy, ko'z bo'yash emas.
  */
+/**
+ * Hero balandligi — cho'zilish nisbati shunga o'lchanadi (`styles.hero.minHeight`).
+ * Home ekranidagi bilan bir xil usul (`Hero.tsx` dagi izohga qarang).
+ */
+const HERO_HEIGHT = 420;
+
 interface Collection {
   key: string;
   title: string;
@@ -93,6 +101,36 @@ export default function Marketplace(): JSX.Element {
   const isRTL = useI18n((state) => state.isRTL);
   const insets = useSafeAreaInsets();
 
+  /*
+   * Scroll holati — Home ekranidagi bilan bir xil tizim: fon rezinkadek
+   * cho'ziladi, tepa fon 100px da to'liq qorayadi. RN `Animated` +
+   * `useNativeDriver` (reanimated emas: babel plagini yo'q).
+   */
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  /* Pastga tortilganda fon cho'ziladi, TEPASI ekran tepasida qotib qoladi */
+  const stretchStyle = {
+    transform: [
+      {
+        translateY: scrollY.interpolate({
+          inputRange: [-HERO_HEIGHT, 0],
+          outputRange: [-HERO_HEIGHT / 2, 0],
+          extrapolateRight: 'clamp' as const,
+        }),
+      },
+      {
+        scale: scrollY.interpolate({
+          inputRange: [-HERO_HEIGHT, 0],
+          outputRange: [2, 1],
+          extrapolateRight: 'clamp' as const,
+        }),
+      },
+    ],
+  };
+
+  /** Fixed header egallaydigan balandlik — hero kontenti shundan keyin boshlanadi */
+  const headerHeight = insets.top + 62;
+
   const collections: Collection[] = [
     {
       key: 'men',
@@ -123,30 +161,44 @@ export default function Marketplace(): JSX.Element {
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={[styles.hero, { paddingTop: Math.max(insets.top - 14, spacing.md) }]}>
-          <Image
-            source={images.heroMarket}
-            style={isRTL ? styles.heroImageRTL : styles.heroImage}
-            resizeMode="cover"
-          />
-          <LinearGradient
-            colors={['rgba(10,10,15,0.98)', 'rgba(10,10,15,0.88)', 'rgba(10,10,15,0.04)']}
-            locations={[0, 0.5, 1]}
-            start={{ x: isRTL ? 1 : 0, y: 0.55 }}
-            end={{ x: isRTL ? 0 : 1, y: 0.1 }}
-            style={StyleSheet.absoluteFill}
-          />
-          {/* Sarlavha rasm ustida turadi — deckdagidek yagona blok */}
-          <View style={[styles.topBar, rtlStyles.row(isRTL)]}>
-            <View style={[styles.titleWrap, rtlStyles.align(isRTL)]}>
-              <Text style={styles.title}>{t.marketplace.title}</Text>
-              <Text style={styles.motto}>{t.marketplace.motto}</Text>
-            </View>
-            <Pressable style={styles.cartButton} onPress={() => router.push('/(tabs)/cart')}>
-              <Icon name="cart" size={20} color={colors.text} />
-            </Pressable>
-          </View>
+      <Animated.ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        /* `16` — 60 FPS; kattaroq son cho'zilishni sakratadi */
+        scrollEventThrottle={16}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+          useNativeDriver: true,
+        })}
+      >
+        <View style={[styles.hero, { paddingTop: headerHeight }]}>
+          {/*
+            ⚠️ CHO'ZILUVCHI FON QATLAMI — rasm VA gradientlar BIRGA.
+            Alohida bo'lsa pastga tortilganda rasm gradient ostidan sirg'alib
+            chiqib, yorqin chekka ochilib qolardi (Home'da xuddi shu xato
+            tuzatilgan). `overflow: hidden` shu konteynerда: rasm hero'dan
+            uzunroq (`top: 44, height: 400`) va u kesilishi kerak, lekin
+            kesish chegarasi konteyner bilan BIRGA cho'ziladi.
+          */}
+          <Animated.View style={[StyleSheet.absoluteFill, styles.bgLayer, stretchStyle]}>
+            <Image
+              source={images.heroMarket}
+              style={isRTL ? styles.heroImageRTL : styles.heroImage}
+              resizeMode="cover"
+            />
+            <LinearGradient
+              colors={['rgba(10,10,15,0.98)', 'rgba(10,10,15,0.88)', 'rgba(10,10,15,0.04)']}
+              locations={[0, 0.5, 1]}
+              start={{ x: isRTL ? 1 : 0, y: 0.55 }}
+              end={{ x: isRTL ? 0 : 1, y: 0.1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            {/* Tepa qorong'ilashuvi — sarlavha va status bar doim o'qilsin */}
+            <LinearGradient
+              colors={['rgba(10,10,15,0.85)', 'rgba(10,10,15,0)']}
+              style={styles.topFade}
+              pointerEvents="none"
+            />
+          </Animated.View>
 
           <Text style={[styles.heroLine, rtlStyles.text(isRTL)]}>{t.marketplace.heroLine1}</Text>
           <Text style={[styles.heroLine, rtlStyles.text(isRTL)]}>
@@ -185,7 +237,26 @@ export default function Marketplace(): JSX.Element {
             />
           ))}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
+
+      {/* Tepa fon — sarlavha qatori ORQASIDA (`ScrollFade` izohiga qarang) */}
+      <ScrollFade scrollY={scrollY} height={headerHeight} />
+
+      {/*
+        FIXED header — MARKETPLACE sarlavhasi va savat. Ilgari scroll ichida
+        edi va status bar ostiga kirib ketardi (soat bilan ustma-ust tushardi).
+      */}
+      <View style={[styles.headerBar, { paddingTop: insets.top + spacing.sm }]}>
+        <View style={[styles.topBar, rtlStyles.row(isRTL)]}>
+          <View style={[styles.titleWrap, rtlStyles.align(isRTL)]}>
+            <Text style={styles.title}>{t.marketplace.title}</Text>
+            <Text style={styles.motto}>{t.marketplace.motto}</Text>
+          </View>
+          <Pressable style={styles.cartButton} onPress={() => router.push('/(tabs)/cart')}>
+            <Icon name="cart" size={20} color={colors.text} />
+          </Pressable>
+        </View>
+      </View>
     </Screen>
   );
 }
@@ -193,12 +264,7 @@ export default function Marketplace(): JSX.Element {
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: spacing.md, gap: spacing.lg, paddingBottom: spacing.xl },
 
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 100,
-  },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   // Sarlavha chapda, savat o'ngda — markazlashtirish olib tashlandi
   titleWrap: { flex: 1, alignItems: 'flex-start' },
   title: { ...text.h2, color: colors.text, letterSpacing: 1, textTransform: 'uppercase' },
@@ -219,13 +285,26 @@ const styles = StyleSheet.create({
     // Yumaloq burchak olib tashlandi: rasm o'ng chetga to'liq yopishadi va
     // uning chegarasi umuman ko'rinmaydi.
     marginHorizontal: -spacing.md,
-    overflow: 'hidden',
+    /*
+     * ⚠️ `visible` SHART. Cho'zilganda fon qatlami hero chegarasidan TEPAGA
+     * chiqadi (tepasini ekranda ushlab turish uchun). `hidden` bo'lsa aynan
+     * o'sha qism kesilib, rezinka o'rniga bo'sh chiziq ko'rinardi. Rasmni
+     * kesish endi `bgLayer` ning vazifasi.
+     */
+    overflow: 'visible',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.lg,
     // Sarlavha ham shu blok ichida, rasm esa pastga surilgan — shuning uchun
     // blok balandroq. Pastdagi "CHOOSE CATEGORY" ham shunga qarab pastga tushadi.
-    minHeight: 420,
-    justifyContent: 'center',
+    minHeight: HERO_HEIGHT,
+    /*
+     * Matn blokini PASTGA tortadi. Ilgari `center` edi va sarlavha qatori
+     * (`topBar`) blokning yarmini egallab turgani uchun kompozitsiya to'la
+     * ko'rinardi. Sarlavha fixed header'ga chiqqach markazlashtirish matn
+     * bilan "CHOOSE CATEGORY" orasida katta bo'sh qora joy qoldirardi;
+     * `flex-end` da bo'sh joy tepaga o'tadi va u yerda rasm turadi.
+     */
+    justifyContent: 'flex-end',
     backgroundColor: colors.bg,
   },
   // Rasm blokdan uzunroq va yuqoriga surilgan — `cover` markazni kesib
@@ -233,6 +312,12 @@ const styles = StyleSheet.create({
   // Rasm status bar ostidan emas, biroz pastdan boshlanadi — model boshi
   // kesilmaydi va sarlavha bilan orasida havo qoladi.
   // Arabchada chapga o'tadi va kengroq — chegarasi ko'rinmasin
+  // Rasm hero'dan uzunroq — shu qatlam uni kesadi, va kesish chegarasi
+  // cho'zilish bilan birga kattalashadi (hero'ning o'zi `visible`).
+  bgLayer: { overflow: 'hidden' },
+  // Tepa qorong'ilashuvi — status bar + sarlavha qatorini qoplaydi
+  topFade: { position: 'absolute', left: 0, right: 0, top: 0, height: 200 },
+  headerBar: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: spacing.md },
   heroFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 56 },
   heroLine: { ...text.h1, color: colors.text, textTransform: 'uppercase', letterSpacing: 2 },
   heroSubtitle: {

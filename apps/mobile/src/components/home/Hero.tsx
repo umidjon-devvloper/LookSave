@@ -1,6 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import type { ReactNode } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ImageSourcePropType } from 'react-native';
 
 import { rtlStyles } from '../../i18n';
@@ -14,9 +13,23 @@ import { colors, radius, spacing, text } from '../../theme/tokens';
  * USTIDA turadi — alohida sarlavha yo'q. Shuning uchun bu komponent `header`
  * ni o'z ichiga oladi va ro'yxatning chetlaridan tashqariga chiqadi
  * (`marginHorizontal: -16`).
+ *
+ * ⚠️ FON REZINKADEK CHO'ZILADI (`scrollY`). Ro'yxat pastga tortilganda
+ * (`scrollY < 0`) fon rasmi cho'ziladi, lekin TEPASI ekran tepasida
+ * QOTIB turadi — bo'sh fon chizig'i ochilmaydi. Matematikasi:
+ *
+ *   s = -scrollY  (necha px pastga tortilgan)
+ *   scale     = 1 + s/H   →  yangi balandlik H + s
+ *   translateY = -s/2      →  markazdan cho'zilish tepaga surilgani qaytariladi
+ *
+ * Natijada rasm tepasi aynan y=0 da qoladi, pasti esa s px pastga cho'ziladi.
+ * Transform tartibi MUHIM: `[translateY, scale]` — scale avval markazdan
+ * qo'llaniladi, keyin translate suradi (aks holda surish ham kattalashadi).
  */
+
+/** Hero balandligi — cho'zilish nisbati shunga o'lchanadi (`styles.wrap.minHeight`) */
+export const HERO_HEIGHT = 540;
 export function Hero({
-  header,
   headerInset,
   title,
   titleAccent,
@@ -28,9 +41,9 @@ export function Hero({
   badges,
   image,
   isRTL,
+  scrollY,
 }: {
-  header: ReactNode;
-  /** Status bar balandligi — kontent uning ostidan boshlanadi */
+  /** Fixed header balandligi — kontent uning ostidan boshlanadi */
   headerInset: number;
   title: string;
   titleAccent: string;
@@ -43,22 +56,73 @@ export function Hero({
   image?: ImageSourcePropType;
   /** Arabcha: rasm chapga, matn o'ngga — butun kompozitsiya ko'zguga solinadi */
   isRTL: boolean;
+  /** Ro'yxat scroll holati — fonni rezinkadek cho'zish uchun. Bo'lmasa fon qotib turadi */
+  scrollY?: Animated.Value;
 }): JSX.Element {
+  /*
+   * Faqat PASTGA tortilganda (`scrollY < 0`) cho'ziladi. `extrapolateRight:
+   * 'clamp'` — yuqoriga scroll qilinganda rasm o'z o'lchamida qoladi
+   * (parallax yo'q: hero baribir ekrandan chiqib ketadi).
+   */
+  const stretchStyle = scrollY
+    ? {
+        transform: [
+          {
+            translateY: scrollY.interpolate({
+              inputRange: [-HERO_HEIGHT, 0],
+              outputRange: [-HERO_HEIGHT / 2, 0],
+              extrapolateRight: 'clamp' as const,
+            }),
+          },
+          {
+            scale: scrollY.interpolate({
+              inputRange: [-HERO_HEIGHT, 0],
+              outputRange: [2, 1],
+              extrapolateRight: 'clamp' as const,
+            }),
+          },
+        ],
+      }
+    : null;
+
   return (
     <View style={styles.wrap}>
-      {/* Foto o'ngda, to'liq bo'y — deckdagi kompozitsiya */}
-      {image ? (
-        <Image source={image} style={isRTL ? styles.imageRTL : styles.image} resizeMode="cover" />
-      ) : null}
+      {/*
+        ⚠️ FON QATLAMI — rasm VA uning qorong'ilashuvi BIRGA cho'ziladi.
 
-      {/* Chapdan o'ngga qorong'ilashuv — matn fotoga tushsa ham o'qiladi */}
-      <LinearGradient
-        colors={['rgba(10,10,15,0.97)', 'rgba(10,10,15,0.8)', 'rgba(10,10,15,0)']}
-        locations={[0, 0.45, 1]}
-        start={{ x: 0, y: 0.6 }}
-        end={{ x: 1, y: 0 }}
-        style={StyleSheet.absoluteFill}
-      />
+        Ilgari faqat rasm cho'zilardi, gradientlar esa joyida qolardi:
+        pastga tortilganda rasm tepaga chiqib, gradientsiz YORQIN chekka
+        ochilib qolardi. Endi ikkalasi bitta transformda — qanchalik
+        cho'zilmasin, qorong'ilashuv rasm bilan birga ketadi.
+      */}
+      <Animated.View style={[StyleSheet.absoluteFill, stretchStyle]}>
+        {/* Foto o'ngda, to'liq bo'y — deckdagi kompozitsiya */}
+        {image ? (
+          <Image source={image} style={isRTL ? styles.imageRTL : styles.image} resizeMode="cover" />
+        ) : null}
+
+        {/* Chapdan o'ngga qorong'ilashuv — matn fotoga tushsa ham o'qiladi */}
+        <LinearGradient
+          colors={['rgba(10,10,15,0.97)', 'rgba(10,10,15,0.8)', 'rgba(10,10,15,0)']}
+          locations={[0, 0.45, 1]}
+          start={{ x: 0, y: 0.6 }}
+          end={{ x: 1, y: 0 }}
+          style={StyleSheet.absoluteFill}
+        />
+
+        {/*
+          Tepa qorong'ilashuvi — logotip qatori va status bar doim o'qilsin.
+
+          ⚠️ FON QATLAMI ICHIDA: rasm bilan birga cho'zilgani uchun tepasi
+          har doim rasm tepasiga yopishib turadi. Tashqarida bo'lsa
+          overscroll'da rasm uning ostidan sirg'alib chiqib ketardi.
+        */}
+        <LinearGradient
+          colors={['rgba(10,10,15,0.85)', 'rgba(10,10,15,0)']}
+          style={styles.topFade}
+          pointerEvents="none"
+        />
+      </Animated.View>
       {/* Pastki chetini fonga ulash — kesilgan chegara ko'rinmasin */}
       <LinearGradient
         colors={['rgba(10,10,15,0)', colors.bg]}
@@ -67,8 +131,6 @@ export function Hero({
       />
 
       <View style={[styles.content, { paddingTop: headerInset }]}>
-        {header}
-
         <View style={[styles.body, rtlStyles.align(isRTL)]}>
           {/* Sarlavha yuqorida, tugma va belgilar pastda — orasi bo'sh qoladi */}
           <View>
@@ -137,7 +199,13 @@ const styles = StyleSheet.create({
     marginHorizontal: -spacing.md,
     backgroundColor: colors.bg,
     // Baland blok — model ko'proq ko'rinadi va matn siqilib qolmaydi
-    minHeight: 540,
+    minHeight: HERO_HEIGHT,
+    /*
+     * ⚠️ `visible` SHART. Cho'zilganda rasm wrap chegarasidan TEPAGA chiqadi
+     * (tepasini ekranda ushlab turish uchun). `hidden` bo'lsa aynan o'sha
+     * qism kesiladi va rezinka effekti o'rniga bo'sh chiziq ko'rinadi.
+     */
+    overflow: 'visible',
   },
   // Rasm o'ngga suriladi: chap tomonda sarlavha uchun toza joy qoladi
   image: { position: 'absolute', right: -30, top: 0, width: '100%', height: '100%' },
@@ -145,6 +213,11 @@ const styles = StyleSheet.create({
   // ⚠️ `width` shart: `left: 0, right: 0` qilinsa blok kengayib ketadi va
   // `cover` vertikal rasmni haddan tashqari kesadi (modeldan yelka qoladi).
   imageRTL: { position: 'absolute', left: -30, top: 0, width: '100%', height: '100%' },
+  /*
+   * Tepa qorong'ilashuvi. 220px — status bar + logotip qatori + sarlavha
+   * boshigacha yetadi, keyin sezilmay yo'qoladi.
+   */
+  topFade: { position: 'absolute', left: 0, right: 0, top: 0, height: 220 },
   bottomFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 90 },
 
   // `flex: 1` shart — bo'lmasa ichkaridagi `body` ning `flex-end` i ishlamaydi
