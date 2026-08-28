@@ -58,11 +58,24 @@ function Row({
 }
 
 /** Uchta raqam: buyurtma, sevimli, komplekt — deckdagi qorong'i kartochkalarda. */
-function Stat({ value, label }: { value: number; label: string }): JSX.Element {
+function Stat({
+  icon,
+  value,
+  label,
+}: {
+  icon: IconName;
+  value: number;
+  label: string;
+}): JSX.Element {
   return (
     <View style={styles.stat}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+      <View style={styles.statIcon}>
+        <Icon name={icon} size={18} color={colors.accent} />
+      </View>
+      <View style={styles.statText}>
+        <Text style={styles.statValue}>{value}</Text>
+        <Text style={styles.statLabel}>{label}</Text>
+      </View>
     </View>
   );
 }
@@ -107,6 +120,8 @@ export default function Profile(): JSX.Element {
 
   const height = profile.data?.measurements.height;
   const openOrders = profile.data?.trust.openOrders ?? 0;
+  /* Cheklangan hisob — soxta buyurtmalar tufayli bloklangan holat */
+  const restricted = profile.data?.trust.isRestricted ?? false;
 
   if (!signedIn) {
     return (
@@ -136,28 +151,69 @@ export default function Profile(): JSX.Element {
             style={StyleSheet.absoluteFill}
           />
 
-          <AvatarPicker
-            url={profile.data?.avatarUrl ?? user?.avatarUrl ?? null}
-            name={user?.fullName ?? null}
-            onChange={async (url) => {
-              await saveAvatar.mutateAsync(url);
-            }}
-            labels={{
-              change: t.profile.changePhoto,
-              permission: t.profile.photoPermission,
-              failed: t.profile.photoFailed,
-            }}
-          />
+          {/*
+            Avatar CHAPDA, ism va holat o'ngda. Ilgari hammasi markazda
+            ustma-ust turardi va tepa blok ekranning uchdan birini
+            egallardi — ro'yxatgacha scroll qilishga to'g'ri kelardi.
+          */}
+          <View style={styles.identity}>
+            <AvatarPicker
+              url={profile.data?.avatarUrl ?? user?.avatarUrl ?? null}
+              name={user?.fullName ?? null}
+              onChange={async (url) => {
+                await saveAvatar.mutateAsync(url);
+              }}
+              labels={{
+                change: t.profile.changePhoto,
+                permission: t.profile.photoPermission,
+                failed: t.profile.photoFailed,
+              }}
+            />
 
-          <Text style={styles.name}>{user?.fullName ?? t.profile.user}</Text>
-          <Text style={styles.phone}>{user ? formatPhone(user.phone) : ''}</Text>
+            <View style={styles.identityText}>
+              <Text style={styles.name} numberOfLines={1}>
+                {user?.fullName ?? t.profile.user}
+              </Text>
+              <Text style={styles.phone}>{user ? formatPhone(user.phone) : ''}</Text>
+
+              {/*
+                ⚠️ HAQIQIY HOLAT, BEZAK EMAS. `trust.isRestricted` —
+                cheklangan hisob (soxta buyurtmalar tufayli). Maketda
+                bu yerda «Premium» ham bor edi, lekin tarif ma'lumoti
+                bazada YO'Q — soxta belgi qo'yilmadi.
+              */}
+              <View style={[styles.badge, restricted && styles.badgeRestricted]}>
+                <Icon
+                  name={restricted ? 'limited' : 'authentic'}
+                  size={13}
+                  color={restricted ? colors.warning : colors.success}
+                />
+                <Text style={[styles.badgeText, restricted && { color: colors.warning }]}>
+                  {restricted ? t.profile.stateRestricted : t.profile.stateActive}
+                </Text>
+              </View>
+            </View>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t.profile.editName}
+              onPress={() => router.push('/settings/measurements')}
+              style={styles.editButton}
+            >
+              <Icon name="settings" size={18} color={colors.textMuted} />
+            </Pressable>
+          </View>
 
           <View style={styles.stats}>
-            <Stat value={openOrders} label={t.profile.statOrders} />
+            <Stat icon="orders" value={openOrders} label={t.profile.statOrders} />
             <View style={styles.statDivider} />
-            <Stat value={profile.data?.favoritesCount ?? 0} label={t.profile.statFavorites} />
+            <Stat
+              icon="favorite"
+              value={profile.data?.favoritesCount ?? 0}
+              label={t.profile.statFavorites}
+            />
             <View style={styles.statDivider} />
-            <Stat value={profile.data?.looksCount ?? 0} label={t.profile.statLooks} />
+            <Stat icon="looks" value={profile.data?.looksCount ?? 0} label={t.profile.statLooks} />
           </View>
         </View>
 
@@ -268,29 +324,86 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   header: {
-    alignItems: 'center',
     marginHorizontal: -spacing.md,
     paddingHorizontal: spacing.md,
-    paddingBottom: spacing.md,
+    /*
+     * ⚠️ PASTKI BO'SHLIQ YO'Q. `content` ning `gap: lg` allaqachon
+     * ro'yxatgacha oraliq beradi; bu yerda ham `paddingBottom` bo'lsa
+     * ikkisi qo'shilib, statistika bilan menyu orasida bo'sh maydon
+     * qolardi va sahifa bo'shashib ketardi.
+     */
     gap: spacing.sm,
   },
-  name: { ...text.h2, color: colors.text, marginTop: spacing.sm },
+  name: { ...text.h2, color: colors.text },
   phone: { ...text.small, color: colors.textMuted },
   stats: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'stretch',
     marginTop: spacing.md,
+    /*
+     * ⚠️ GORIZONTAL PADDING SHART. Ilgari faqat `paddingVertical` bor edi
+     * va ikonkalar blok chegarasiga yopishib qolardi — chapdagisi ramkaga
+     * tegib turardi. Statistika markazda emas, `flex: 1` bilan teng
+     * bo'linadi, ya'ni chetlarni faqat padding ochadi.
+     */
     paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
   },
-  stat: { flex: 1, alignItems: 'center', gap: 2 },
+  identity: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, alignSelf: 'stretch' },
+  identityText: { flex: 1, gap: 2 },
+  editButton: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: spacing.xs,
+    marginTop: spacing.xs + 2,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(52,211,153,0.4)',
+    backgroundColor: 'rgba(52,211,153,0.12)',
+  },
+  badgeRestricted: {
+    borderColor: 'rgba(251,191,36,0.45)',
+    backgroundColor: 'rgba(251,191,36,0.12)',
+  },
+  badgeText: { ...text.tiny, color: colors.success, fontWeight: '700', letterSpacing: 0.4 },
+
+  // Ikonka va raqam yonma-yon — maketdagi qator
+  stat: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  statIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primarySoft,
+  },
+  statText: { flexShrink: 1 },
   statValue: { ...text.h3, color: colors.text },
-  statLabel: { ...text.tiny, color: colors.textDim, textTransform: 'uppercase', letterSpacing: 1 },
-  statDivider: { width: 1, height: 26, backgroundColor: colors.border },
+  statLabel: { ...text.tiny, color: colors.textDim },
+  statDivider: {
+    width: 1,
+    height: 30,
+    marginHorizontal: spacing.sm,
+    backgroundColor: colors.border,
+  },
   rowIcon: {
     width: 34,
     height: 34,
