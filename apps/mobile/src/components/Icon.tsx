@@ -8,6 +8,10 @@ import {
   Heart,
   House,
   Layers,
+  MessageSquareText,
+  LayoutGrid,
+  LayoutList,
+  Store,
   LogOut,
   MapPin,
   Navigation,
@@ -79,6 +83,13 @@ const LUCIDE = {
   // ── Profil / buyurtma ──
   orders: Package,
   looks: Layers,
+  /** Katalogdagi ko'rinish almashtirgichi — grid va bitta ustun */
+  /** Do'kon kartasi — `stores` (MapPin) joy belgisi, bu esa do'konning o'zi */
+  shop: Store,
+  /** Do'kon bilan bog'lanish */
+  chat: MessageSquareText,
+  grid: LayoutGrid,
+  list: LayoutList,
   settings: Settings,
   language: Globe,
   logout: LogOut,

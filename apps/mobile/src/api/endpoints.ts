@@ -82,6 +82,14 @@ export interface ProductFilters {
   brand?: string;
   q?: string;
   only3d?: boolean;
+  /**
+   * Narx oralig'i va LIMITED kolleksiyasi — API buni boshidan
+   * qo'llab-quvvatlagan (`productsQuerySchema`), lekin bu tipda yo'q edi,
+   * shuning uchun ilovadan hech qachon yuborilmasdi.
+   */
+  priceMin?: number;
+  priceMax?: number;
+  limited?: boolean;
   sort?: ProductSort;
   lat?: number;
   lng?: number;

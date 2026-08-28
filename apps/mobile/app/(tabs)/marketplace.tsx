@@ -136,7 +136,7 @@ export default function Marketplace(): JSX.Element {
       key: 'men',
       title: t.marketplace.men,
       icon: 'slotTop',
-      href: '/catalog?gender=male',
+      href: '/collection?kind=men',
       image: images.collectionMen,
       accent: colors.primary,
     },
@@ -144,7 +144,7 @@ export default function Marketplace(): JSX.Element {
       key: 'women',
       title: t.marketplace.women,
       icon: 'dress',
-      href: '/catalog?gender=female',
+      href: '/collection?kind=women',
       image: images.collectionWomen,
       accent: colors.accent,
     },
@@ -153,7 +153,7 @@ export default function Marketplace(): JSX.Element {
       title: t.marketplace.limited,
       icon: 'limited',
       tagline: t.marketplace.limitedTagline,
-      href: '/catalog?limited=true',
+      href: '/collection?kind=limited',
       image: images.collectionLimited,
       accent: colors.limited,
     },
@@ -293,18 +293,22 @@ const styles = StyleSheet.create({
      */
     overflow: 'visible',
     paddingHorizontal: spacing.md,
-    paddingBottom: spacing.lg,
-    // Sarlavha ham shu blok ichida, rasm esa pastga surilgan — shuning uchun
-    // blok balandroq. Pastdagi "CHOOSE CATEGORY" ham shunga qarab pastga tushadi.
-    minHeight: HERO_HEIGHT,
     /*
-     * Matn blokini PASTGA tortadi. Ilgari `center` edi va sarlavha qatori
-     * (`topBar`) blokning yarmini egallab turgani uchun kompozitsiya to'la
-     * ko'rinardi. Sarlavha fixed header'ga chiqqach markazlashtirish matn
-     * bilan "CHOOSE CATEGORY" orasida katta bo'sh qora joy qoldirardi;
-     * `flex-end` da bo'sh joy tepaga o'tadi va u yerda rasm turadi.
+     * ⚠️ IKKI TOMONLAMA XATO BO'LGAN JOY — o'rtasini topish kerak bo'ldi.
+     *
+     * Sarlavha qatori (`topBar`) fixed header'ga chiqqach `center`
+     * kompozitsiyani bo'shatib yubordi: matn bilan «CHOOSE CATEGORY»
+     * orasida katta qora joy qolardi. `flex-end` esa teskari tomonga
+     * og'di — matn ekran pastiga yopishib, tepada rasm bilan bo'sh
+     * maydon qolardi.
+     *
+     * Yechim: `center` qoldiriladi, lekin blok pasti qisqartiriladi
+     * (`paddingBottom` kichik, `minHeight` past). Shunda matn markazga
+     * yaqin turadi va ikkala chekka ham bo'shab qolmaydi.
      */
-    justifyContent: 'flex-end',
+    paddingBottom: spacing.md,
+    minHeight: HERO_HEIGHT - 40,
+    justifyContent: 'center',
     backgroundColor: colors.bg,
   },
   // Rasm blokdan uzunroq va yuqoriga surilgan — `cover` markazni kesib

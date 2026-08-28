@@ -87,16 +87,20 @@ function AppShell(): JSX.Element {
             hamda ikkita orqaga tugmasi ko'rinadi.
           */}
           <Stack.Screen name="seller" options={{ headerShown: false }} />
-          <Stack.Screen name="product/[id]" options={{ title: '' }} />
+          {/* Rasm status bar ostiga chiqadi — sahifa o'z tugmalarini chizadi */}
+          <Stack.Screen name="product/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="store/[id]" options={{ title: '' }} />
           <Stack.Screen name="checkout" options={{ title: t.order.title }} />
           <Stack.Screen name="order/[id]" options={{ title: t.order.title }} />
           <Stack.Screen name="orders" options={{ title: t.order.myOrders }} />
           <Stack.Screen name="favorites" options={{ title: 'Sevimlilar' }} />
           <Stack.Screen name="looks" options={{ title: 'Komplektlarim' }} />
-          <Stack.Screen name="catalog" options={{ title: 'Katalog' }} />
+          {/* Katalog va kolleksiyada o'z sarlavhasi bor (orqaga, nom, savat) */}
+          <Stack.Screen name="catalog" options={{ headerShown: false }} />
+          <Stack.Screen name="collection" options={{ headerShown: false }} />
           <Stack.Screen name="stores" options={{ title: t.tabs.stores }} />
-          <Stack.Screen name="settings/measurements" options={{ title: "O'lchamlarim" }} />
+          {/* O'lchamlar ekranida o'z sarlavhasi bor */}
+          <Stack.Screen name="settings/measurements" options={{ headerShown: false }} />
           <Stack.Screen
             name="settings/delete-account"
             options={{ title: t.profile.deleteAccount }}
