@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, FlatList, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -12,7 +13,7 @@ import {
   type StoreOrderFilter,
 } from '../../src/api/endpoints';
 import { ApiError } from '../../src/api/client';
-import { Icon } from '../../src/components/Icon';
+import { Icon, type IconName } from '../../src/components/Icon';
 import { SignInRequired } from '../../src/components/SignInRequired';
 import { SkeletonList } from '../../src/components/Skeleton';
 import { Button, Empty, ErrorView, Screen } from '../../src/components/ui';
@@ -132,7 +133,34 @@ export default function SellerOrders(): JSX.Element {
 
   return (
     <Screen>
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+        <View style={styles.headerBar}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Orqaga"
+            onPress={() => router.back()}
+            style={styles.iconButton}
+          >
+            <Icon name="back" size={20} color={colors.accent} />
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Buyurtmalar"
+            onPress={() => setFilter('new')}
+            style={styles.iconButton}
+          >
+            <Icon name="bell" size={20} color={colors.accent} />
+            {stats && stats.newOrders > 0 ? (
+              <View style={styles.bellBadge}>
+                <Text style={styles.bellBadgeText}>
+                  {stats.newOrders > 9 ? '9+' : stats.newOrders}
+                </Text>
+              </View>
+            ) : null}
+          </Pressable>
+        </View>
+
         <Text style={styles.title}>Do`konim</Text>
         {stats ? (
           <Text style={styles.subtitle}>
@@ -144,9 +172,13 @@ export default function SellerOrders(): JSX.Element {
       {/* Oylik ko'rsatkichlar */}
       {stats ? (
         <View style={styles.stats}>
-          <Stat value={String(stats.completedMonth)} label="Bu oy yakunlangan" />
-          <Stat value={money(stats.revenueMonth, stats.currency)} label="Bu oy tushum" />
-          <Stat value={String(stats.productCount)} label="Mahsulot" />
+          <Stat icon="bag" value={String(stats.completedMonth)} label="Bu oy yakunlangan" />
+          <Stat
+            icon="premium"
+            value={money(stats.revenueMonth, stats.currency)}
+            label="Bu oy tushum"
+          />
+          <Stat icon="orders" value={String(stats.productCount)} label="Mahsulot" />
         </View>
       ) : null}
 
@@ -173,12 +205,24 @@ export default function SellerOrders(): JSX.Element {
           <Pressable
             key={item.key}
             accessibilityRole="button"
+            accessibilityState={{ selected: filter === item.key }}
             onPress={() => setFilter(item.key)}
-            style={[styles.filter, filter === item.key && styles.filterActive]}
+            style={styles.filterWrap}
           >
-            <Text style={[styles.filterText, filter === item.key && { color: colors.text }]}>
-              {item.label}
-            </Text>
+            {filter === item.key ? (
+              <LinearGradient
+                colors={[colors.accent, colors.primary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.filter}
+              >
+                <Text style={[styles.filterText, { color: colors.text }]}>{item.label}</Text>
+              </LinearGradient>
+            ) : (
+              <View style={[styles.filter, styles.filterIdle]}>
+                <Text style={styles.filterText}>{item.label}</Text>
+              </View>
+            )}
           </Pressable>
         ))}
       </View>
@@ -198,13 +242,43 @@ export default function SellerOrders(): JSX.Element {
           removeClippedSubviews
           initialNumToRender={6}
           ListEmptyComponent={
-            <Empty
-              icon="orders"
-              title={filter === 'new' ? 'Yangi buyurtma yo`q' : 'Bu yerda hozircha bo`sh'}
-              hint={
-                filter === 'new' ? 'Mijoz buyurtma yuborsa shu yerda darhol ko`rinadi.' : undefined
-              }
-            />
+            /*
+              Uzuq chiziqli ramka — bu yer TO'LDIRILISHI kerakligini
+              bildiradi. Tekis ramka «shunday bo'lishi kerak» degan
+              taassurot berardi.
+            */
+            <View style={styles.emptyBox}>
+              <View style={styles.emptyIcon}>
+                <Icon name="orders" size={34} color={colors.accent} />
+              </View>
+
+              <Text style={styles.emptyTitle}>
+                {filter === 'new' ? 'Yangi buyurtma yo`q' : 'Bu yerda hozircha bo`sh'}
+              </Text>
+
+              {filter === 'new' ? (
+                <Text style={styles.emptyHint}>
+                  Mijoz buyurtma yuborsa shu yerda darhol ko`rinadi.
+                </Text>
+              ) : null}
+
+              {/*
+                ⚠️ AMAL «MAHSULOT QO'SHISH», «buyurtma qo'shish» EMAS.
+                Buyurtmani MIJOZ yaratadi — sotuvchi uni qo'la olmaydi.
+                Bu yerda foydali yagona qadam: katalogni to'ldirish,
+                shunda buyurtma keladigan bo'ladi.
+              */}
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push('/seller/product-new')}
+                style={styles.emptyAction}
+              >
+                <View style={styles.emptyActionIcon}>
+                  <Icon name="premium" size={14} color={colors.text} />
+                </View>
+                <Text style={styles.emptyActionText}>Mahsulot qo`shish</Text>
+              </Pressable>
+            </View>
           }
           renderItem={({ item }) => (
             <OrderCard
@@ -236,13 +310,30 @@ function ManageButton({
   );
 }
 
-function Stat({ value, label }: { value: string; label: string }): JSX.Element {
+function Stat({
+  icon,
+  value,
+  label,
+}: {
+  icon: IconName;
+  value: string;
+  label: string;
+}): JSX.Element {
   return (
     <View style={styles.stat}>
+      <View style={styles.statIcon}>
+        <Icon name={icon} size={18} color={colors.accent} />
+      </View>
       <Text style={styles.statValue} numberOfLines={1}>
         {value}
       </Text>
-      <Text style={styles.statLabel}>{label}</Text>
+      {/*
+        ⚠️ IKKI QATOR. Bitta qatorda «Bu oy yakunlangan» uch ustunli
+        kartaga sig'masdi va «Bu oy yakunlan…» bo'lib kesilardi.
+      */}
+      <Text style={styles.statLabel} numberOfLines={2}>
+        {label}
+      </Text>
     </View>
   );
 }
@@ -342,7 +433,36 @@ function OrderCard({
 }
 
 const styles = StyleSheet.create({
-  header: { paddingHorizontal: spacing.md, paddingTop: spacing.md },
+  header: { paddingHorizontal: spacing.md, paddingTop: spacing.md, gap: spacing.xs },
+  headerBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderAccent,
+    backgroundColor: colors.surface,
+  },
+  bellBadge: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 5,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+  },
+  bellBadgeText: { ...text.tiny, color: colors.text, fontWeight: '700' },
   title: { ...text.h1, color: colors.text },
   subtitle: { ...text.small, color: colors.textMuted, marginTop: 2 },
 
@@ -350,13 +470,25 @@ const styles = StyleSheet.create({
   stat: {
     flex: 1,
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.sm,
+    padding: spacing.sm + 2,
+    gap: spacing.xs,
   },
-  statValue: { ...text.bodyMed, color: colors.accent },
-  statLabel: { ...text.tiny, color: colors.textDim, marginTop: 2 },
+  statIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderAccent,
+    backgroundColor: colors.primarySoft,
+    marginBottom: spacing.xs,
+  },
+  statValue: { ...text.h3, color: colors.accent },
+  statLabel: { ...text.tiny, color: colors.textDim },
 
   manage: {
     flexDirection: 'row',
@@ -379,15 +511,61 @@ const styles = StyleSheet.create({
   manageText: { ...text.small, color: colors.text },
 
   filters: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.md },
+  filterWrap: { flex: 1 },
   filter: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+  },
+  // Faol chip gradient bilan chiziladi, bu esa tanlanmagani
+  filterIdle: { borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  filterText: { ...text.small, color: colors.textMuted, fontWeight: '600' },
+
+  emptyBox: {
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.xl,
+    marginTop: spacing.sm,
+    borderRadius: radius.xl,
+    // Uzuq chiziq — bu yer to'ldirilishi kerakligini bildiradi
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.borderStrong,
+  },
+  emptyIcon: {
+    width: 76,
+    height: 76,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primarySoft,
+    marginBottom: spacing.xs,
+  },
+  emptyTitle: { ...text.h3, color: colors.text, textAlign: 'center' },
+  emptyHint: { ...text.small, color: colors.textDim, textAlign: 'center', maxWidth: 260 },
+  emptyAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+    paddingLeft: spacing.xs + 2,
+    paddingRight: spacing.md,
+    paddingVertical: spacing.xs + 2,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  filterActive: { borderColor: colors.borderAccent, backgroundColor: colors.primarySoft },
-  filterText: { ...text.small, color: colors.textMuted },
+  emptyActionIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+  },
+  emptyActionText: { ...text.small, color: colors.text, fontWeight: '600' },
 
   list: { padding: spacing.md, gap: spacing.md },
 
