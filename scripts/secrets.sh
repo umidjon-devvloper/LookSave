@@ -6,6 +6,7 @@
 #   audit            Hozirgi holatni o'lchaydi. Parol so'ramaydi, QIYMAT CHIQARMAYDI
 #   backup           Shifrlangan arxiv yasaydi (parolni siz kiritasiz)
 #   verify <arxiv>   Arxiv ochiladimi va jonli fayllarga mos keladimi
+#   copy <manzil>    Arxivni BOSHQA diskka ko'chiradi va qayd etadi
 #
 # ⚠️ NEGA SHIFRLASH KERAK. IP-00 da sirlar `~/LookSave-secrets/` ga oddiy
 # matn ko'rinishida nusxalangan edi. U `git clean` va repo o'chishidan
@@ -27,6 +28,15 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 # eski MD5 sxemasiga tushadi va parolni tanlab topish arzonlashadi.
 readonly ITER=600000
 readonly OUT_DIR="${LOOKSAVE_SECRETS_DIR:-$HOME/LookSave-secrets}"
+
+# Diskdan TASHQARIDAGI nusxalar qayd etiladigan fayl.
+#
+# ⚠️ NEGA QAYD KERAK. `audit` faqat `OUT_DIR` ni ko'radi. Nusxa tashqi
+# diskka ko'chirilsa, audit buni BILMASDI va «bitta diskda» deb
+# ogohlantiraverardi — ya'ni D-34 hech qachon yashil bo'lmasdi. Qayd
+# audit'ga nimani tekshirishni aytadi: nusxa joyidami, mazmuni o'shami
+# va u HAQIQATAN boshqa qurilmadami.
+readonly COPIES="$OUT_DIR/.copies"
 
 # Zaxiraga tushadigan fayllar. Yangi `.env` qo'shilsa shu yerga yoziladi —
 # aks holda u jimgina zaxiradan tashqarida qoladi (aynan shu bo'lgan).
@@ -131,16 +141,49 @@ cmd_audit() {
     done
   fi
 
-  step "Disk"
-  local d1 d2
-  d1="$(df -P "$OUT_DIR" 2>/dev/null | tail -1 | awk '{print $1}')"
-  d2="$(df -P "$ROOT" | tail -1 | awk '{print $1}')"
-  if [ "$d1" = "$d2" ]; then
-    warn "zaxira repo bilan BITTA diskda ($d1) — disk buzilsa ikkalasi ham ketadi"
-    dim "shifrlangan arxivni tashqi diskka yoki bulutga ko'chiring"
-  else
-    ok "zaxira boshqa diskda ($d1)"
+  step "Diskdan tashqaridagi nusxa"
+  #
+  # ⚠️ D-34 NING QABUL MEZONI SHU YERDA. Arxiv yasalgani yetarli emas:
+  # u repo bilan bitta diskda tursa, disk buzilganda ikkalasi ham ketadi.
+  # Shuning uchun bu yerda «arxiv bormi?» emas, «BOSHQA qurilmada nusxa
+  # bormi va u hamon o'shami?» deb so'raladi.
+  local home_dev
+  home_dev="$(df -P "$OUT_DIR" 2>/dev/null | tail -1 | awk '{print $1}')"
+
+  if [ ! -s "$COPIES" ]; then
+    warn "qayd etilgan nusxa yo'q — hammasi $home_dev da"
+    dim "tashqi diskni ulang, so'ng:  ./scripts/secrets.sh copy /Volumes/<disk>/looksave"
+    return
   fi
+
+  local latest live=0
+  latest="$(find "$OUT_DIR" -maxdepth 1 -name '*.tar.gz.enc' 2>/dev/null | sort | tail -1 || true)"
+
+  while IFS= read -r dest; do
+    [ -z "$dest" ] && continue
+    if [ ! -d "$dest" ]; then
+      warn "$dest — mavjud emas (disk uzilganmi?)"
+      continue
+    fi
+    local dev; dev="$(df -P "$dest" | tail -1 | awk '{print $1}')"
+    if [ "$dev" = "$home_dev" ]; then
+      warn "$dest — O'SHA diskda ($dev), zaxira hisoblanmaydi"
+      continue
+    fi
+    local copy="$dest/$(basename "$latest")"
+    if [ ! -f "$copy" ]; then
+      warn "$dest — oxirgi arxiv u yerda yo'q (eskirgan nusxa)"
+      continue
+    fi
+    if [ "$(shasum -a 256 "$latest" | cut -d' ' -f1)" != "$(shasum -a 256 "$copy" | cut -d' ' -f1)" ]; then
+      warn "$dest — mazmuni farq qiladi"
+      continue
+    fi
+    ok "$dest ($dev) — joriy va mos"
+    live=$((live + 1))
+  done < "$COPIES"
+
+  [ "$live" -gt 0 ] || warn "birorta ishlaydigan tashqi nusxa yo'q"
 }
 
 # ── backup ───────────────────────────────────────────────────────────────
@@ -247,9 +290,52 @@ cmd_verify() {
   [ "$drift" -eq 0 ] && ok "zaxira joriy" || warn "$drift ta fayl eskirgan — 'backup' ni qayta yurgizing"
 }
 
+# ── copy ─────────────────────────────────────────────────────────────────
+cmd_copy() {
+  local dest="${1:-}"
+  [ -n "$dest" ] || die "manzil berilmadi:  ./scripts/secrets.sh copy /Volumes/USB/looksave"
+
+  local archive
+  archive="$(find "$OUT_DIR" -maxdepth 1 -name '*.tar.gz.enc' 2>/dev/null | sort | tail -1 || true)"
+  [ -n "$archive" ] || die "shifrlangan arxiv yo'q — avval 'backup'"
+
+  mkdir -p "$dest" || die "manzil yaratilmadi: $dest"
+
+  # ⚠️ ENG MUHIM TEKSHIRUV. Bir xil qurilmaga ko'chirish D-34 ni
+  # yopmaydi: disk buzilsa ikkala nusxa ham ketadi.
+  local src_dev dst_dev
+  src_dev="$(df -P "$OUT_DIR" | tail -1 | awk '{print $1}')"
+  dst_dev="$(df -P "$dest" | tail -1 | awk '{print $1}')"
+  if [ "$src_dev" = "$dst_dev" ]; then
+    die "manzil O'SHA diskda ($dst_dev) — bu zaxira hisoblanmaydi"
+  fi
+
+  local manifest="${archive%.tar.gz.enc}.manifest.txt"
+  cp "$archive" "$dest/" || die "ko'chirilmadi"
+  [ -f "$manifest" ] && cp "$manifest" "$dest/"
+  chmod 600 "$dest/$(basename "$archive")" 2>/dev/null || true
+
+  # Nusxa mazmuni bir xilligini DARHOL tekshiramiz — yarim ko'chirilgan
+  # fayl jimgina qolib ketmasin
+  local a b
+  a="$(shasum -a 256 "$archive" | cut -d' ' -f1)"
+  b="$(shasum -a 256 "$dest/$(basename "$archive")" | cut -d' ' -f1)"
+  [ "$a" = "$b" ] || die "nusxa xeshi mos kelmadi — qayta ko'chiring"
+
+  touch "$COPIES"; chmod 600 "$COPIES"
+  grep -qxF "$dest" "$COPIES" 2>/dev/null || echo "$dest" >> "$COPIES"
+
+  ok "$dest/$(basename "$archive")"
+  dim "disk: $dst_dev (manba: $src_dev)"
+  dim "xesh mos ✓ · qayd etildi"
+  echo ""
+  warn "Parol shu nusxaning YONIDA turmasin — u parol menejerida bo'lsin."
+}
+
 case "${1:-}" in
   audit)  cmd_audit ;;
   backup) cmd_backup ;;
   verify) shift; cmd_verify "${1:-}" ;;
+  copy)   shift; cmd_copy "${1:-}" ;;
   *)      usage "${BASH_SOURCE[0]}" ;;
 esac
