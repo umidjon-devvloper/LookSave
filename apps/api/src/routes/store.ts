@@ -15,6 +15,7 @@ import {
   updateProductSchema,
   updateStoreSchema,
   variantInputSchema,
+  supportsAiTryon,
 } from '@looksave/validation';
 import { Router } from 'express';
 import { z } from 'zod';
@@ -39,7 +40,6 @@ import {
   archiveProduct,
   createProduct,
   findStoreProducts,
-  request3d,
   updateProduct,
   updateStock,
   type StoreProductRow,
@@ -309,9 +309,16 @@ function toStoreProductDto(row: StoreProductRow, locale: Parameters<typeof pickN
     oldPrice: row.old_price,
     currency: row.currency,
     stock: { total, reserved, available: Math.max(0, total - reserved) },
-    has3d: row.has_3d,
-    // — · queued · processing · ready · failed (07-web-panels: 3D ustuni)
-    assetStatus: row.asset_status,
+    /*
+     * ⚠️ `has3d` VA `assetStatus` OLIB TASHLANDI. Sotuvchi endi 3D model
+     * so'ramaydi — u kiyimning suratini va o'lchamlarini kiritadi, xolos.
+     * Kiyib ko'rish AI orqali suratdan bo'ladi.
+     *
+     * Panelda «3D» ustuni turgani sotuvchini chalg'itardi: u tayyor
+     * bo'lishini kutardi, holbuki mahsulot allaqachon kiyib ko'rishga
+     * yaroqli edi.
+     */
+    canTryOn: supportsAiTryon(row.slot),
     viewCount: row.view_count,
     tryonCount: row.tryon_count,
     createdAt: row.created_at.toISOString(),
@@ -413,14 +420,6 @@ storePanelRouter.patch(
   '/store/variants/:id/stock',
   route({ params: idParamSchema, body: stockUpdateSchema }, async (input, req, res) => {
     sendData(res, await updateStock(storeOf(req, res), input.params.id, input.body.sizes));
-  }),
-);
-
-/** POST /v1/store/products/:id/request-3d */
-storePanelRouter.post(
-  '/store/products/:id/request-3d',
-  route({ params: idParamSchema }, async (input, req, res) => {
-    sendData(res, await request3d(storeOf(req, res), input.params.id), 202);
   }),
 );
 

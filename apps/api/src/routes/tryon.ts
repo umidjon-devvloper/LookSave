@@ -1,6 +1,7 @@
 import {
   bodyPhotoSchema,
   createLookSchema,
+  suggestLookSchema,
   favoriteQuerySchema,
   idParamSchema,
   renderRequestSchema,
@@ -23,6 +24,7 @@ import { logger } from '../logger';
 import { setBodyPhoto } from '../profile/profile';
 import { getAvatar, requestAngle, requestAvatar } from '../tryon/avatar';
 import { listGarments, listRenders, pollRender, requestRender } from '../tryon/render';
+import { suggestLooks } from '../tryon/suggest';
 import {
   addFavorite,
   createLook,
@@ -175,13 +177,27 @@ tryonRouter.get(
          * pul sarflanadi va natija yaroqsiz chiqadi.
          */
         slot: z.enum(['top', 'outer', 'bottom']).optional(),
+        /*
+         * Kategoriya — slotdan ANIQROQ filtr. Futbolka, xudi va ko'ylak
+         * uchalasi `top` slotida, lekin foydalanuvchi uchun uch xil
+         * narsa. Ilovadagi tablar shu bo'yicha ishlaydi.
+         */
+        category: z.string().trim().min(1).max(64).optional(),
         gender: z.enum(['male', 'female', 'unisex']).optional(),
         limit: z.coerce.number().int().min(1).max(50).default(30),
       }),
     },
     async (input, _req, res) => {
       const slots = input.query.slot ? [input.query.slot] : ['top', 'outer', 'bottom'];
-      sendData(res, await listGarments(slots, input.query.gender ?? null, input.query.limit));
+      sendData(
+        res,
+        await listGarments(
+          slots,
+          input.query.gender ?? null,
+          input.query.limit,
+          input.query.category ?? null,
+        ),
+      );
     },
   ),
 );
@@ -251,6 +267,34 @@ tryonRouter.delete(
 );
 
 // ── Komplektlar ──
+
+/**
+ * GET /v1/looks/suggest — AI Designer: tadbir va uslubga qarab komplekt.
+ *
+ * ⚠️ `/looks/:id` DAN OLDIN TURISHI SHART. Express marshrutlarni tartib
+ * bo'yicha solishtiradi va `:id` «suggest» ni ham o'ziga oladi — u payt
+ * so'rov UUID kutgan validatorga tushib xato beradi.
+ *
+ * ⚠️ TAKLIF SAQLANMAYDI. U har so'rovda qaytadan yig'iladi va PUL
+ * TURMAYDI: bu katalog ustidagi tanlov, AI chaqiruvi emas. Foydalanuvchi
+ * yoqqanini tanlagandagina `POST /looks` bilan saqlanadi.
+ */
+tryonRouter.get(
+  '/looks/suggest',
+  requireAuth,
+  route({ query: suggestLookSchema }, async (input, _req, res) => {
+    sendData(
+      res,
+      await suggestLooks({
+        occasion: input.query.occasion,
+        style: input.query.style,
+        gender: input.query.gender ?? null,
+        budget: input.query.budget ?? null,
+        count: input.query.count,
+      }),
+    );
+  }),
+);
 
 tryonRouter.get(
   '/looks',

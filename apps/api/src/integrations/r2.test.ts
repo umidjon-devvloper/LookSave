@@ -81,7 +81,7 @@ describe('shaxsiy bucket (D-43)', () => {
    * ⚠️ ENG MUHIM TEKSHIRUV. Shaxsiy bucket sozlanmagan bo'lsa
    * `presignRead` havolani O'ZGARISHSIZ qaytarishi shart.
    *
-   * Aks holda hozirgi ishlayotgan AI oqimi buzilardi: FASHN havolani
+   * Aks holda hozirgi ishlayotgan AI oqimi buzilardi: provayder havolani
    * ocholmasdi va har chaqiruv bekorga to'lanardi.
    */
   it('shaxsiy bucketsiz havola o`zgarmaydi', async () => {

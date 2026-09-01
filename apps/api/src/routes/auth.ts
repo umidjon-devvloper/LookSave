@@ -40,6 +40,7 @@ import {
 } from '../auth/users';
 import { ApiError } from '../http/api-error';
 import { getAuth, requireAuth } from '../http/auth-middleware';
+import { getClientIp } from '../http/client-ip';
 import { rateLimit } from '../http/rate-limit';
 import { sendData } from '../http/respond';
 import { route } from '../http/validate';
@@ -160,7 +161,9 @@ authRouter.post(
   }),
   route({ body: loginSchema }, async (input, req, res) => {
     const { phone, password } = input.body;
-    const ip = req.ip ?? null;
+    // Veb-saytdan kelgan urinishda `req.ip` — veb-serverniki. Audit
+    // yozuvida mehmonning o'z IP'si turishi kerak (`http/client-ip.ts`).
+    const ip = getClientIp(req, res);
     const userAgent = req.get('User-Agent') ?? null;
 
     const user = await findUserByPhone(phone);

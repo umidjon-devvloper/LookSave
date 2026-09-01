@@ -5,7 +5,7 @@ import {
 } from '@looksave/validation';
 import { describe, expect, it } from 'vitest';
 
-import { categoryForSlot } from '../integrations/fashn';
+import { garmentKindForSlot } from '../integrations/openai';
 
 const VARIANT = '11111111-1111-1111-1111-111111111111';
 const VARIANT_2 = '22222222-2222-2222-2222-222222222222';
@@ -20,12 +20,12 @@ const VARIANT_2 = '22222222-2222-2222-2222-222222222222';
 
 describe('slot -> provayder toifasi', () => {
   it('ustki kiyimlar `tops` ga tushadi', () => {
-    expect(categoryForSlot('top')).toBe('tops');
-    expect(categoryForSlot('outer')).toBe('tops');
+    expect(garmentKindForSlot('top')).toBe('tops');
+    expect(garmentKindForSlot('outer')).toBe('tops');
   });
 
   it('pastki kiyim `bottoms` ga tushadi', () => {
-    expect(categoryForSlot('bottom')).toBe('bottoms');
+    expect(garmentKindForSlot('bottom')).toBe('bottoms');
   });
 
   /*
@@ -34,14 +34,14 @@ describe('slot -> provayder toifasi', () => {
    * qarori yuqorida qabul qilinadi.
    */
   it('kiyim bo`lmagan slotlar `auto` bo`lib qoladi', () => {
-    expect(categoryForSlot('feet')).toBe('auto');
-    expect(categoryForSlot('wrist')).toBe('auto');
-    expect(categoryForSlot('bag')).toBe('auto');
-    expect(categoryForSlot('head')).toBe('auto');
+    expect(garmentKindForSlot('feet')).toBe('auto');
+    expect(garmentKindForSlot('wrist')).toBe('auto');
+    expect(garmentKindForSlot('bag')).toBe('auto');
+    expect(garmentKindForSlot('head')).toBe('auto');
   });
 
   it('noma`lum slot ham xato bermaydi', () => {
-    expect(categoryForSlot('elbow')).toBe('auto');
+    expect(garmentKindForSlot('elbow')).toBe('auto');
   });
 });
 

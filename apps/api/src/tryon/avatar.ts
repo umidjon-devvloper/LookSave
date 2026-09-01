@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import { pool } from '../db/pool';
 import { ApiError } from '../http/api-error';
-import { downloadResult, isFashnEnabled, pollTryon, submitAvatar } from '../integrations/fashn';
+import { generateAvatar, isOpenAiEnabled } from '../integrations/openai';
 import { presignRead, uploadObject } from '../integrations/r2';
 import { makeCutout } from '../store/cutout';
 import { logger } from '../logger';
@@ -115,15 +115,13 @@ function sourceHash(faceUrl: string, prompt: string): string {
 
 /** Hozirgi holat — ilova shu manzilni takrorlab natijani kutadi. */
 export async function getAvatar(userId: string): Promise<AvatarDto> {
-  let row = await load(userId);
-
-  // Ketayotgan burchak bo'lsa avval uni yakunlaymiz
-  if (row.angle_job_id) row = await finalizeAngle(userId, row);
-
-  // Tugagan holat qayta so'ralmaydi
-  if (row.avatar_status !== 'processing' || !row.avatar_job_id) return toDto(row);
-
-  return finalize(userId, row.avatar_job_id);
+  /*
+   * ⚠️ BU YERDA PROVAYDERDAN SO'RALMAYDI. Ilgari FASHN'da ish `id` bilan
+   * yurardi va holat har so'rovda provayderdan olinardi. OpenAI sinxron:
+   * natijani fon ishi o'zi bazaga yozadi, shuning uchun bu yerda faqat
+   * qator o'qiladi — tashqi chaqiruv ham, kutish ham yo'q.
+   */
+  return toDto(await load(userId));
 }
 
 /**
@@ -132,7 +130,7 @@ export async function getAvatar(userId: string): Promise<AvatarDto> {
  * Tayyor avatar bor va manba o'zgarmagan bo'lsa — qayta yasalmaydi.
  */
 export async function requestAvatar(userId: string): Promise<AvatarDto> {
-  if (!isFashnEnabled()) {
+  if (!isOpenAiEnabled()) {
     throw new ApiError('SERVICE_UNAVAILABLE', 'AI hozircha sozlanmagan');
   }
 
@@ -163,32 +161,82 @@ export async function requestAvatar(userId: string): Promise<AvatarDto> {
     if (row.avatar_status === 'ready' || row.avatar_status === 'processing') return toDto(row);
   }
 
-  let job;
+  /*
+   * ⚠️ IMZO FAQAT SHU YERDA, XESHDAN KEYIN. Shaxsiy bucketdagi surat
+   * kalitsiz o'qilmaydi, provayder esa uni yuklab olishi kerak.
+   *
+   * ⚠️ XESHGA IMZOLANGAN HAVOLA BERILMAYDI: imzoda vaqt belgisi bor,
+   * ya'ni xesh har chaqiruvda o'zgarardi va kesh HECH QACHON ishlamasdi —
+   * har so'rov qaytadan to'lanardi.
+   */
+  const facePhotoUrl = (await presignRead(row.face_texture_url)) ?? row.face_texture_url;
+
+  /*
+   * ⚠️ HOLAT AVVAL BAZAGA, KEYIN FON ISHI. Tartib muhim: `await` fon
+   * ishidan oldin, shunda tez tugagan generatsiya `ready` ni yozib
+   * ulgursa ham bu yozuv uni bosib ketmaydi.
+   */
+  await save(userId, { status: 'processing', jobId: null, hash, error: null });
+  void runAvatar(userId, facePhotoUrl, prompt);
+
+  logger.info({ userId }, 'avatar yasash boshlandi');
+  return bare('processing', null, null);
+}
+
+/**
+ * Avatar yasash — fonda bajariladi.
+ *
+ * ⚠️ NEGA FONDA. `gpt-image-1` javobda darhol rasm beradi, lekin 30–60
+ * soniya oladi. HTTP so'rov ichida kutish taymautga olib keladi, shuning
+ * uchun ish fonda ketadi va ilova holatni so'rab turadi.
+ *
+ * ⚠️ XATO YUTILMAYDI, PROFILGA YOZILADI. Fon vazifasida `throw` hech
+ * kimga yetib bormaydi — javob allaqachon berilgan. Sabab `failed`
+ * holati bilan bazaga tushadi va ilova uni ko'rsatadi.
+ *
+ * ⚠️ ZAIFLIK: ish XOTIRADA, provayderda emas. Server generatsiya paytida
+ * qayta ishga tushsa ish yo'qoladi va profil `processing` da qotib
+ * qolardi — buni `sweepStaleAvatars` yopadi.
+ */
+async function runAvatar(userId: string, facePhotoUrl: string, prompt: string): Promise<void> {
   try {
-    /*
-     * ⚠️ IMZO FAQAT SHU YERDA, XESHDAN KEYIN. Shaxsiy bucketdagi surat
-     * kalitsiz o'qilmaydi, provayder esa uni yuklab olishi kerak.
-     *
-     * ⚠️ XESHGA IMZOLANGAN HAVOLA BERILMAYDI: imzoda vaqt belgisi bor,
-     * ya'ni xesh har chaqiruvda o'zgarardi va kesh HECH QACHON
-     * ishlamasdi — har so'rov qaytadan to'lanardi.
-     */
-    job = await submitAvatar({
-      facePhotoUrl: (await presignRead(row.face_texture_url)) ?? row.face_texture_url,
-      prompt,
-    });
+    const buffer = await generateAvatar(facePhotoUrl, prompt);
+    await storeAvatar(userId, buffer);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'noma`lum xato';
-    logger.error({ err, userId }, 'avatar ishini boshlab bo`lmadi');
+    logger.error({ err, userId }, 'avatar yasalmadi');
+    await save(userId, { status: 'failed', error: message }).catch(() => {
+      // Baza ham yiqilsa qiladigan ish qolmaydi — log yuqorida
+    });
+  }
+}
 
-    await save(userId, { status: 'failed', error: message, hash });
-    return bare('failed', null, message);
+/**
+ * Tayyor avatarni saqlaydi va kesimini yasaydi.
+ *
+ * ⚠️ KESIM ALOHIDA QADAM. Uning nosozligi avatarni buzmaydi: `makeCutout`
+ * `null` qaytarsa ilova oddiy suratni ko'rsatadi. Shuning uchun u avatar
+ * `ready` bo'lgandan KEYIN yasaladi.
+ */
+async function storeAvatar(userId: string, buffer: Buffer): Promise<string> {
+  const url = await uploadObject({
+    key: `avatar/${randomUUID()}.jpg`,
+    body: buffer,
+    contentType: 'image/jpeg',
+  });
+
+  await save(userId, { status: 'ready', url, error: null });
+
+  const cutout = await makeCutout(url, 'avatar');
+  if (cutout) {
+    await pool.query(`UPDATE profiles SET avatar_cutout_url = $2 WHERE user_id = $1`, [
+      userId,
+      cutout,
+    ]);
   }
 
-  await save(userId, { status: 'processing', jobId: job.id, hash, error: null });
-  logger.info({ userId, jobId: job.id }, 'avatar yasash boshlandi');
-
-  return bare('processing', null, null);
+  logger.info({ userId, cutout: Boolean(cutout) }, 'avatar tayyor');
+  return url;
 }
 
 /** Profil qatori bo'lmasligi mumkin — shuning uchun `INSERT ... ON CONFLICT`. */
@@ -225,66 +273,6 @@ async function save(
 }
 
 /**
- * Provayderdan holatni oladi va tayyor bo'lsa suratni o'zimizga ko'chiradi.
- *
- * `model-create` va `tryon` bir xil `/status` endpointini ishlatadi,
- * shuning uchun `pollTryon` shu yerda ham to'g'ri keladi.
- */
-async function finalize(userId: string, jobId: string): Promise<AvatarDto> {
-  let result;
-  try {
-    result = await pollTryon(jobId);
-  } catch (err) {
-    // Tarmoq xatosi ishni bekor qilmaydi — provayder tomonda davom etayotgan bo'lishi mumkin
-    logger.warn({ err, userId }, 'avatar holatini olib bo`lmadi');
-    return bare('processing', null, null);
-  }
-
-  if (result.status === 'pending') return bare('processing', null, null);
-
-  if (result.status === 'failed') {
-    await save(userId, { status: 'failed', error: result.message });
-    return bare('failed', null, result.message);
-  }
-
-  try {
-    const buffer = await downloadResult(result.imageUrl);
-    const url = await uploadObject({
-      key: `avatar/${randomUUID()}.jpg`,
-      body: buffer,
-      contentType: 'image/jpeg',
-    });
-
-    await save(userId, { status: 'ready', url, error: null });
-
-    /*
-     * Kesim natijadan KEYIN yasaladi va uning nosozligi avatarni buzmaydi:
-     * `makeCutout` xato bo'lsa `null` qaytaradi va ilova oddiy suratni
-     * ko'rsatadi. Shuning uchun u alohida qadam.
-     */
-    const cutout = await makeCutout(url, 'avatar');
-    if (cutout) {
-      await pool.query(`UPDATE profiles SET avatar_cutout_url = $2 WHERE user_id = $1`, [
-        userId,
-        cutout,
-      ]);
-    }
-
-    logger.info({ userId, cutout: Boolean(cutout) }, 'avatar tayyor');
-
-    return { ...bare('ready', url, null), cutoutUrl: cutout };
-  } catch (err) {
-    /*
-     * Surat tayyor, lekin ko'chirib bo'lmadi. Bu "failed" EMAS: provayder
-     * havolasi hali yashaydi va keyingi so'rov qaytadan urinadi — kredit
-     * ikkinchi marta sarflanmaydi.
-     */
-    logger.error({ err, userId }, 'avatarni saqlab bo`lmadi');
-    return bare('processing', null, null);
-  }
-}
-
-/**
  * Burchakni yasashni so'raydi (aylantirish).
  *
  * ⚠️ HAR BURCHAK ALOHIDA KREDIT. Shuning uchun ular oldindan yasalmaydi —
@@ -296,7 +284,7 @@ async function finalize(userId: string, jobId: string): Promise<AvatarDto> {
  * parallel boshlab, har biriga alohida to'lardi.
  */
 export async function requestAngle(userId: string, angle: AvatarAngle): Promise<AvatarDto> {
-  if (!isFashnEnabled()) {
+  if (!isOpenAiEnabled()) {
     throw new ApiError('SERVICE_UNAVAILABLE', 'AI hozircha sozlanmagan');
   }
 
@@ -315,114 +303,103 @@ export async function requestAngle(userId: string, angle: AvatarAngle): Promise<
 
   const prompt = buildAvatarPrompt(row.gender, row.measurements ?? {}, angle);
 
-  let job;
-  try {
-    /*
-     * ⚠️ IMZO FAQAT SHU YERDA, XESHDAN KEYIN. Shaxsiy bucketdagi surat
-     * kalitsiz o'qilmaydi, provayder esa uni yuklab olishi kerak.
-     *
-     * ⚠️ XESHGA IMZOLANGAN HAVOLA BERILMAYDI: imzoda vaqt belgisi bor,
-     * ya'ni xesh har chaqiruvda o'zgarardi va kesh HECH QACHON
-     * ishlamasdi — har so'rov qaytadan to'lanardi.
-     */
-    job = await submitAvatar({
-      facePhotoUrl: (await presignRead(row.face_texture_url)) ?? row.face_texture_url,
-      prompt,
-    });
-  } catch (err) {
-    logger.error({ err, userId, angle }, 'burchak ishini boshlab bo`lmadi');
-    return toDto(row);
-  }
+  const facePhotoUrl = (await presignRead(row.face_texture_url)) ?? row.face_texture_url;
 
+  /*
+   * ⚠️ BAND BELGISI AVVAL QO'YILADI. `angle_pending` — bu yerda ham
+   * qulf: tugmani tez-tez bosgan odam bir necha ishni parallel
+   * boshlamasin va har biriga alohida to'lamasin.
+   *
+   * `angle_job_id` endi provayder ishi emas — u shunchaki «band» belgisi,
+   * chunki OpenAI'da ish raqami yo'q.
+   */
   await pool.query(
     `UPDATE profiles
-        SET angle_job_id = $2, angle_pending = $3, angle_updated_at = now()
+        SET angle_job_id = 'local', angle_pending = $2, angle_updated_at = now()
       WHERE user_id = $1`,
-    [userId, job.id, angle],
+    [userId, angle],
   );
 
-  logger.info({ userId, angle, jobId: job.id }, 'burchak yasash boshlandi');
+  void runAngle(userId, facePhotoUrl, prompt, angle);
+
+  logger.info({ userId, angle }, 'burchak yasash boshlandi');
   return { ...toDto(row), anglePending: angle };
 }
 
 /**
- * Ketayotgan burchak ishini yakunlaydi.
+ * Burchakni fonda yasaydi va profilga yozadi.
  *
- * `getAvatar` har chaqirilganda tekshiriladi — ilova baribir holatni
- * so'rab turadi, alohida navbat kerak emas.
+ * ⚠️ QULF HAR HOLDA OCHILADI. Xato bo'lsa ham `angle_job_id` va
+ * `angle_pending` tozalanadi — aks holda foydalanuvchi boshqa burchak
+ * so'ray olmay qolardi va sababini bilmasdi.
  */
-async function finalizeAngle(userId: string, row: AvatarRow): Promise<AvatarRow> {
-  if (!row.angle_job_id || !row.angle_pending) return row;
-
-  let result;
+async function runAngle(
+  userId: string,
+  facePhotoUrl: string,
+  prompt: string,
+  angle: AvatarAngle,
+): Promise<void> {
   try {
-    result = await pollTryon(row.angle_job_id);
-  } catch (err) {
-    logger.warn({ err, userId }, 'burchak holatini olib bo`lmadi');
-    return row;
-  }
+    const buffer = await generateAvatar(facePhotoUrl, prompt);
 
-  if (result.status === 'pending') return row;
-
-  if (result.status === 'failed') {
-    logger.warn({ userId, angle: row.angle_pending }, 'burchak yasalmadi');
-    await pool.query(
-      `UPDATE profiles SET angle_job_id = NULL, angle_pending = NULL WHERE user_id = $1`,
-      [userId],
-    );
-    return { ...row, angle_job_id: null, angle_pending: null };
-  }
-
-  try {
-    const buffer = await downloadResult(result.imageUrl);
     const url = await uploadObject({
       key: `avatar/${randomUUID()}.jpg`,
       body: buffer,
       contentType: 'image/jpeg',
     });
 
-    const angles = { ...(row.avatar_angles ?? {}), [row.angle_pending]: url };
-
     await pool.query(
       `UPDATE profiles
-          SET avatar_angles = $2::jsonb, angle_job_id = NULL, angle_pending = NULL,
-              angle_updated_at = now()
+          SET avatar_angles = COALESCE(avatar_angles, '{}'::jsonb) || jsonb_build_object($2::text, $3::text),
+              angle_job_id = NULL, angle_pending = NULL, angle_updated_at = now()
         WHERE user_id = $1`,
-      [userId, JSON.stringify(angles)],
+      [userId, angle, url],
     );
 
-    logger.info({ userId, angle: row.angle_pending }, 'burchak tayyor');
-    return { ...row, avatar_angles: angles, angle_job_id: null, angle_pending: null };
+    logger.info({ userId, angle }, 'burchak tayyor');
   } catch (err) {
-    // Surat tayyor, lekin ko'chirilmadi — keyingi so'rov qaytadan urinadi
-    logger.error({ err, userId }, 'burchakni saqlab bo`lmadi');
-    return row;
+    logger.error({ err, userId, angle }, 'burchak yasalmadi');
+
+    await pool
+      .query(`UPDATE profiles SET angle_job_id = NULL, angle_pending = NULL WHERE user_id = $1`, [
+        userId,
+      ])
+      .catch(() => {
+        // Baza ham yiqilsa qiladigan ish qolmaydi
+      });
   }
 }
 
-/**
- * Tashlab ketilgan avatar ishlarini yakunlaydi.
- *
- * Kiyintirish keshidagi kabi sabab: ilova yopilsa ish "processing" bo'lib
- * qolib ketardi — kredit sarflangan, natija esa olinmagan.
- */
-export async function sweepStaleAvatars(limit = 10): Promise<number> {
-  const { rows } = await pool.query<{ user_id: string; avatar_job_id: string }>(
-    `SELECT user_id, avatar_job_id
-       FROM profiles
+export async function sweepStaleAvatars(): Promise<number> {
+  /*
+   * ⚠️ VAZIFASI O'ZGARDI. Ilgari bu provayderdan holat so'rab, tayyor
+   * ishlarni yakunlardi. OpenAI sinxron bo'lgani uchun yakunlash fon
+   * ishining o'zida bo'ladi — bu yerda faqat EGASIZ QOLGANLAR yopiladi.
+   *
+   * Egasiz qolish sababi: ish XOTIRADA edi, provayderda emas. Server
+   * generatsiya paytida qayta ishga tushsa ish yo'qoladi va profil
+   * `processing` da abadiy qolardi — foydalanuvchi aylanayotgan
+   * indikatorga qarab o'tirardi.
+   *
+   * 10 daqiqa — `gpt-image-1` ning eng sekin holatidan (30–60 s) ancha
+   * ko'p, ya'ni tirik ish xato bilan yopilmaydi.
+   */
+  const { rowCount } = await pool.query(
+    `UPDATE profiles
+        SET avatar_status = 'failed',
+            avatar_error = $1,
+            avatar_updated_at = now()
       WHERE avatar_status = 'processing'
-        AND avatar_job_id IS NOT NULL
-        AND avatar_updated_at < now() - interval '30 seconds'
-      ORDER BY avatar_updated_at
-      LIMIT $1`,
-    [limit],
+        AND avatar_updated_at < now() - interval '10 minutes'`,
+    ['Avatar yasash uzilib qoldi — qaytadan urinib ko`ring'],
   );
 
-  let finished = 0;
-  for (const row of rows) {
-    const dto = await finalize(row.user_id, row.avatar_job_id);
-    if (dto.status === 'ready' || dto.status === 'failed') finished += 1;
-  }
+  // Egasiz qolgan burchak qulflari ham ochiladi
+  await pool.query(
+    `UPDATE profiles SET angle_job_id = NULL, angle_pending = NULL
+      WHERE angle_job_id IS NOT NULL
+        AND angle_updated_at < now() - interval '10 minutes'`,
+  );
 
-  return finished;
+  return rowCount ?? 0;
 }

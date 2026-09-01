@@ -1,4 +1,4 @@
-import type { NearbyQuery, StoreMapQuery } from '@looksave/validation';
+import { AI_TRYON_SLOTS, type NearbyQuery, type StoreMapQuery } from '@looksave/validation';
 
 import { pool } from '../db/pool';
 import { computeOpenState } from './hours';
@@ -7,6 +7,7 @@ interface NearbyRow {
   id: string;
   name: string;
   logo_url: string | null;
+  cover_url: string | null;
   address: string;
   distance_m: number;
   rating: string;
@@ -18,7 +19,7 @@ interface NearbyRow {
   working_hours: unknown;
   country: 'UZ' | 'AE';
   product_count: string;
-  product_3d_count: string;
+  tryon_count: string;
 }
 
 /**
@@ -35,7 +36,14 @@ export async function findNearbyStores(query: NearbyQuery): Promise<NearbyRow[]>
     `s.status = 'active'`,
     `ST_DWithin(s.location, ST_MakePoint($1, $2)::geography, $3)`,
   ];
-  const params: unknown[] = [query.lng, query.lat, query.radius];
+  /*
+   * ⚠️ SLOT RO'YXATI TO'RTINCHI O'RINDA VA DOIM QO'SHILADI. U quyidagi
+   * LATERAL sanoqda ($4) ishlatiladi, ya'ni shart bo'lmasa ham kerak.
+   * Shartli qo'shilsa indeks siljib ketardi va sanoq `lng` ni slot deb
+   * o'qishga urinardi.
+   */
+  const params: unknown[] = [query.lng, query.lat, query.radius, [...AI_TRYON_SLOTS]];
+  const slotIndex = params.length;
 
   if (query.category !== undefined) {
     params.push(query.category);
@@ -46,9 +54,11 @@ export async function findNearbyStores(query: NearbyQuery): Promise<NearbyRow[]>
     )`);
   }
 
-  if (query.only3d) {
+  if (query.onlyTryon) {
+    // Kiyib ko'rish 3D modelga emas, slotga bog'liq — `products.ts` dagi kabi
     conditions.push(`EXISTS (
-      SELECT 1 FROM products p WHERE p.store_id = s.id AND p.status = 'active' AND p.has_3d
+      SELECT 1 FROM products p
+       WHERE p.store_id = s.id AND p.status = 'active' AND p.slot = ANY($${slotIndex})
     )`);
   }
 
@@ -56,17 +66,17 @@ export async function findNearbyStores(query: NearbyQuery): Promise<NearbyRow[]>
   const limitIndex = params.length;
 
   const { rows } = await pool.query<NearbyRow>(
-    `SELECT s.id, s.name, s.logo_url, s.address, s.rating, s.currency,
+    `SELECT s.id, s.name, s.logo_url, s.cover_url, s.address, s.rating, s.currency,
             s.delivery_enabled, s.pickup_enabled, s.working_hours, s.country,
             ST_Distance(s.location, ST_MakePoint($1, $2)::geography)::int AS distance_m,
             ST_Y(s.location::geometry) AS lat,
             ST_X(s.location::geometry) AS lng,
             counts.product_count,
-            counts.product_3d_count
+            counts.tryon_count
        FROM stores s
        CROSS JOIN LATERAL (
          SELECT COUNT(*) FILTER (WHERE p.status = 'active')             AS product_count,
-                COUNT(*) FILTER (WHERE p.status = 'active' AND p.has_3d) AS product_3d_count
+                COUNT(*) FILTER (WHERE p.status = 'active' AND p.slot = ANY($4)) AS tryon_count
            FROM products p WHERE p.store_id = s.id
        ) counts
       WHERE ${conditions.join(' AND ')}
@@ -82,6 +92,17 @@ export interface NearbyStoreDto {
   id: string;
   name: string;
   logoUrl: string | null;
+  /**
+   * Do'kon muqovasi (16:9) — ro'yxatdagi kartaning rasmi.
+   *
+   * ⚠️ `logoUrl` DAN AYRIM MAQSAD. Logo kvadrat (do'kon belgisi),
+   * muqova esa keng surat. Karta 16:9 da chizilgani uchun logo unda
+   * cho'zilib yoki qirqilib ketadi — 15-sayt-dizayn.md §4.5 aynan
+   * «do'kon rasmi (16:9)» deydi. Muqova do'kon panelida allaqachon
+   * yuklanadi va do'kon SAHIFASIDA ko'rsatiladi; ro'yxatga esa u
+   * hech qachon yetib bormasdi.
+   */
+  coverUrl: string | null;
   address: string;
   distanceM: number;
   rating: number;
@@ -89,7 +110,7 @@ export interface NearbyStoreDto {
   closesAt: string | null;
   opensAt: string | null;
   productCount: number;
-  product3dCount: number;
+  tryonCount: number;
   currency: string;
   location: { lat: number; lng: number };
   deliveryEnabled: boolean;
@@ -103,6 +124,7 @@ export function toNearbyDto(row: NearbyRow): NearbyStoreDto {
     id: row.id,
     name: row.name,
     logoUrl: row.logo_url,
+    coverUrl: row.cover_url,
     address: row.address,
     distanceM: row.distance_m,
     rating: Number(row.rating),
@@ -110,7 +132,7 @@ export function toNearbyDto(row: NearbyRow): NearbyStoreDto {
     closesAt: open.closesAt,
     opensAt: open.opensAt,
     productCount: Number(row.product_count),
-    product3dCount: Number(row.product_3d_count),
+    tryonCount: Number(row.tryon_count),
     currency: row.currency,
     location: { lat: row.lat, lng: row.lng },
     deliveryEnabled: row.delivery_enabled,

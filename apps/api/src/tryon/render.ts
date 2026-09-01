@@ -2,13 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import { pool } from '../db/pool';
 import { ApiError } from '../http/api-error';
-import {
-  categoryForSlot,
-  downloadResult,
-  isFashnEnabled,
-  pollTryon,
-  submitTryon,
-} from '../integrations/fashn';
+import { garmentKindForSlot, generateTryon, isOpenAiEnabled } from '../integrations/openai';
 import { presignRead, uploadObject } from '../integrations/r2';
 import { makeCutout } from '../store/cutout';
 import { logger } from '../logger';
@@ -83,6 +77,15 @@ interface Sources {
   bodyPhotoUrl: string;
   garmentImageUrl: string;
   slot: string;
+  /**
+   * Yuz surati — GPT ga qo'shimcha manba sifatida beriladi.
+   *
+   * ⚠️ NEGA KERAK. `gpt-image-1` yuzni nusxa ko'chirmaydi, butun kadrni
+   * qaytadan chizadi va yuzni «o'xshatib» qo'yadi. Faqat gavda surati
+   * berilsa u o'sha suratdagi TAXMINIY yuzni yana bir bor taxmin qiladi.
+   * Haqiqiy yuz suratini ko'rsatsak, taxmin manbadan boshlanadi.
+   */
+  faceReferenceUrl: string | null;
 }
 
 /** Surat va kiyim manzilini yig'adi; yetishmasa sababini aniq aytadi. */
@@ -94,12 +97,13 @@ async function loadSources(
   const { rows } = await pool.query<{
     body_photo_url: string | null;
     avatar_image_url: string | null;
+    face_texture_url: string | null;
     avatar_angles: Record<string, string> | null;
     slot: string;
     variant_images: unknown;
     product_images: unknown;
   }>(
-    `SELECT pr.body_photo_url, pr.avatar_image_url,
+    `SELECT pr.body_photo_url, pr.avatar_image_url, pr.face_texture_url,
             COALESCE(pr.avatar_angles, '{}')::jsonb AS avatar_angles, p.slot,
             v.images AS variant_images, p.images AS product_images
        FROM product_variants v
@@ -113,25 +117,28 @@ async function loadSources(
   if (!row) throw ApiError.notFound('Mahsulot topilmadi');
 
   /*
-   * ⚠️ YASALGAN AVATAR USTUN, HAQIQIY SURAT EMAS.
+   * ⚠️ HAQIQIY SURAT USTUN, YASALGAN AVATAR EMAS — VA BU O'ZGARTIRILDI.
    *
-   * Asosiy yo'l — yuz skaneri va o'lchovlardan yasalgan avatar: to'liq
-   * bo'yli suratga tushish hammaga ham qulay emas. Haqiqiy surat ixtiyoriy
-   * qo'shimcha yo'l bo'lib qoladi.
+   * Ilgari yasalgan avatar birinchi turardi: u ataylab kiyintirish uchun
+   * tayyorlangan (tik poza, tor asosiy kiyim, sodda fon), uydagi tasodifiy
+   * surat esa bularni kafolatlamaydi.
    *
-   * Ikkalasi ham bo'lsa yasalgani olinadi: u ataylab kiyintirish uchun
-   * tayyorlangan — tik poza, tor asosiy kiyim, sodda fon. Uydagi tasodifiy
-   * surat esa bularning hech birini kafolatlamaydi.
+   * Lekin o'lchov boshqa narsani ko'rsatdi. `gpt-image-1` yuzni NUSXA
+   * KO'CHIRMAYDI — butun kadrni qaytadan chizadi. Yasalgan avatarning
+   * o'zi allaqachon shunday qayta chizilgan, ya'ni undagi yuz taxminiy.
+   * Uning ustiga kiyintirish qo'ysak, taxminning taxmini chiqadi va yuz
+   * ikki qadamda buziladi — nusxadan nusxa olgandek.
+   *
+   * Haqiqiy surat bo'lsa zanjir bir qadam qisqaradi va o'xshashlik
+   * sezilarli saqlanadi. Poza va fon yomonroq bo'lishi mumkin, lekin
+   * foydalanuvchi uchun O'ZINI TANISH muhimroq.
+   *
+   * ⚠️ BURCHAK ISTISNO. Aylantirilgan ko'rinish faqat yasalgan avatarda
+   * bor — haqiqiy surat old tomondan olingan. Shuning uchun burchak
+   * so'ralganda o'sha avatar ishlatiladi.
    */
-  /*
-   * ⚠️ BURCHAK BIRINCHI. Aylantirilgan holatda kiyintirish o'sha burchakdagi
-   * avatarga qo'llanadi — sinovda tasdiqlandi: model yon ko'rinishda ham
-   * pozani tanidi va kiyimni to'g'ri joyladi.
-   *
-   * Burchak hali yasalmagan bo'lsa old ko'rinishga tushamiz: kiyintirishni
-   * to'xtatgandan ko'ra oldindan ko'rsatgan yaxshiroq.
-   */
-  const model = (row.avatar_angles ?? {})[angle] ?? row.avatar_image_url ?? row.body_photo_url;
+  const rotated = angle === 'front' ? null : ((row.avatar_angles ?? {})[angle] ?? null);
+  const model = rotated ?? row.body_photo_url ?? row.avatar_image_url;
 
   if (!model) {
     throw new ApiError(
@@ -154,7 +161,12 @@ async function loadSources(
     throw new ApiError('VALIDATION_ERROR', 'Bu mahsulotning surati yo`q — kiyintirib bo`lmaydi');
   }
 
-  return { bodyPhotoUrl: model, garmentImageUrl: garment, slot: row.slot };
+  return {
+    bodyPhotoUrl: model,
+    garmentImageUrl: garment,
+    slot: row.slot,
+    faceReferenceUrl: row.face_texture_url,
+  };
 }
 
 /**
@@ -190,7 +202,12 @@ async function assertDailyLimit(userId: string): Promise<void> {
  * Surati yo'q mahsulot qo'shilmaydi — uni kiyintirib bo'lmaydi va
  * ro'yxatda ko'rsatilsa foydalanuvchi bosib xato oladi.
  */
-export async function listGarments(slots: string[], gender: string | null, limit: number) {
+export async function listGarments(
+  slots: string[],
+  gender: string | null,
+  limit: number,
+  category: string | null = null,
+) {
   const { rows } = await pool.query<{
     variant_id: string;
     product_id: string;
@@ -230,13 +247,16 @@ export async function listGarments(slots: string[], gender: string | null, limit
        FROM products p
        JOIN product_variants v ON v.product_id = p.id AND v.is_active
        JOIN stores s ON s.id = p.store_id AND s.status = 'active'
+       LEFT JOIN categories c ON c.id = p.category_id
       WHERE p.status = 'active'
         AND p.slot = ANY($1::text[])
+        -- Kategoriya berilsa u ustun: slotdan aniqroq
+        AND ($4::text IS NULL OR c.slug = $4)
         AND COALESCE(NULLIF(v.images->>0, ''), NULLIF(p.images->>0, '')) IS NOT NULL
         AND ($2::text IS NULL OR p.gender IN ($2, 'unisex'))
       ORDER BY p.id, (v.images->>0) IS NOT NULL DESC, v.id
       LIMIT $3`,
-    [slots, gender, limit],
+    [slots, gender, limit, category],
   );
 
   return rows.map((row) => ({
@@ -261,7 +281,7 @@ export async function requestRender(
   variantId: string,
   angle: RenderAngle = 'front',
 ): Promise<RenderDto> {
-  if (!isFashnEnabled()) {
+  if (!isOpenAiEnabled()) {
     throw new ApiError('SERVICE_UNAVAILABLE', 'AI kiyintirish hozircha sozlanmagan');
   }
 
@@ -311,47 +331,40 @@ export async function requestRender(
     throw err;
   }
 
-  try {
-    const job = await submitTryon({
-      /*
-       * ⚠️ IMZO XESHDAN KEYIN (yuqoridagi `sourceHash` kanonik manzilni
-       * oladi). Imzolangan havola xeshga tushsa kesh buzilardi va har
-       * so'rov qaytadan to'lanardi.
-       */
-      modelImageUrl: (await presignRead(sources.bodyPhotoUrl)) ?? sources.bodyPhotoUrl,
-      garmentImageUrl: sources.garmentImageUrl,
-      category: categoryForSlot(sources.slot),
-    });
+  /*
+   * ⚠️ IMZO XESHDAN KEYIN (yuqoridagi `sourceHash` kanonik manzilni
+   * oladi). Imzolangan havola xeshga tushsa kesh buzilardi va har
+   * so'rov qaytadan to'lanardi.
+   */
+  const modelImageUrl = (await presignRead(sources.bodyPhotoUrl)) ?? sources.bodyPhotoUrl;
 
-    const { rows } = await pool.query<RenderRow>(
-      `UPDATE tryon_renders SET status = 'processing', provider_job_id = $2
-        WHERE id = $1
-        RETURNING id, variant_id, angle, status, result_url, cutout_url, error, provider_job_id`,
-      [fresh.id, job.id],
-    );
+  /*
+   * Yuz surati ham shaxsiy bucketda bo'lishi mumkin — u ham imzolanadi.
+   * Xeshga tushmaydi: kiyintirish natijasi yuz manbasiga emas, gavda va
+   * kiyimga bog'liq.
+   */
+  const faceReferenceUrl = sources.faceReferenceUrl
+    ? ((await presignRead(sources.faceReferenceUrl)) ?? sources.faceReferenceUrl)
+    : null;
 
-    return toDto(rows[0] ?? { ...fresh, status: 'processing' });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'noma`lum xato';
-    logger.error({ err, variantId }, 'FASHN ishini boshlab bo`lmadi');
+  /*
+   * ⚠️ HOLAT AVVAL BAZAGA, KEYIN FON ISHI. Tartib muhim: `await` fon
+   * ishidan oldin, shunda tez tugagan generatsiya `ready` ni yozib
+   * ulgursa ham bu yozuv uni bosib ketmaydi.
+   */
+  await pool.query(`UPDATE tryon_renders SET status = 'processing' WHERE id = $1`, [fresh.id]);
+  void runOpenAi(fresh.id, modelImageUrl, sources.garmentImageUrl, sources.slot, faceReferenceUrl);
 
-    await pool.query(
-      `UPDATE tryon_renders SET status = 'failed', error = $2, completed_at = now()
-        WHERE id = $1`,
-      [fresh.id, message],
-    );
-
-    return { ...toDto(fresh), status: 'failed', error: message };
-  }
+  return toDto({ ...fresh, status: 'processing' });
 }
 
 /**
- * Holatni tekshiradi va tayyor bo'lsa natijani o'zimizga ko'chiradi.
+ * Kiyintirish holati.
  *
- * ⚠️ TEKSHIRUV SHU YERDA, ALOHIDA JARAYONDA EMAS. Ilova holatni so'rab
- * turadi va o'sha so'rov provayderni ham tekshiradi — shunda navbat
- * xizmati, ishchi jarayon va ular bilan keladigan nosozliklar kerak emas.
- * Tashlab ketilgan ishlar uchun `sweepStaleRenders` bor.
+ * ⚠️ PROVAYDERDAN SO'RALMAYDI. Ilgari FASHN'da ish `id` bilan yurardi va
+ * har so'rovda holat provayderdan olinardi. OpenAI sinxron: natijani fon
+ * ishi o'zi bazaga yozadi, shuning uchun bu yerda faqat qator o'qiladi —
+ * tashqi chaqiruv ham, kutish ham yo'q.
  */
 export async function pollRender(userId: string, renderId: string): Promise<RenderDto> {
   const { rows } = await pool.query<RenderRow>(
@@ -364,74 +377,76 @@ export async function pollRender(userId: string, renderId: string): Promise<Rend
   const row = rows[0];
   if (!row) throw ApiError.notFound('Kiyintirish topilmadi');
 
-  // Tugagan ish qayta so'ralmaydi — javob allaqachon bazada
-  if (row.status === 'ready' || row.status === 'failed') return toDto(row);
-  if (!row.provider_job_id) return toDto(row);
-
-  return finalize(row);
+  return toDto(row);
 }
 
-/** Provayderdan holatni oladi va natijani saqlaydi. */
-async function finalize(row: RenderRow): Promise<RenderDto> {
-  if (!row.provider_job_id) return toDto(row);
+/**
+ * Tayyor suratni saqlaydi va qatorni `ready` qiladi.
+ *
+ * ⚠️ NATIJA O'ZIMIZGA KO'CHIRILADI. OpenAI xom bayt qaytaradi va uni
+ * darhol R2 ga yozamiz — provayderda saqlanmaydi, ya'ni keyin qayta
+ * so'rab olish imkoni yo'q.
+ */
+async function storeResult(renderId: string, buffer: Buffer): Promise<string> {
+  const url = await uploadObject({
+    key: `tryon/${randomUUID()}.jpg`,
+    body: buffer,
+    contentType: 'image/jpeg',
+  });
 
-  let result;
+  /*
+   * Kesim — qorong'i sahna uchun. Uning nosozligi natijani buzmaydi:
+   * `makeCutout` `null` qaytarsa ilova oddiy suratni ko'rsatadi.
+   */
+  const cutout = await makeCutout(url, 'tryon');
+
+  await pool.query(
+    `UPDATE tryon_renders
+        SET status = 'ready', result_url = $2, cutout_url = $3, completed_at = now()
+      WHERE id = $1`,
+    [renderId, url, cutout],
+  );
+
+  return url;
+}
+
+/**
+ * OpenAI oqimi — fonda bajariladi.
+ *
+ * ⚠️ XATO YUTILMAYDI, QATORGA YOZILADI. Fon vazifasida `throw` hech
+ * kimga yetib bormaydi: HTTP javob allaqachon berilgan. Shuning uchun
+ * xato `failed` holati bilan bazaga tushadi — ilova uni ko'radi va
+ * foydalanuvchiga aytadi.
+ */
+async function runOpenAi(
+  renderId: string,
+  modelImageUrl: string,
+  garmentImageUrl: string,
+  slot: string,
+  faceReferenceUrl: string | null,
+): Promise<void> {
   try {
-    result = await pollTryon(row.provider_job_id);
-  } catch (err) {
-    /*
-     * Tarmoq xatosi ishni MUVAFFAQIYATSIZ qilmaydi — provayder tomonda ish
-     * davom etayotgan bo'lishi mumkin. Uni "failed" deb belgilasak, to'langan
-     * natija yo'qolardi va foydalanuvchi qaytadan to'lardi.
-     */
-    logger.warn({ err, renderId: row.id }, 'FASHN holatini olib bo`lmadi');
-    return toDto(row);
-  }
-
-  if (result.status === 'pending') return toDto(row);
-
-  if (result.status === 'failed') {
-    const { rows } = await pool.query<RenderRow>(
-      `UPDATE tryon_renders SET status = 'failed', error = $2, completed_at = now()
-        WHERE id = $1
-        RETURNING id, variant_id, angle, status, result_url, cutout_url, error, provider_job_id`,
-      [row.id, result.message],
-    );
-    return toDto(rows[0] ?? { ...row, status: 'failed', error: result.message });
-  }
-
-  // Tayyor — natijani o'zimizga ko'chiramiz
-  try {
-    const buffer = await downloadResult(result.imageUrl);
-    const url = await uploadObject({
-      key: `tryon/${randomUUID()}.jpg`,
-      body: buffer,
-      contentType: 'image/jpeg',
+    const buffer = await generateTryon({
+      modelImageUrl,
+      garmentImageUrl,
+      kind: garmentKindForSlot(slot),
+      faceReferenceUrl,
     });
 
-    /*
-     * Kesim — qorong'i sahna uchun. Uning nosozligi natijani buzmaydi:
-     * `makeCutout` `null` qaytarsa ilova oddiy suratni ko'rsatadi.
-     */
-    const cutout = await makeCutout(url, 'tryon');
-
-    const { rows } = await pool.query<RenderRow>(
-      `UPDATE tryon_renders
-          SET status = 'ready', result_url = $2, cutout_url = $3, completed_at = now()
-        WHERE id = $1
-        RETURNING id, variant_id, angle, status, result_url, cutout_url, error, provider_job_id`,
-      [row.id, url, cutout],
-    );
-
-    return toDto(rows[0] ?? { ...row, status: 'ready', result_url: url, cutout_url: cutout });
+    await storeResult(renderId, buffer);
   } catch (err) {
-    /*
-     * Natija tayyor, lekin ko'chirib bo'lmadi. Bu ham "failed" EMAS:
-     * provayder havolasi hali bir necha kun yashaydi, keyingi so'rov
-     * qaytadan urinadi va pul ikkinchi marta to'lanmaydi.
-     */
-    logger.error({ err, renderId: row.id }, 'natijani saqlab bo`lmadi');
-    return toDto(row);
+    const message = err instanceof Error ? err.message : 'noma`lum xato';
+    logger.error({ err, renderId }, 'openai: kiyintirish yiqildi');
+
+    await pool
+      .query(
+        `UPDATE tryon_renders SET status = 'failed', error = $2, completed_at = now()
+          WHERE id = $1`,
+        [renderId, message],
+      )
+      .catch(() => {
+        // Baza ham yiqilsa qiladigan ish qolmaydi — log yuqorida yozilgan
+      });
   }
 }
 
@@ -466,29 +481,28 @@ export async function listRenders(
 }
 
 /**
- * Osilib qolgan ishlarni yakunlaydi.
+ * Tashlab ketilgan ishlarni yopadi.
  *
- * KERAK, chunki ilova holatni so'rab tugatmasligi mumkin: foydalanuvchi
- * ekranni yopadi yoki internet uziladi. O'sha ish "processing" bo'lib
- * qolib ketardi — pul to'langan, natija esa hech qachon olinmagan.
+ * ⚠️ VAZIFASI O'ZGARDI. Ilgari bu provayderdan holat so'rab, tayyor
+ * ishlarni yakunlardi. OpenAI sinxron bo'lgani uchun yakunlash fon
+ * ishining o'zida bo'ladi — bu yerda faqat EGASIZ QOLGANLAR yopiladi.
+ *
+ * Egasiz qolish sababi: ish XOTIRADA edi, provayderda emas. Server
+ * generatsiya paytida qayta ishga tushsa ish yo'qoladi va qator abadiy
+ * `processing` da qolardi — foydalanuvchi aylanayotgan indikatorga qarab
+ * o'tirardi.
+ *
+ * 10 daqiqa — `gpt-image-1` ning eng sekin holatidan (30–60 s) ancha
+ * ko'p, ya'ni tirik ish xato bilan yopilmaydi.
  */
-export async function sweepStaleRenders(limit = 20): Promise<number> {
-  const { rows } = await pool.query<RenderRow>(
-    `SELECT id, variant_id, angle, status, result_url, cutout_url, error, provider_job_id
-       FROM tryon_renders
+export async function sweepStaleRenders(): Promise<number> {
+  const { rowCount } = await pool.query(
+    `UPDATE tryon_renders
+        SET status = 'failed', error = $1, completed_at = now()
       WHERE status = 'processing'
-        AND provider_job_id IS NOT NULL
-        AND created_at < now() - interval '30 seconds'
-      ORDER BY created_at
-      LIMIT $1`,
-    [limit],
+        AND created_at < now() - interval '10 minutes'`,
+    ['Kiyintirish uzilib qoldi — qaytadan urinib ko`ring'],
   );
 
-  let finished = 0;
-  for (const row of rows) {
-    const dto = await finalize(row);
-    if (dto.status === 'ready' || dto.status === 'failed') finished += 1;
-  }
-
-  return finished;
+  return rowCount ?? 0;
 }

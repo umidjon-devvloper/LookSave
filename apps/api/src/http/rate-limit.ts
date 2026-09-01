@@ -4,6 +4,7 @@ import { redis } from '../db/redis';
 import { logger } from '../logger';
 import { ApiError } from './api-error';
 import { getAuthOptional } from './auth-middleware';
+import { getClientIp } from './client-ip';
 
 /**
  * Sobit oyna (fixed window) cheklovi. Redis: INCR + EXPIRE.
@@ -29,9 +30,15 @@ export interface RateLimitOptions {
   message?: string;
 }
 
+/**
+ * ⚠️ `req.ip` EMAS, `getClientIp`. SSR'da so'rov mehmondan emas,
+ * veb-serverdan keladi va `req.ip` barcha mehmon uchun bitta bo'lib
+ * qoladi — butun sayt bitta chelakni bo'lishadi (S-4). `getClientIp`
+ * BFF ishonchli uzatgan mehmon IP'sini qaytaradi, bo'lmasa `req.ip` ni.
+ */
 function defaultKey(req: Request, res: Response): string {
   const auth = getAuthOptional(res);
-  return auth?.sub ?? req.ip ?? 'unknown';
+  return auth?.sub ?? getClientIp(req, res) ?? 'unknown';
 }
 
 export function rateLimit(options: RateLimitOptions): RequestHandler {

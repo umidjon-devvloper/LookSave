@@ -132,17 +132,8 @@ export async function createProduct(
 
     let index = 0;
     for (const variant of input.variants) {
-      const variantId = await insertVariant(client, product.id, variant, index);
+      await insertVariant(client, product.id, variant, index);
       index += 1;
-
-      if (input.request3d) {
-        await client.query(
-          `INSERT INTO assets_3d (variant_id, status, requested_at)
-           VALUES ($1, 'queued', now())
-           ON CONFLICT (variant_id) DO NOTHING`,
-          [variantId],
-        );
-      }
     }
 
     await client.query('COMMIT');
@@ -327,43 +318,14 @@ export async function updateStock(
   }
 }
 
-/** 3D model buyurtma qilish — navbatga qo'yiladi (04-3d-pipeline). */
-export async function request3d(
-  storeId: string,
-  productId: string,
-): Promise<{ queued: number; alreadyQueued: number }> {
-  const { rows } = await pool.query<{ id: string; status: string | null }>(
-    `SELECT v.id, a.status
-       FROM product_variants v
-       JOIN products p ON p.id = v.product_id AND p.store_id = $2
-       LEFT JOIN assets_3d a ON a.variant_id = v.id
-      WHERE v.product_id = $1 AND v.is_active`,
-    [productId, storeId],
-  );
-
-  if (rows.length === 0) throw ApiError.notFound('Mahsulot yoki variant topilmadi');
-
-  let queued = 0;
-  let alreadyQueued = 0;
-
-  for (const variant of rows) {
-    if (variant.status !== null && variant.status !== 'failed') {
-      alreadyQueued += 1;
-      continue;
-    }
-
-    await pool.query(
-      `INSERT INTO assets_3d (variant_id, status, requested_at)
-       VALUES ($1, 'queued', now())
-       ON CONFLICT (variant_id)
-       DO UPDATE SET status = 'queued', requested_at = now(), error_message = NULL`,
-      [variant.id],
-    );
-    queued += 1;
-  }
-
-  return { queued, alreadyQueued };
-}
+/*
+ * ⚠️ `request3d` OLIB TASHLANDI. Sotuvchi har variant uchun 3D model
+ * buyurtma qilardi va u `assets_3d` navbatiga tushardi. Kiyintirish endi
+ * mahsulot SURATIDAN AI orqali bo'ladi — 3D model umuman kerak emas.
+ *
+ * Jadval va migratsiya o'z joyida qoldi: undagi tayyor modellar hech
+ * kimga xalaqit bermaydi va ularni o'chirish alohida qaror.
+ */
 
 export interface StoreProductRow {
   id: string;
@@ -373,7 +335,7 @@ export interface StoreProductRow {
   old_price: string | null;
   currency: string;
   images: unknown;
-  has_3d: boolean;
+  slot: string;
   created_at: Date;
   created_at_key: string;
   view_count: number;
@@ -421,7 +383,7 @@ export async function findStoreProducts(
 
   const { rows } = await pool.query<StoreProductRow>(
     `SELECT p.id, p.title, p.status, p.base_price, p.old_price, p.currency, p.images,
-            p.has_3d, p.created_at, p.view_count, p.tryon_count,
+            p.slot, p.created_at, p.view_count, p.tryon_count,
             to_char(p.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.US') || '+00'
               AS created_at_key,
             c.slug AS category_slug, c.name AS category_name,

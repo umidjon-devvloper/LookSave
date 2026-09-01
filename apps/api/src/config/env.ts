@@ -45,6 +45,28 @@ const envSchema = z.object({
   // So'rov tanasi chegarasi. Caddy'da ham 12MB (docs/08-deployment.md §5).
   BODY_LIMIT: z.string().default('12mb'),
 
+  /*
+   * ── BFF xizmat kaliti (15-sayt-dizayn.md S-4) ──
+   *
+   * Sayt SSR bilan ishlaydi va API ga MEHMON emas, VEB-SERVER murojaat
+   * qiladi. Bu kalit bilan tanishtirgan chaqiruvchi mehmon IP'sini
+   * `X-LookSave-Client-Ip` da bera oladi va cheklov o'sha IP bo'yicha
+   * hisoblanadi (`http/client-ip.ts`).
+   *
+   * ⚠️ SERVER-SERVER, brauzerga hech qachon berilmaydi — aks holda har
+   * kim o'z cheklovini o'chirib qo'yardi. CORS ro'yxatiga ham
+   * QO'SHILMAYDI (`app.ts`): brauzer bu sarlavhani yubora olmasin.
+   *
+   * Bo'sh bo'lsa imkoniyat o'chirilgan: hamma narsa eskicha `req.ip`
+   * bo'yicha ishlaydi. Dev uchun qulay, prod'da to'ldiriladi.
+   */
+  INTERNAL_SERVICE_KEY: z
+    .string()
+    .default('')
+    .refine((value) => value === '' || value.length >= 32, {
+      message: 'kamida 32 belgi (`openssl rand -base64 32`)',
+    }),
+
   // ── Biznes qoidalari (infra/.env.example) ──
   ORDER_EXPIRY_HOURS: z.coerce.number().int().min(1).max(168).default(24),
   MAX_OPEN_ORDERS: z.coerce.number().int().min(1).max(50).default(3),
@@ -87,18 +109,23 @@ const envSchema = z.object({
   R2_BUCKET_PRIVATE: z.string().default(''),
   CDN_BASE_URL: z.string().url().default('https://cdn.looksave.app'),
 
-  // ── AI kiyintirish (FASHN) ──
-  // Bo'sh bo'lsa imkoniyat o'chirilgan deb hisoblanadi va ilova buni
-  // ochiq aytadi — kalitsiz so'rov yuborib 401 kutib turish emas.
-  FASHN_API_KEY: z.string().default(''),
-  FASHN_BASE_URL: z.string().url().default('https://api.fashn.ai/v1'),
-  FASHN_MODEL: z.string().default('tryon-v1.6'),
-
+  // ── AI (OpenAI) ──
   /*
-   * Sifat rejimi. `performance` ~5s, `balanced` ~10s, `quality` ~17s.
-   * Narx bir xil (1 kredit), farq faqat vaqtda va detalda.
+   * ⚠️ YAGONA AI PROVAYDER. Ilgari FASHN ham bor edi va ikkalasi
+   * `TRYON_PROVIDER` bilan almashtirilardi; FASHN butunlay olib
+   * tashlandi va tanlov ham qolmadi.
+   *
+   * Kalit bo'sh bo'lsa imkoniyat o'chirilgan deb hisoblanadi va ilova
+   * buni ochiq aytadi — kalitsiz so'rov yuborib 401 kutib turish emas.
+   *
+   * ⚠️ `gpt-image-1` UMUMIY rasm generatori, kiyim try-on uchun maxsus
+   * o'qitilmagan: u kiyimni nusxa ko'chirmaydi, «shunga o'xshash» kiyim
+   * chizadi. Brend logosi va naqsh o'zgarishi mumkin — bu bilib turilgan
+   * cheklov (`integrations/openai.ts`).
    */
-  FASHN_MODE: z.enum(['performance', 'balanced', 'quality']).default('balanced'),
+  OPENAI_API_KEY: z.string().default(''),
+  OPENAI_BASE_URL: z.string().url().default('https://api.openai.com/v1'),
+  OPENAI_IMAGE_MODEL: z.string().default('gpt-image-1'),
 
   /*
    * ⚠️ KUNLIK CHEGARA — PUL HIMOYASI. Har bir yasalgan surat pul turadi,

@@ -4,6 +4,8 @@ import type { AccessTokenPayload } from '@looksave/shared-types';
 import type { Response } from 'express';
 import type { PoolClient } from 'pg';
 
+import { AI_TRYON_SLOTS } from '@looksave/validation';
+
 import { pool } from '../db/pool';
 import { ApiError } from '../http/api-error';
 import { getAuth } from '../http/auth-middleware';
@@ -66,8 +68,7 @@ export async function getDashboard(storeId: string) {
     confirm_rate: string | null;
     currency: string;
     product_count: string;
-    product_3d_count: string;
-    pending_3d: string;
+    tryon_ready_count: string;
   }>(
     `SELECT
        (SELECT COUNT(*) FROM orders WHERE store_id = $1 AND status = 'new') AS new_orders,
@@ -90,13 +91,15 @@ export async function getDashboard(storeId: string) {
        (SELECT currency FROM stores WHERE id = $1)                          AS currency,
        (SELECT COUNT(*) FROM products WHERE store_id = $1 AND status = 'active')
                                                                             AS product_count,
-       (SELECT COUNT(*) FROM products WHERE store_id = $1 AND status = 'active' AND has_3d)
-                                                                            AS product_3d_count,
-       (SELECT COUNT(*) FROM assets_3d a
-          JOIN product_variants v ON v.id = a.variant_id
-          JOIN products p ON p.id = v.product_id
-         WHERE p.store_id = $1 AND a.status IN ('queued','processing'))      AS pending_3d`,
-    [storeId],
+       /*
+        * ⚠️ «3D» SANOQLARI OLIB TASHLANDI. Panelda «N ta 3D model» va
+        * «N ta navbatda» ko'rsatilardi — sotuvchi ular tayyor bo'lishini
+        * kutardi. Endi 3D umuman so'ralmaydi: mahsulot surati va slot
+        * yetarli, kiyib ko'rish AI orqali bo'ladi.
+        */
+       (SELECT COUNT(*) FROM products
+         WHERE store_id = $1 AND status = 'active' AND slot = ANY($2))       AS tryon_ready_count`,
+    [storeId, [...AI_TRYON_SLOTS]],
   );
 
   const stats = rows[0];
@@ -129,8 +132,7 @@ export async function getDashboard(storeId: string) {
     avgResponseMin: stats.avg_response_min === null ? null : Number(stats.avg_response_min),
     confirmRate: stats.confirm_rate === null ? null : Number(stats.confirm_rate),
     productCount: Number(stats.product_count),
-    product3dCount: Number(stats.product_3d_count),
-    pending3d: Number(stats.pending_3d),
+    tryonReadyCount: Number(stats.tryon_ready_count),
     topProducts: top.map((row) => ({
       id: row.id,
       title: row.title,

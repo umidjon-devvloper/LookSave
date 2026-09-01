@@ -1,4 +1,4 @@
-import type { ProductsQuery } from '@looksave/validation';
+import { AI_TRYON_SLOTS, supportsAiTryon, type ProductsQuery } from '@looksave/validation';
 
 import { pool } from '../db/pool';
 import { decodeCursor } from './cursor';
@@ -10,7 +10,7 @@ export interface ProductListRow {
   old_price: string | null;
   currency: string;
   images: unknown;
-  has_3d: boolean;
+  slot: string;
   is_limited: boolean;
   created_at: Date;
   /**
@@ -130,8 +130,15 @@ export async function findProducts(query: ProductsQuery): Promise<ProductListRow
     conditions.push(`p.is_limited = true`);
   }
 
-  if (query.only3d) {
-    conditions.push(`p.has_3d`);
+  if (query.onlyTryon) {
+    /*
+     * ⚠️ SHART SLOT BO'YICHA, `has_3d` BO'YICHA EMAS. AI kiyintirish
+     * 3D modelga bog'liq emas — u mahsulot suratidan ishlaydi. Eski
+     * shart bilan filtr noto'g'ri to'plamni qaytarardi: modeli bor,
+     * lekin AI qo'llamaydigan mahsulotlar (masalan oyoq kiyim) ro'yxatga
+     * tushardi, oddiy ko'ylaklar esa tushmasdi.
+     */
+    conditions.push(`p.slot = ANY($${add(AI_TRYON_SLOTS)})`);
   }
 
   if (query.q !== undefined) {
@@ -163,7 +170,7 @@ export async function findProducts(query: ProductsQuery): Promise<ProductListRow
 
   const { rows } = await pool.query<ProductListRow>(
     `SELECT p.id, p.title, p.base_price, p.old_price, p.currency, p.images,
-            p.has_3d, p.is_limited, p.created_at, p.tryon_count,
+            p.slot, p.is_limited, p.created_at, p.tryon_count,
             to_char(p.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.US') || '+00'
               AS created_at_key,
             b.id AS brand_id, b.name AS brand_name,
@@ -207,7 +214,17 @@ export interface ProductListDto {
   oldPrice: string | null;
   currency: string;
   image: string | null;
-  has3d: boolean;
+  /**
+   * AI kiyintirish shu mahsulotda ishlaydimi.
+   *
+   * ⚠️ ILGARI BU `has3d` EDI. U «3D modeli bor» degani edi va katalogda
+   * shu belgiga qarab «kiyib ko'rish mumkin» ko'rsatilardi. 3D olib
+   * tashlangandan keyin belgi YOLG'ON bo'lib qolardi: modeli bor
+   * mahsulot ham AI'da ishlamasligi mumkin, modeli yo'g'i esa ishlaydi.
+   *
+   * Endi shart bitta — slot. Uni server hisoblaydi, ilova takrorlamaydi.
+   */
+  canTryOn: boolean;
   isLimited: boolean;
   availableSizes: string[];
 }
@@ -223,7 +240,7 @@ export function toProductListDto(row: ProductListRow): ProductListDto {
     oldPrice: row.old_price,
     currency: row.currency,
     image: firstImage(row.images),
-    has3d: row.has_3d,
+    canTryOn: supportsAiTryon(row.slot),
     isLimited: row.is_limited,
     availableSizes: row.available_sizes ?? [],
   };

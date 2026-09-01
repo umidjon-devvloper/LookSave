@@ -1,5 +1,10 @@
 import type { Locale } from '@looksave/shared-types';
-import type { TryonSlotQuery, CreateLookInput, Slot } from '@looksave/validation';
+import {
+  supportsAiTryon,
+  type TryonSlotQuery,
+  type CreateLookInput,
+  type Slot,
+} from '@looksave/validation';
 
 import { pickName } from '../catalog/locale';
 import { decodeCursor } from '../catalog/cursor';
@@ -250,12 +255,12 @@ export async function listFavorites(userId: string, limit: number) {
     base_price: string;
     currency: string;
     images: unknown;
-    has_3d: boolean;
+    slot: string;
     status: string;
     store_id: string;
     store_name: string;
   }>(
-    `SELECT p.id, p.title, p.base_price, p.currency, p.images, p.has_3d, p.status,
+    `SELECT p.id, p.title, p.base_price, p.currency, p.images, p.slot, p.status,
             s.id AS store_id, s.name AS store_name
        FROM favorites f
        JOIN products p ON p.id = f.product_id
@@ -274,7 +279,7 @@ export async function listFavorites(userId: string, limit: number) {
       price: row.base_price,
       currency: row.currency,
       image: typeof images[0] === 'string' ? images[0] : null,
-      has3d: row.has_3d,
+      canTryOn: supportsAiTryon(row.slot),
       // Arxivlangan mahsulot sevimlilarda qoladi, lekin ochib bo'lmaydi
       isAvailable: row.status === 'active',
       store: { id: row.store_id, name: row.store_name },
