@@ -1,12 +1,13 @@
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
 /**
  * shadcn/ui ning barcha komponentlari shu yerdan o'tadi.
- * `clsx` shartli sinflarni yig'adi, `twMerge` esa qarama-qarshi Tailwind
- * sinflarini (masalan `px-4` va `px-6`) oxirgisi foydasiga qisqartiradi —
- * shusiz `className` bilan berilgan tuzatish ishlamay qolardi.
+ *
+ * ⚠️ ENDI O'Z AMALGA OSHIRISHI YO'Q — `@looksave/ui-web` dagisi qayta
+ * eksport qilinadi. Sabab: u yerdagi `twMerge` bizning tipografika
+ * shkalamiz bilan sozlangan (`text-body`, `text-h1`…). Sozlanmagan
+ * variant bu sinflarni RANG deb o'ylaydi va `text-foreground` bilan
+ * bitta qatorda uchraganda jimgina o'chirib yuboradi.
+ *
+ * Ya'ni bu yerda `twMerge(clsx(...))` ni qayta yozish — o'sha xatoni
+ * shadcn komponentlariga qaytarish demak.
  */
-export function cn(...inputs: ClassValue[]): string {
-  return twMerge(clsx(inputs));
-}
+export { cn } from '@looksave/ui-web';

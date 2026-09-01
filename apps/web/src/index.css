@@ -17,9 +17,9 @@
     font-family: theme('fontFamily.sans');
   }
 
-  /* Sahifa ichida havolaga o'tganda sarlavha yuqori chetga yopishmasin */
+  /* Havolaga o'tganda sarlavha 72px lik shapka ostida qolib ketmasin */
   section[id] {
-    scroll-margin-top: 96px;
+    scroll-margin-top: 104px;
   }
 
   ::selection {
@@ -32,12 +32,136 @@
     @apply mx-auto w-full max-w-6xl px-5 sm:px-8;
   }
 
-  .eyebrow {
-    @apply text-xs font-semibold uppercase tracking-label text-brand;
+  /*
+   * To'r uchun keng konteyner — 15-sayt-dizayn.md §1.1.
+   *
+   * ⚠️ NEGA IKKITA KENGLIK: matn 1152px dan keng bo'lsa o'qilmaydi,
+   * mahsulot to'ri esa o'sha kenglikda desktopda uch ustunda qolib,
+   * sahifa bo'sh ko'rinadi. Bitta kenglik ikkalasini ham buzadi.
+   */
+  /*
+   * Bo'lim ritmi — 15-sayt-dizayn.md §1.1: `clamp(4rem, 8vw, 7rem)`.
+   *
+   * ⚠️ ILGARI HAR BO'LIM O'ZI YOZARDI (`py-14`, `py-16`, `py-24`) va
+   * ular bir-biriga to'g'ri kelmasdi: bosh sahifada bloklar goh
+   * qisilib, goh uzoqlashib turardi. Premium sahifada bo'sh joy
+   * tasodifiy bo'lmaydi — u ritm.
+   */
+  .section-y {
+    padding-block: clamp(4rem, 8vw, 7rem);
   }
 
+  .shell-wide {
+    @apply mx-auto w-full max-w-[90rem] px-5 sm:px-8 xl:px-10;
+  }
+
+  /*
+   * Bo'lim yorlig'i — `text-label` o'lchamni ham, harf oralig'ini ham
+   * o'zi olib keladi (11px / 0.145em), shuning uchun `tracking-label`
+   * qo'shilmaydi.
+   */
+  .eyebrow {
+    @apply text-label font-semibold uppercase text-brand;
+  }
+
+  /*
+   * Qator balandligi va harf oralig'i endi shkalada (`text-hero`,
+   * `text-h1`), ya'ni ilovadagi nisbat bilan bir xil. Bu yerda faqat
+   * o'ram va qalinlik qoladi — aks holda ikkalasi bir-birini bekor
+   * qilardi va sarlavha ikki platformada boshqacha tigiz chiqardi.
+   */
   .headline {
-    @apply text-balance font-semibold leading-[1.05] tracking-tight;
+    @apply text-balance font-bold;
+  }
+
+  /*
+   * Sarlavhaning oxirgi so'zidagi urg'u.
+   *
+   * ⚠️ TIZIM, BEZAK EMAS. Har bo'lim sarlavhasi FE'L bilan tugaydi
+   * («yasang», «soting», «oling») — ya'ni o'quvchidan kutilayotgan
+   * harakat. Urg'u aynan shu so'zga tushadi va sahifa bo'ylab bir xil
+   * qoidada takrorlanadi.
+   *
+   * ⚠️ FAQAT OXIRGI SO'ZGA. Ikki-uch so'z bo'yalsa gradient sarlavhani
+   * o'qishga xalaqit beradi va urg'u ma'nosini yo'qotadi.
+   */
+  /*
+   * Chetida aylanib yuruvchi nur.
+   *
+   * Ishlash tartibi: `conic-gradient` butun elementni bo'yaydi, niqob
+   * esa faqat 1px lik RAMKA halqasini qoldiradi — ya'ni nur chegara
+   * bo'ylab yuradi, ichkariga tushmaydi.
+   *
+   * ⚠️ IKKI XIL NIQOB KALIT SO'ZI KERAK, VA ULAR ARALASHTIRILMAYDI.
+   * `-webkit-mask-composite` `xor` ni tushunadi, standart
+   * `mask-composite` esa `exclude` ni. Bittasini ikkinchisining
+   * qiymati bilan yozsangiz brauzer IKKALASINI ham e'tiborsiz
+   * qoldiradi va niqob umuman ishlamaydi — bu seansda bir marta
+   * shu tuzoqqa tushilgan.
+   *
+   * ⚠️ `@property` SHART. Oddiy `--o'zgaruvchi` ni brauzer matn deb
+   * biladi va uni animatsiya qila olmaydi: burchak 0 dan 360 ga
+   * sakrab o'tadi, nur esa umuman yurmaydi.
+   *
+   * Harakatni kamaytirish sozlamasi fayl oxiridagi umumiy qoida
+   * bilan hal bo'ladi — bu yerda alohida hech narsa kerak emas.
+   */
+  .edge-beam {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .edge-beam::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    z-index: -1;
+    border-radius: inherit;
+    padding: 1px;
+    background: conic-gradient(
+      from var(--beam-angle),
+      transparent 0%,
+      hsl(var(--primary) / 0.15) 4%,
+      hsl(var(--brand)) 9%,
+      hsl(var(--primary) / 0.15) 14%,
+      transparent 20%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    animation: edge-beam 7s linear infinite;
+    pointer-events: none;
+  }
+
+  /* Ikkinchi nur qarama-qarshi tomondan — panel «tirik» ko'rinadi */
+  .edge-beam-2::before {
+    animation-delay: -3.5s;
+  }
+
+  .headline-accent {
+    @apply bg-gradient-to-br from-primary via-brand to-primary bg-clip-text text-transparent;
+  }
+}
+
+/*
+ * ⚠️ `@property` `@layer` ICHIGA KIRMAYDI — u qatlamli qoida emas,
+ * ro'yxatdan o'tkazish e'loni. `@layer components` ichida yozilsa
+ * jimgina e'tiborsiz qoldiriladi va animatsiya ishlamaydi.
+ */
+@property --beam-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes edge-beam {
+  to {
+    --beam-angle: 360deg;
   }
 }
 

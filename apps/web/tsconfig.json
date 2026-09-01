@@ -7,8 +7,20 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": { "@/*": ["./src/*"] },
-    "types": ["vite/client"],
-    "noEmit": true
+    "types": ["vite/client", "node", "google.maps"],
+    "noEmit": true,
+    /*
+     * React Router marshrut tiplarini `.react-router/types/` ga yozadi
+     * (`+types/...` importlari shundan keladi). `rootDirs` ikkala
+     * daraxtni bitta deb ko'rsatadi — shusiz `./+types/home` topilmaydi.
+     */
+    "rootDirs": [".", "./.react-router/types"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts"]
+  "include": [
+    ".react-router/types/**/*",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "vite.config.ts",
+    "react-router.config.ts"
+  ]
 }

@@ -15,5 +15,11 @@ import preset from '@looksave/design-system/tailwind-preset';
  */
 export default {
   presets: [preset],
-  content: ['./index.html', './src/**/*.{ts,tsx}'],
+  /*
+   * ⚠️ `packages/ui-web` SHART. Tailwind sinflarni faqat `content` da
+   * sanab o'tilgan fayllarni o'qib topadi — kit paket ichida yozilgani
+   * uchun uni qo'shmasak, `h-control` va `bg-primary-grad` umuman
+   * yaratilmaydi va tugma bezaksiz chiqadi.
+   */
+  content: ['./index.html', './src/**/*.{ts,tsx}', '../../packages/ui-web/src/**/*.{ts,tsx}'],
 };

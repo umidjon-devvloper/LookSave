@@ -1,141 +1,168 @@
-import { ArrowRight, RotateCw } from 'lucide-react';
+import { Link } from 'react-router';
 
-import { Grid } from '@/components/Grid';
+import { Button, Icon, type IconName } from '@looksave/ui-web';
+
 import { Reveal } from '@/components/Reveal';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { LazyAvatarScene } from '@/three/Lazy';
-import type { Outfit } from '@/three/manifest';
+import type { Locale } from '@/i18n/locale';
 
 /**
- * Deckning 1-slaydi: `EXPLORE. SHOP. ELEVATE.` va brend nomi.
+ * Bosh sahifa hero — docs/15-sayt-dizayn.md §4.1.
  *
- * O'ng tomonda — ilovaning haqiqiy avatari, `assets-3d/export` dagi o'sha
- * GLB fayllar. Ilgari bu yerda CSS bilan chizilgan siluet turardi; endi
- * mehmon saytdayoq mahsulotning o'zini ko'radi.
+ * ⚠️ RASM QUTI EMAS. U sahifaning o'ng chetigacha boradi va chap
+ * tomoni niqob bilan so'nadi — ya'ni fonga qo'shilib ketadi. Ilgari u
+ * konteyner ichida turardi va o'zining qora fonli to'rtburchagi
+ * ko'rinib, «yopishtirilgan rasm» bo'lib qolardi.
+ *
+ * ⚠️ RASM MANBADAN KESILGAN: tashqi ramka, pastdagi «100% Xavfsiz va
+ * ishonchli» chipi va generator qoldirgan «ulashish» ikonkasi olib
+ * tashlangan. Birinchisi qutini yasardi, ikkinchisi pastdagi panelda
+ * takrorlanardi.
  */
 
-/** Boshlang'ich kiyim — manifestni kutmaymiz, hero darrov chizilishi kerak. */
-const HERO_OUTFIT: Outfit = [
-  { file: 'tshirt-violet-v1.glb', hideBodyParts: [] },
-  { file: 'pants-graphite-v1.glb', hideBodyParts: ['underwear_briefs'] },
-  { file: 'sneakers-white-v1.glb', hideBodyParts: [] },
+const STATS: Array<{ value: string; label: string; icon: IconName }> = [
+  { value: '1 000+', label: 'Premium mahsulotlar', icon: 'premium' },
+  { value: '360°', label: "3D ko'rish va aylantirish", icon: 'rotate' },
+  { value: '100%', label: 'Xavfsiz va ishonchli', icon: 'authentic' },
 ];
 
-const STATS = [
-  { value: '1 photo', label: 'to build your avatar' },
-  { value: '360°', label: 'rotate and zoom the fit' },
-  { value: '0 guesswork', label: 'on size and length' },
-];
-
-export function Hero(): JSX.Element {
+export function Hero({ locale }: { locale: Locale }): JSX.Element {
   return (
-    <section id="top" className="relative overflow-hidden pb-24 pt-32 sm:pb-32 sm:pt-40">
-      <Grid />
+    <section id="top" className="relative isolate overflow-hidden">
+      {/* ── Kompozitsiya: sahifa chetigacha ── */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 end-0 -z-10 flex w-full items-center pb-32 lg:w-[66%] xl:w-[62%]"
+      >
+        <div className="relative w-full">
+          <img
+            src="/img/hero-visual.webp"
+            alt=""
+            width={1340}
+            height={857}
+            loading="eager"
+            decoding="async"
+            // React 18 `fetchPriority` ni tanimaydi — DOM atributi kichik harfda
+            {...{ fetchpriority: 'high' }}
+            /*
+              ⚠️ `object-contain`, `cover` EMAS.
+              Manba 1.56:1, slot esa deyarli kvadrat. `cover` uni yon
+              tomonlaridan qattiq kesib, kartani ekranga sig'maydigan
+              darajada kattalashtirardi. Bu tayyor kompozitsiya — u
+              to'liq ko'rinishi kerak.
+            */
+            className="h-auto w-full select-none object-contain"
+          />
 
-      <div className="shell relative grid items-center gap-16 lg:grid-cols-[1.05fr_0.95fr]">
-        <div>
+          {/*
+            ⚠️ CHETLARNI FON RANGIDA SO'NDIRISH.
+
+            Rasm sof qora fonda chizilgan, sahifa foni esa `#0A0A0F` —
+            binafsha tusli. Farq kichik, lekin rasmning to'rtburchagi
+            aynan shundan ko'rinib turadi: tepa, past va chapda tik
+            chiziq paydo bo'ladi.
+
+            Sinalgan va ishlamagan yo'llar:
+              `mask-composite` bilan ikki qatlam — brauzer prefiksli va
+              prefiksiz kalit so'zlarni aralashtirganda ikkalasini ham
+              e'tiborsiz qoldiradi;
+              bitta radial niqob — `object-contain` rasmni o'rtaga
+              joylashtirgani uchun niqob chegarasi rasm chetiga to'g'ri
+              kelmaydi (konteyner balandroq).
+
+            Bu yerda esa gradientlar RASMNING O'ZI ustida turadi va
+            markazi shaffof — karta xiralashmaydi, faqat chetlar fonga
+            singib ketadi.
+          */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: [
+                'linear-gradient(to right, hsl(var(--background)) 0%, transparent 24%)',
+                'linear-gradient(to bottom, hsl(var(--background)) 0%, transparent 14%)',
+                'linear-gradient(to top, hsl(var(--background)) 0%, transparent 14%)',
+              ].join(','),
+            }}
+          />
+        </div>
+      </div>
+
+      <div className="shell-wide flex min-h-[min(94vh,56rem)] flex-col justify-center py-28">
+        <div className="max-w-3xl">
           <Reveal>
-            <Badge
-              variant="outline"
-              className="rounded-full border-primary/40 bg-primary/10 px-3 py-1 text-brand"
-            >
-              AI fashion marketplace · Dubai
-            </Badge>
+            <p className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primarySoft px-3 py-1 text-tiny font-medium text-brand">
+              <Icon name="logo" size={13} />
+              AI fashion marketplace · Dubay va Toshkent
+            </p>
           </Reveal>
 
           <Reveal delay={80}>
-            <h1 className="headline mt-5 text-5xl sm:text-6xl lg:text-7xl">
-              Explore. Shop.
+            {/*
+              ⚠️ «Oling.» URG'U BILAN — `.headline-accent` (§1.8).
+              Har bo'lim sarlavhasi fe'l bilan tugaydi va urg'u aynan
+              shu so'zga tushadi; bu yerda u butun sahifaning maqsadi.
+            */}
+            <h1 className="mt-7 text-balance text-display font-bold">
+              Ko'ring.
               <br />
-              <span className="text-primary">Elevate.</span>
+              Kiying. <span className="headline-accent">Oling.</span>
             </h1>
           </Reveal>
 
           <Reveal delay={160}>
-            <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
-              One photo becomes your personal avatar. Try any garment on it in 3D, rotate it, check
-              the fit against your own measurements — then buy the size you already know works.
+            <p className="mt-7 max-w-[44ch] text-lead leading-relaxed text-muted-foreground">
+              Bitta surat — shaxsiy avataringiz. Kiyimni unda 3D da kiyib ko'ring, aylantiring, o'z
+              o'lchovingizga solishtiring. Keyin yaqin atrofdagi do'kondan buyurtma bering.
             </p>
           </Reveal>
 
           <Reveal delay={240}>
-            <div className="mt-9 flex flex-wrap items-center gap-3">
-              <Button asChild size="lg" className="rounded-full shadow-glow">
-                <a href="#waitlist">
-                  Get early access
-                  <ArrowRight />
-                </a>
+            <div className="mt-10 flex flex-wrap items-center gap-3">
+              <Button asChild className="shadow-glow">
+                <Link to={`/${locale}/catalog`}>
+                  Katalogni ochish
+                  {/* O'q doira ichida — harakat yo'nalishini bildiradi */}
+                  <span className="ms-1 flex size-6 items-center justify-center rounded-full bg-background/25">
+                    <Icon name="next" size={14} />
+                  </span>
+                </Link>
               </Button>
-              <Button asChild size="lg" variant="outline" className="rounded-full">
-                <a href="#how">See how it works</a>
+
+              <Button asChild variant="ghost">
+                <Link to={`/${locale}/try-on`}>
+                  <Icon name="profile" size={18} />
+                  Kiyib ko'rish
+                </Link>
               </Button>
             </div>
           </Reveal>
 
           <Reveal delay={320}>
-            <div className="mt-12">
-              <Separator />
-              <dl className="mt-8 grid max-w-lg grid-cols-3 gap-6">
-                {STATS.map((stat) => (
-                  <div key={stat.value}>
-                    <dt className="text-xl font-semibold">{stat.value}</dt>
-                    <dd className="mt-1 text-sm leading-snug text-dim">{stat.label}</dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
+            {/*
+              ⚠️ `backdrop-blur` RASM USTIDA ishlaydi: panel hero
+              kompozitsiyasiga tushadi va uni xiralashtiradi, shuning
+              uchun raqamlar har qanday kadrda o'qiladi. Alohida to'q
+              fon qo'yilsa panel «yopishtirilgan» bo'lib ko'rinardi.
+            */}
+            <dl className="mt-16 flex max-w-3xl flex-col gap-px overflow-hidden rounded-card border border-borderStrong bg-border/60 backdrop-blur-xl sm:flex-row">
+              {STATS.map((stat) => (
+                <div
+                  key={stat.label}
+                  className="flex flex-1 items-center gap-3.5 bg-panel/80 px-5 py-4"
+                >
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-md border border-borderAccent/40 bg-primarySoft text-brand">
+                    <Icon name={stat.icon} size={20} />
+                  </span>
+
+                  <span className="min-w-0">
+                    <dt className="text-h3 font-bold tabular-nums leading-tight">{stat.value}</dt>
+                    <dd className="mt-0.5 text-small leading-snug text-dim">{stat.label}</dd>
+                  </span>
+                </div>
+              ))}
+            </dl>
           </Reveal>
         </div>
-
-        <Reveal delay={200}>
-          <AvatarStage />
-        </Reveal>
       </div>
     </section>
-  );
-}
-
-/** Deckdagi 4-slayd: avatar va uning yonidagi o'lchov yozuvlari. */
-function AvatarStage(): JSX.Element {
-  return (
-    <Card className="relative mx-auto aspect-[3/4] w-full max-w-md overflow-hidden border-border bg-[#050509] p-0 shadow-card">
-      <div
-        aria-hidden
-        className="absolute inset-0 opacity-40"
-        style={{
-          backgroundImage:
-            'linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)',
-          backgroundSize: '40px 40px',
-        }}
-      />
-
-      {/* Oyoq ostidagi binafsha nur — deckdagi "sahna" hissi */}
-      <div
-        aria-hidden
-        className="absolute inset-x-[15%] bottom-0 h-[22%] rounded-full bg-primary/25 blur-2xl"
-      />
-
-      <LazyAvatarScene className="absolute inset-0" outfit={HERO_OUTFIT} />
-
-      {/* O'lchovlar — deckdagi 180cm / 82kg / 42EU */}
-      {[
-        { value: '180', unit: 'cm', pos: 'left-5 top-[10%]' },
-        { value: '82', unit: 'kg', pos: 'right-5 top-[46%]' },
-        { value: '42', unit: 'EU', pos: 'right-5 top-[78%]' },
-      ].map((item) => (
-        <div key={item.unit} className={`pointer-events-none absolute ${item.pos}`}>
-          <p className="text-2xl font-semibold tabular-nums">{item.value}</p>
-          <p className="-mt-1 text-xs text-dim">{item.unit}</p>
-        </div>
-      ))}
-
-      <p className="pointer-events-none absolute inset-x-0 bottom-4 flex items-center justify-center gap-2 text-xs text-dim">
-        <RotateCw className="size-3.5" />
-        Drag to rotate
-      </p>
-    </Card>
   );
 }

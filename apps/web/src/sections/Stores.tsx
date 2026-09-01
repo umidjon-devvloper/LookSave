@@ -1,39 +1,57 @@
+import { Button, Icon, type IconName } from '@looksave/ui-web';
+
 import { Reveal } from '@/components/Reveal';
-import { Button } from '@/components/ui/button';
+import { SectionBackdrop } from '@/components/SectionBackdrop';
 import { Card, CardContent } from '@/components/ui/card';
 
-const BENEFITS = [
+/*
+ * ⚠️ IKONKA MA'NOGA BOG'LANGAN, BEZAK EMAS. Maketda uchinchi kartada
+ * diagramma turibdi, lekin karta «surat yetarli» haqida — diagramma
+ * sarlavhaga zid keladi va o'qiyotgan odamni adashtiradi. Shuning
+ * uchun u yerda fotoapparat.
+ */
+const BENEFITS: Array<{ icon: IconName; title: string; body: string }> = [
   {
-    title: 'Fewer returns',
-    body: 'Shoppers who checked the fit on their own avatar order one size, not three.',
+    icon: 'authentic',
+    title: 'Qaytarish kamayadi',
+    body: 'O‘z avatarida o‘lchamni tekshirgan xaridor uchta emas, bitta o‘lcham buyurtma qiladi.',
   },
   {
-    title: 'Your own panel',
-    body: 'Products, stock, orders and payouts in one place. Register in the app and start selling the same day.',
+    icon: 'shop',
+    title: 'O‘z kabinetingiz',
+    body: 'Mahsulot, qoldiq, buyurtma va hisob-kitob bitta joyda. Ariza bergan kuningizdayoq sotishni boshlaysiz.',
   },
   {
-    title: 'Photos are enough',
-    body: 'Upload product photos as you already do. AI try-on handles the rest — no 3D work on your side.',
+    icon: 'camera',
+    title: 'Surat yetarli',
+    body: 'Mahsulot suratini odatdagidek yuklaysiz. Qolganini AI kiyintirish bajaradi — sizdan 3D ish talab qilinmaydi.',
   },
 ];
 
 export function Stores(): JSX.Element {
   return (
-    <section id="stores" className="border-t border-border py-24 sm:py-32">
-      <div className="shell grid gap-14 lg:grid-cols-[0.9fr_1.1fr]">
+    <section id="stores" className="section-y relative isolate">
+      {/* Fon rasmi — chetlari fonga singiydi, qo'shni bo'limga tutashadi */}
+      <SectionBackdrop
+        src="/img/bg-store.webp"
+        position="object-left"
+        sideFade="linear-gradient(to left, hsl(var(--background)) 8%, transparent 58%)"
+      />
+
+      <div className="shell-wide grid gap-14 lg:grid-cols-[0.9fr_1.1fr]">
         <Reveal>
           <div>
-            <p className="eyebrow">For stores</p>
-            <h2 className="headline mt-4 text-3xl sm:text-4xl">
-              Sell to people who already know it fits
+            <p className="eyebrow">Do‘konlar uchun</p>
+            <h2 className="headline mt-4 text-h1">
+              O‘lchamiga ishongan xaridorga <span className="headline-accent">soting</span>
             </h2>
-            <p className="mt-5 text-lg leading-relaxed text-muted-foreground">
-              LookSave is a marketplace, not a storefront builder. You bring the stock; we bring
-              buyers who have seen the piece on themselves.
+            <p className="mt-5 text-lead text-muted-foreground">
+              LookSave — bozor maydoni, sayt yasovchi emas. Mahsulot sizdan, xaridor bizdan — va u
+              kiyimni o‘zida ko‘rib bo‘lgan holda keladi.
             </p>
 
-            <Button asChild size="lg" className="mt-8 rounded-full shadow-glow">
-              <a href="#waitlist">Apply as a store</a>
+            <Button asChild className="mt-8 shadow-glow">
+              <a href="#waitlist">Do‘kon ochish</a>
             </Button>
           </div>
         </Reveal>
@@ -42,13 +60,19 @@ export function Stores(): JSX.Element {
           {BENEFITS.map((benefit, index) => (
             <Reveal key={benefit.title} delay={index * 90}>
               <Card className="border-border bg-surface">
-                <CardContent className="flex gap-5 p-6">
+                <CardContent className="flex items-start gap-5 p-6">
+                  {/* Chapdagi urg'u chizig'i — kartani bo'lim ritmiga bog'laydi */}
                   <div
                     aria-hidden
                     className="mt-1 h-10 w-1 shrink-0 rounded-full bg-gradient-to-b from-primary to-transparent"
                   />
+
+                  <span className="flex size-14 shrink-0 items-center justify-center rounded-full border border-primary/45 bg-primarySoft text-brand">
+                    <Icon name={benefit.icon} size={24} />
+                  </span>
+
                   <div>
-                    <h3 className="text-lg font-semibold">{benefit.title}</h3>
+                    <h3 className="text-h3 font-semibold">{benefit.title}</h3>
                     <p className="mt-2 leading-relaxed text-muted-foreground">{benefit.body}</p>
                   </div>
                 </CardContent>

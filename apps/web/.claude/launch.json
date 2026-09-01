@@ -1,10 +1,24 @@
 {
   "version": "0.0.1",
+  "_comment": [
+    "Ildizdagi .claude/launch.json bilan bir xil yozuv — bu yerda faqat",
+    "apps/web ichida ishlaganda qo'l ostida bo'lishi uchun turibdi.",
+    "",
+    "⚠️ ILGARI BU YOZUV FAQAT `url` VA `port` DAN IBORAT EDI, ya'ni",
+    "allaqachon ishlab turgan serverga ULANARDI, o'zi ko'tarmasdi. Port band",
+    "bo'lganda (boshqa sessiya) ulanish ham, ko'tarish ham ishlamay qolardi.",
+    "Endi buyruq bor va `autoPort` bilan bo'sh port olinadi.",
+    "",
+    "`url` olib tashlandi: `autoPort` bilan port oldindan ma'lum emas,",
+    "qattiq yozilgan http://localhost:5175 esa noto'g'ri manzilga olib borardi."
+  ],
   "configurations": [
     {
       "name": "looksave-web",
-      "url": "http://localhost:5175",
-      "port": 5175
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--workspace", "@looksave/web"],
+      "port": 5175,
+      "autoPort": true
     }
   ]
 }
