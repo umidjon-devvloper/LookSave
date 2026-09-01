@@ -54,14 +54,16 @@ function StockEditor({
           />
           <div>
             <p className="text-sm font-medium text-foreground">{variant.colorName || 'Rang'}</p>
-            <p className="text-xs text-dim">
-              {variant.assetStatus === 'ready'
-                ? '3D tayyor'
-                : variant.assetStatus
-                  ? `3D: ${variant.assetStatus}`
-                  : '3D yo`q'}
-              {Number(variant.priceDelta) !== 0 ? ` · narx farqi ${variant.priceDelta}` : ''}
-            </p>
+            {/*
+              ⚠️ 3D HOLATI OLIB TASHLANDI. Har variant yonida «3D tayyor /
+              navbatda / yo'q» yozilardi — sotuvchi uni mahsulot
+              ilovada ko'rinishining sharti deb tushunardi. Aslida
+              kiyintirish mahsulot suratidan bo'ladi va variantning
+              3D holati unga hech qanday ta'sir qilmaydi.
+            */}
+            {Number(variant.priceDelta) !== 0 ? (
+              <p className="text-xs text-dim">Narx farqi {variant.priceDelta}</p>
+            ) : null}
           </div>
         </div>
       </div>

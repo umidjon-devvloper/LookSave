@@ -9,8 +9,7 @@ export interface DashboardData {
   avgResponseMin: number | null;
   confirmRate: number | null;
   productCount: number;
-  product3dCount: number;
-  pending3d: number;
+  tryonReadyCount: number;
   topProducts: Array<{ id: string; title: string; orders: number; tryons: number }>;
 }
 

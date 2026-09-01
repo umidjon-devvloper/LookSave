@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { CheckCircle2, Clock, Inbox, ShoppingBag } from 'lucide-react';
 import { useState } from 'react';
 
 import {
   completeOrder,
   confirmOrder,
+  getDashboard,
   getOrders,
   markReady,
   markSeen,
@@ -16,6 +18,8 @@ import {
 import { EmptyState, ErrorState, Spinner } from '../components/Spinner';
 import { OrderCard } from '../components/orders/OrderCard';
 import { RejectModal } from '../components/orders/RejectModal';
+import { PageHeader } from '../components/panel/PageHeader';
+import { StatTile } from '../components/panel/StatTile';
 
 const TABS: Array<{ value: OrderTab; label: string }> = [
   { value: 'new', label: 'Yangi' },
@@ -48,6 +52,15 @@ export function OrdersPage(): JSX.Element {
     refetchInterval: 60_000,
   });
 
+  /*
+   * ⚠️ QO'SHIMCHA SO'ROV EMAS. Kalit bosh sahifadagi bilan bir xil
+   * (`['store','dashboard']`), ya'ni react-query keshdan beradi.
+   * Sanoqlarni buyurtmalar ro'yxatidan hisoblab bo'lmaydi: ro'yxat
+   * faqat OCHIQ ilovadagi ko'rinishni qaytaradi va boshqa ilovadagi
+   * buyurtmalar soni u yerda yo'q.
+   */
+  const dashboard = useQuery({ queryKey: ['store', 'dashboard'], queryFn: getDashboard });
+
   const act = useMutation({
     mutationFn: (task: () => Promise<unknown>) => task(),
     onSuccess: () => {
@@ -58,14 +71,44 @@ export function OrdersPage(): JSX.Element {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-foreground">Buyurtmalar</h1>
-        {act.isError ? (
-          <p className="text-sm text-danger">
-            {act.error instanceof Error ? act.error.message : 'Amal bajarilmadi'}
-          </p>
-        ) : null}
-      </div>
+      <PageHeader
+        title="Buyurtmalar"
+        subtitle="Tez javob bergan do'kon qidiruvda yuqoriroq chiqadi."
+        action={
+          act.isError ? (
+            <p className="text-sm text-danger">
+              {act.error instanceof Error ? act.error.message : 'Amal bajarilmadi'}
+            </p>
+          ) : undefined
+        }
+      />
+
+      {dashboard.data ? (
+        <div className="grid gap-3 sm:grid-cols-3">
+          <StatTile
+            icon={ShoppingBag}
+            tone="violet"
+            label="Yangi"
+            value={String(dashboard.data.newOrders)}
+            hint={dashboard.data.newOrders > 0 ? 'Javob kutmoqda' : 'Hammasiga javob berilgan'}
+            alert={dashboard.data.newOrders > 0}
+          />
+          <StatTile
+            icon={Clock}
+            tone="blue"
+            label="Jarayonda"
+            value={String(dashboard.data.inProgress)}
+            hint="Tasdiqlangan, hali topshirilmagan"
+          />
+          <StatTile
+            icon={CheckCircle2}
+            tone="green"
+            label="Bu oy"
+            value={String(dashboard.data.completedMonth)}
+            hint="Yakunlangan buyurtma"
+          />
+        </div>
+      ) : null}
 
       <div className="flex gap-1 overflow-x-auto rounded-xl border border-border bg-surface p-1">
         {TABS.map((item) => (
@@ -91,7 +134,7 @@ export function OrdersPage(): JSX.Element {
       ) : null}
 
       {orders.data?.length === 0 ? (
-        <EmptyState title={EMPTY[tab].title} hint={EMPTY[tab].hint} />
+        <EmptyState icon={Inbox} title={EMPTY[tab].title} hint={EMPTY[tab].hint} />
       ) : null}
 
       <div className="space-y-4">

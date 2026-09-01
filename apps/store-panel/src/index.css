@@ -59,6 +59,23 @@
     @apply rounded-lg border bg-card text-card-foreground shadow-sm;
   }
 
+  /*
+   * Jadval sarlavhasi. Panelda to'rtta jadval bor (mahsulot, hisob,
+   * jamoa, buyurtma) va ular bir xil ko'rinishi kerak — sinf shu
+   * uchun, har jadvalda `px-4 py-2.5 …` ni qayta yozmaslik uchun emas.
+   *
+   * ⚠️ BOSH HARF EMAS. `.label` katta harfda, jadval sarlavhasi esa
+   * yo'q: ustun nomi ko'pincha ikki so'z («Kiyib ko'rish») va katta
+   * harfda u qatorga sig'may ketadi.
+   */
+  .thead {
+    @apply border-b border-border bg-surface2/50 text-left text-xs text-dim;
+  }
+
+  .thead th {
+    @apply px-4 py-2.5 font-medium;
+  }
+
   .field {
     @apply flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm
            shadow-sm transition-colors placeholder:text-muted-foreground

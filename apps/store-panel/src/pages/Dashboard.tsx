@@ -1,33 +1,25 @@
 import { useQuery } from '@tanstack/react-query';
+import {
+  Boxes,
+  CheckCircle2,
+  Clock,
+  Package,
+  ShieldCheck,
+  ShoppingBag,
+  TrendingUp,
+  Wallet,
+  Zap,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { getDashboard } from '../api/store';
 import { ErrorState, Spinner } from '../components/Spinner';
+import { IconBadge } from '../components/panel/IconBadge';
+import { PageHeader } from '../components/panel/PageHeader';
+import { SectionCard } from '../components/panel/SectionCard';
+import { StatTile } from '../components/panel/StatTile';
 import { money } from '../lib/format';
-
-function Stat({
-  label,
-  value,
-  hint,
-  tone = 'default',
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  tone?: 'default' | 'warning';
-}): JSX.Element {
-  return (
-    <div className="card p-4">
-      <p className="label">{label}</p>
-      <p
-        className={`mt-2 text-2xl font-bold ${tone === 'warning' ? 'text-warning' : 'text-foreground'}`}
-      >
-        {value}
-      </p>
-      {hint ? <p className="mt-1 text-xs text-dim">{hint}</p> : null}
-    </div>
-  );
-}
+import { Button } from '@/components/ui/button';
 
 /** Javob tezligi qidiruv reytingiga ta'sir qiladi — shuning uchun yuqorida. */
 function responseGrade(minutes: number | null): { text: string; className: string } {
@@ -49,94 +41,151 @@ export function DashboardPage(): JSX.Element {
 
   const data = dashboard.data;
   const grade = responseGrade(data.avgResponseMin);
+  const confirmPercent = data.confirmRate === null ? null : Math.round(data.confirmRate * 100);
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-foreground">Bosh sahifa</h1>
+      <PageHeader
+        title="Bosh sahifa"
+        subtitle="Do'koningiz faoliyati haqida umumiy ma'lumot"
+        action={
+          data.newOrders > 0 ? (
+            <Button asChild>
+              <Link to="/orders">{data.newOrders} ta yangi buyurtma</Link>
+            </Button>
+          ) : undefined
+        }
+      />
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat
+        <StatTile
+          icon={ShoppingBag}
+          tone="violet"
           label="Yangi"
           value={String(data.newOrders)}
-          hint={data.newOrders > 0 ? 'Javob kutmoqda' : undefined}
-          tone={data.newOrders > 0 ? 'warning' : 'default'}
+          hint={data.newOrders > 0 ? 'Javob kutmoqda' : 'Bugun'}
+          alert={data.newOrders > 0}
         />
-        <Stat label="Jarayonda" value={String(data.inProgress)} />
-        <Stat label="Bu oy" value={String(data.completedMonth)} hint="Yakunlangan buyurtma" />
-        <Stat label="Daromad" value={money(data.revenueMonth, data.currency)} hint="Shu oy" />
+        <StatTile
+          icon={Clock}
+          tone="blue"
+          label="Jarayonda"
+          value={String(data.inProgress)}
+          hint="Bugun"
+        />
+        <StatTile
+          icon={CheckCircle2}
+          tone="green"
+          label="Bu oy"
+          value={String(data.completedMonth)}
+          hint="Yakunlangan buyurtma"
+        />
+        <StatTile
+          icon={Wallet}
+          tone="brand"
+          label="Daromad"
+          value={money(data.revenueMonth, data.currency)}
+          hint="Shu oy"
+        />
       </div>
 
+      {/*
+        ⚠️ BU IKKISI `StatTile` EMAS. Ular raqamdan tashqari BAHO beradi
+        («Yaxshi», progress chizig'i), ya'ni plitkaga sig'maydigan qo'shimcha
+        mazmun bor. `IconBadge` umumiy — ko'rinish plitkalar bilan bir xil
+        bo'lib qoladi.
+      */}
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="card p-4">
-          <p className="label">Javob tezligi</p>
-          <p className="mt-2 text-2xl font-bold text-foreground">
-            {data.avgResponseMin === null ? '—' : `${data.avgResponseMin} daqiqa`}
-          </p>
-          <p className={`mt-1 text-xs font-medium ${grade.className}`}>{grade.text}</p>
-          <p className="mt-2 text-xs text-dim">
-            Tez javob bergan do'kon qidiruvda yuqoriroq chiqadi.
-          </p>
+        <div className="card flex items-start gap-3 p-4">
+          <IconBadge icon={Zap} tone="violet" />
+          <div className="min-w-0 flex-1">
+            <p className="label">Javob tezligi</p>
+            <p className="mt-1 text-2xl font-bold leading-tight tabular-nums text-foreground">
+              {data.avgResponseMin === null ? '—' : `${data.avgResponseMin} daqiqa`}
+            </p>
+            <p className={`mt-0.5 text-xs font-medium ${grade.className}`}>{grade.text}</p>
+            <p className="mt-2 text-xs text-dim">
+              Tez javob bergan do'kon qidiruvda yuqoriroq chiqadi.
+            </p>
+          </div>
         </div>
 
-        <div className="card p-4">
-          <p className="label">Tasdiqlash foizi</p>
-          <p className="mt-2 text-2xl font-bold text-foreground">
-            {data.confirmRate === null ? '—' : `${Math.round(data.confirmRate * 100)}%`}
-          </p>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface2">
-            <div
-              className="h-full rounded-full bg-primary transition-all"
-              style={{ width: `${Math.round((data.confirmRate ?? 0) * 100)}%` }}
-            />
+        <div className="card flex items-start gap-3 p-4">
+          <IconBadge icon={ShieldCheck} tone="blue" />
+          <div className="min-w-0 flex-1">
+            <p className="label">Tasdiqlash foizi</p>
+            <p className="mt-1 text-2xl font-bold leading-tight tabular-nums text-foreground">
+              {confirmPercent === null ? '—' : `${confirmPercent}%`}
+            </p>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface3">
+              <div
+                className="h-full rounded-full bg-primary transition-all"
+                style={{ width: `${confirmPercent ?? 0}%` }}
+              />
+            </div>
+            <p className="mt-2 text-xs text-dim">So'nggi 30 kun</p>
           </div>
-          <p className="mt-2 text-xs text-dim">So'nggi 30 kun</p>
         </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Stat label="Mahsulotlar" value={String(data.productCount)} />
-        <Stat label="3D bilan" value={String(data.product3dCount)} />
-        <Stat
-          label="3D kutilmoqda"
-          value={String(data.pending3d)}
-          tone={data.pending3d > 0 ? 'warning' : 'default'}
+        <StatTile
+          icon={Package}
+          tone="violet"
+          label="Mahsulotlar"
+          value={String(data.productCount)}
+          hint="Jami mahsulot"
+        />
+        {/*
+          ⚠️ ILGARI SHU YERDA IKKI «3D» PLITKASI TURARDI — «3D bilan» va
+          «3D kutilmoqda». Ular sotuvchiga navbatni ko'rsatardi. Endi
+          navbat yo'q: kiyintirish mahsulot suratidan AI orqali bo'ladi,
+          shuning uchun bitta plitka qoldi — nechta mahsulot kiyib
+          ko'rishga yaroqli.
+        */}
+        <StatTile
+          icon={Boxes}
+          tone="blue"
+          label="Kiyib ko'rish mumkin"
+          value={String(data.tryonReadyCount)}
+          hint="AI shu mahsulotlarni kiydiradi"
         />
       </div>
 
       {data.topProducts.length > 0 ? (
-        <section className="card overflow-hidden">
-          <h2 className="border-b border-border px-4 py-3 text-sm font-semibold text-foreground">
-            Ko'p buyurtma qilingan
-          </h2>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-dim">
-                <th className="px-4 py-2 font-medium">Mahsulot</th>
-                <th className="px-4 py-2 text-right font-medium">Buyurtma</th>
-                <th className="px-4 py-2 text-right font-medium">Kiyib ko'rish</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.topProducts.map((product, index) => (
-                <tr key={product.id} className={index % 2 === 0 ? 'bg-surface' : 'bg-surface2'}>
-                  <td className="px-4 py-2.5 text-foreground">{product.title}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
-                    {product.orders}
-                  </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
-                    {product.tryons}
-                  </td>
+        <SectionCard icon={TrendingUp} title="Ko'p buyurtma qilingan mahsulotlar" padded={false}>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[420px] text-sm">
+              <thead className="thead">
+                <tr>
+                  <th>Mahsulot</th>
+                  <th className="text-right">Buyurtma</th>
+                  <th className="text-right">Kiyib ko'rish</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-      ) : null}
-
-      {data.newOrders > 0 ? (
-        <Link to="/orders" className="btn-primary w-full sm:w-auto">
-          {data.newOrders} ta yangi buyurtmani ko'rish
-        </Link>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {data.topProducts.map((product) => (
+                  <tr key={product.id} className="transition-colors hover:bg-surface2/40">
+                    <td className="px-4 py-3">
+                      <Link
+                        to={`/products/${product.id}`}
+                        className="font-medium text-foreground hover:text-brand"
+                      >
+                        {product.title}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                      {product.orders}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                      {product.tryons}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
       ) : null}
     </div>
   );

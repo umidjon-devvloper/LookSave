@@ -12,8 +12,7 @@ export interface StoreProduct {
   oldPrice: string | null;
   currency: string;
   stock: { total: number; reserved: number; available: number };
-  has3d: boolean;
-  assetStatus: string | null;
+  canTryOn: boolean;
   viewCount: number;
   tryonCount: number;
   createdAt: string;
@@ -46,7 +45,6 @@ export interface CreateProductBody {
   isLimited: boolean;
   status: 'draft' | 'pending';
   variants: VariantInput[];
-  request3d: boolean;
 }
 
 export interface Category {
@@ -90,14 +88,11 @@ export const createProduct = (body: CreateProductBody): Promise<{ id: string }> 
 
 export const updateProduct = (
   id: string,
-  body: Partial<Omit<CreateProductBody, 'variants' | 'request3d'>>,
+  body: Partial<Omit<CreateProductBody, 'variants'>>,
 ): Promise<unknown> => api(`/store/products/${id}`, { method: 'PATCH', body });
 
 export const archiveProduct = (id: string): Promise<void> =>
   api<void>(`/store/products/${id}`, { method: 'DELETE' });
-
-export const request3d = (id: string): Promise<unknown> =>
-  api(`/store/products/${id}/request-3d`, { method: 'POST', body: {} });
 
 export const getCategories = (): Promise<Category[]> => api<Category[]>('/categories');
 

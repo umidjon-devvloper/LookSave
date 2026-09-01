@@ -42,7 +42,6 @@ export function NewProductPage(): JSX.Element {
   const [images, setImages] = useState<string[]>([]);
   const [tags, setTags] = useState('');
   const [isLimited, setIsLimited] = useState(false);
-  const [request3d, setRequest3d] = useState(false);
   const [variants, setVariants] = useState<VariantInput[]>([emptyVariant()]);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,7 +62,6 @@ export function NewProductPage(): JSX.Element {
         isLimited,
         status,
         variants,
-        request3d,
         ...(description.trim() ? { description: description.trim() } : {}),
         ...(brandId ? { brandId } : {}),
         ...(oldPrice.trim() ? { oldPrice } : {}),
@@ -237,24 +235,6 @@ export function NewProductPage(): JSX.Element {
           </p>
         </div>
         <VariantEditor variants={variants} onChange={setVariants} />
-      </section>
-
-      <section className="card p-5">
-        <label className="flex items-start gap-3 text-sm">
-          <input
-            type="checkbox"
-            className="mt-0.5 accent-primary"
-            checked={request3d}
-            onChange={(event) => setRequest3d(event.target.checked)}
-          />
-          <span>
-            <span className="font-medium text-foreground">3D model so'rash</span>
-            <span className="mt-0.5 block text-xs text-dim">
-              Mahsulot navbatga qo'yiladi. 3D bilan mahsulotlar ilovada kiyib ko'rish mumkin bo'ladi
-              va ko'proq buyurtma oladi.
-            </span>
-          </span>
-        </label>
       </section>
 
       {error ? (

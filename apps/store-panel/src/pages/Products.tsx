@@ -1,16 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Boxes, Package } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import {
   archiveProduct,
   getStoreProducts,
-  request3d,
   type ProductStatus,
   type StoreProduct,
 } from '../api/products';
+import { getDashboard } from '../api/store';
 import { EmptyState, ErrorState, Spinner } from '../components/Spinner';
+import { PageHeader } from '../components/panel/PageHeader';
+import { SectionCard } from '../components/panel/SectionCard';
+import { StatTile } from '../components/panel/StatTile';
 import { money } from '../lib/format';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 const TABS: Array<{ value: ProductStatus | 'all'; label: string }> = [
@@ -30,24 +35,14 @@ const STATUS_LABEL: Record<string, { text: string; className: string }> = {
   archived: { text: 'Arxiv', className: 'text-dim' },
 };
 
-const ASSET_LABEL: Record<string, string> = {
-  queued: 'navbatda',
-  processing: 'tayyorlanmoqda',
-  ready: 'tayyor',
-  failed: 'xato',
-  none: '—',
-};
-
 function ProductRow({
   product,
   busy,
   onArchive,
-  onRequest3d,
 }: {
   product: StoreProduct;
   busy: boolean;
   onArchive: () => void;
-  onRequest3d: () => void;
 }): JSX.Element {
   const status = STATUS_LABEL[product.status] ?? {
     text: product.status,
@@ -55,7 +50,7 @@ function ProductRow({
   };
 
   return (
-    <tr className="border-t border-border">
+    <tr className="transition-colors hover:bg-surface2/40">
       <td className="px-4 py-3">
         <div className="flex items-center gap-3">
           {product.image ? (
@@ -89,22 +84,21 @@ function ProductRow({
           <span className="text-xs text-dim"> ({product.stock.reserved} band)</span>
         ) : null}
       </td>
+      {/*
+        ⚠️ ILGARI BU YERDA «3D so'rash» TUGMASI TURARDI. Sotuvchi har
+        mahsulot uchun 3D model buyurtma qilardi, keyin uning navbatda
+        turishini kutardi — mahsulot esa shu vaqt ichida ilovada kiyib
+        ko'rilmasdi.
+
+        Endi kutiladigan narsa yo'q: kiyintirish mahsulot SURATIDAN AI
+        orqali bo'ladi, ya'ni sotuvchi rasm va o'lchamlarni kiritishi
+        bilan mahsulot tayyor.
+      */}
       <td className="px-4 py-3 text-xs">
-        {product.has3d ? (
+        {product.canTryOn ? (
           <span className="text-success">tayyor</span>
-        ) : product.assetStatus ? (
-          <span className="text-muted-foreground">
-            {ASSET_LABEL[product.assetStatus] ?? product.assetStatus}
-          </span>
         ) : (
-          <button
-            type="button"
-            className="text-brand hover:underline disabled:opacity-50"
-            disabled={busy}
-            onClick={onRequest3d}
-          >
-            3D so'rash
-          </button>
+          <span className="text-dim">—</span>
         )}
       </td>
       <td className={`px-4 py-3 text-xs ${status.className}`}>{status.text}</td>
@@ -134,22 +128,59 @@ export function ProductsPage(): JSX.Element {
     queryFn: () => getStoreProducts(tab, search),
   });
 
+  /*
+   * ⚠️ SANOQLAR RO'YXATDAN EMAS, BOSH SAHIFA SO'ROVIDAN. Ro'yxat
+   * tanlangan ilova va qidiruv bo'yicha filtrlangan — undan «jami
+   * mahsulot» chiqmaydi. Kalit bosh sahifadagi bilan bir xil, ya'ni
+   * keshdan keladi.
+   */
+  const dashboard = useQuery({ queryKey: ['store', 'dashboard'], queryFn: getDashboard });
+
   const invalidate = (): void => {
     void queryClient.invalidateQueries({ queryKey: ['store', 'products'] });
   };
 
   const archive = useMutation({ mutationFn: archiveProduct, onSuccess: invalidate });
-  const ask3d = useMutation({ mutationFn: request3d, onSuccess: invalidate });
-  const busy = archive.isPending || ask3d.isPending;
+  const busy = archive.isPending;
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-foreground">Mahsulotlar</h1>
-        <Link to="/products/new" className="btn-primary">
-          Mahsulot qo'shish
-        </Link>
-      </div>
+      <PageHeader
+        title="Mahsulotlar"
+        subtitle="Kiyim surati va o`lchamlari kiritilgan mahsulot ilovada kiyib ko`riladi va ko`proq buyurtma oladi."
+        action={
+          /* ⚠️ `className="btn-primary"` EMAS: bunday sinf hech qayerda
+             ta'riflanmagan va tugma bo'yalmagan matn bo'lib qolardi.
+             `asChild` shadcn `Button` uslubini `Link` ga o'tkazadi. */
+          <Button asChild>
+            <Link to="/products/new">Mahsulot qo'shish</Link>
+          </Button>
+        }
+      />
+
+      {/*
+        ⚠️ «3D KUTILMOQDA» PLITKASI OLIB TASHLANDI. U navbatdagi 3D
+        modellarni sanardi — endi navbat yo'q, sotuvchi hech narsa
+        kutmaydi. Turgan joyida u sotuvchini «nimadir tayyor bo'lishi
+        kerak» degan fikrga solardi.
+      */}
+      {dashboard.data ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <StatTile
+            icon={Package}
+            tone="violet"
+            label="Jami mahsulot"
+            value={String(dashboard.data.productCount)}
+          />
+          <StatTile
+            icon={Boxes}
+            tone="blue"
+            label="Kiyib ko'rish mumkin"
+            value={String(dashboard.data.tryonReadyCount)}
+            hint="AI shu mahsulotlarni kiydiradi"
+          />
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="flex flex-1 gap-1 overflow-x-auto rounded-xl border border-border bg-surface p-1">
@@ -187,37 +218,47 @@ export function ProductsPage(): JSX.Element {
 
       {products.data?.length === 0 ? (
         <EmptyState
+          icon={Package}
           title="Mahsulot yo'q"
           hint="Birinchi mahsulotni qo'shing — u tekshiruvdan o'tgach katalogda ko'rinadi."
         />
       ) : null}
 
       {products.data && products.data.length > 0 ? (
-        <div className="card overflow-x-auto">
-          <table className="w-full min-w-[640px] text-sm">
-            <thead>
-              <tr className="text-left text-dim">
-                <th className="px-4 py-2.5 font-medium">Mahsulot</th>
-                <th className="px-4 py-2.5 font-medium">Narx</th>
-                <th className="px-4 py-2.5 font-medium">Ombor</th>
-                <th className="px-4 py-2.5 font-medium">3D</th>
-                <th className="px-4 py-2.5 font-medium">Holat</th>
-                <th className="px-4 py-2.5" />
-              </tr>
-            </thead>
-            <tbody>
-              {products.data.map((product) => (
-                <ProductRow
-                  key={product.id}
-                  product={product}
-                  busy={busy}
-                  onArchive={() => archive.mutate(product.id)}
-                  onRequest3d={() => ask3d.mutate(product.id)}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <SectionCard
+          icon={Package}
+          title="Ro'yxat"
+          description={`${products.data.length} ta mahsulot`}
+          padded={false}
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
+              <thead className="thead">
+                <tr>
+                  <th>Mahsulot</th>
+                  <th>Narx</th>
+                  <th>Ombor</th>
+                  <th>Kiyib ko'rish</th>
+                  <th>Holat</th>
+                  <th />
+                </tr>
+              </thead>
+              {/* `divide-y` — qatorlar orasidagi chiziq. `tr` ga `border-t`
+                  qo'yilsa birinchi qator `.thead` chizig'i bilan qo'shilib
+                  ikki barobar qalin ko'rinardi. */}
+              <tbody className="divide-y divide-border">
+                {products.data.map((product) => (
+                  <ProductRow
+                    key={product.id}
+                    product={product}
+                    busy={busy}
+                    onArchive={() => archive.mutate(product.id)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
       ) : null}
     </div>
   );

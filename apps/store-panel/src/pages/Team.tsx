@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ShieldCheck, UserPlus, Users } from 'lucide-react';
 import { useState } from 'react';
 
 import { ApiClientError } from '../api/client';
@@ -9,7 +10,10 @@ import {
   updateMemberRole,
   type MemberRole,
 } from '../api/store';
-import { ErrorState, Spinner } from '../components/Spinner';
+import { EmptyState, ErrorState, Spinner } from '../components/Spinner';
+import { PageHeader } from '../components/panel/PageHeader';
+import { SectionCard } from '../components/panel/SectionCard';
+import { StatTile } from '../components/panel/StatTile';
 import { phone as formatPhone } from '../lib/format';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,58 +58,83 @@ export function TeamPage(): JSX.Element {
 
   const remove = useMutation({ mutationFn: removeMember, onSuccess: invalidate });
 
+  const list = members.data ?? [];
+  const counts = {
+    total: list.length,
+    managers: list.filter((member) => member.role === 'manager' && !member.isStoreOwner).length,
+    staff: list.filter((member) => member.role === 'staff' && !member.isStoreOwner).length,
+  };
+
   return (
-    <div className="max-w-3xl space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Jamoa</h1>
-        <p className="mt-1 text-sm text-dim">
-          Xodimlar buyurtmalarga javob bera oladi. Javob tezligi qidiruv reytingiga ta'sir qiladi —
-          bitta odam 24 soat kutib o'tira olmaydi.
-        </p>
-      </div>
+    <div className="max-w-4xl space-y-6">
+      <PageHeader
+        title="Jamoa"
+        subtitle="Javob tezligi qidiruv reytingiga ta'sir qiladi — bitta odam 24 soat kutib o'tira olmaydi."
+      />
 
-      <form
-        className="card flex flex-col gap-3 p-4 sm:flex-row sm:items-end"
-        onSubmit={(event) => {
-          event.preventDefault();
-          add.mutate();
-        }}
-      >
-        <label className="flex-1">
-          <span className="label">Telefon</span>
-          <Input
-            className="mt-2"
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
-            placeholder="+998901234567"
-            required
+      {list.length > 0 ? (
+        <div className="grid gap-3 sm:grid-cols-3">
+          <StatTile icon={Users} tone="violet" label="Jami" value={String(counts.total)} />
+          <StatTile
+            icon={ShieldCheck}
+            tone="blue"
+            label="Menejer"
+            value={String(counts.managers)}
+            hint="Buyurtma va mahsulotlar"
           />
-        </label>
+          <StatTile
+            icon={UserPlus}
+            tone="green"
+            label="Xodim"
+            value={String(counts.staff)}
+            hint="Faqat buyurtmalar"
+          />
+        </div>
+      ) : null}
 
-        <label className="sm:w-48">
-          <span className="label">Rol</span>
-          <select
-            className="field mt-2"
-            value={role}
-            onChange={(event) => setRole(event.target.value as MemberRole)}
-          >
-            {ROLES.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label} — {option.hint}
-              </option>
-            ))}
-          </select>
-        </label>
+      <SectionCard
+        icon={UserPlus}
+        title="Xodim qo'shish"
+        description="Xodim avval LookSave ilovasida ro'yxatdan o'tishi kerak — paroli o'zida qoladi."
+      >
+        <form
+          className="flex flex-col gap-3 sm:flex-row sm:items-end"
+          onSubmit={(event) => {
+            event.preventDefault();
+            add.mutate();
+          }}
+        >
+          <label className="flex-1">
+            <span className="label">Telefon</span>
+            <Input
+              className="mt-2"
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              placeholder="+998901234567"
+              required
+            />
+          </label>
 
-        <Button type="submit" disabled={add.isPending}>
-          Qo'shish
-        </Button>
-      </form>
+          <label className="sm:w-56">
+            <span className="label">Rol</span>
+            <select
+              className="field mt-2"
+              value={role}
+              onChange={(event) => setRole(event.target.value as MemberRole)}
+            >
+              {ROLES.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label} — {option.hint}
+                </option>
+              ))}
+            </select>
+          </label>
 
-      <p className="text-xs text-dim">
-        Xodim avval LookSave ilovasida ro'yxatdan o'tishi kerak — shundan keyin uni telefon raqami
-        bo'yicha qo'shasiz. Paroli o'zida qoladi.
-      </p>
+          <Button type="submit" disabled={add.isPending}>
+            Qo'shish
+          </Button>
+        </form>
+      </SectionCard>
 
       {error ? (
         <p role="alert" className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">
@@ -118,76 +147,86 @@ export function TeamPage(): JSX.Element {
         <ErrorState message="Yuklab bo'lmadi" onRetry={() => void members.refetch()} />
       ) : null}
 
-      {members.data && members.data.length > 0 ? (
-        <div className="card overflow-x-auto">
-          <table className="w-full min-w-[560px] text-sm">
-            <thead>
-              <tr className="text-left text-dim">
-                <th className="px-4 py-2.5 font-medium">Xodim</th>
-                <th className="px-4 py-2.5 font-medium">Rol</th>
-                <th className="px-4 py-2.5 font-medium">Oxirgi faollik</th>
-                <th className="px-4 py-2.5" />
-              </tr>
-            </thead>
-            <tbody>
-              {members.data.map((member, index) => (
-                <tr key={member.id} className={index % 2 === 0 ? 'bg-surface' : 'bg-surface2'}>
-                  <td className="px-4 py-3">
-                    <p className="text-foreground">{member.fullName ?? '—'}</p>
-                    <p className="text-xs text-dim">{formatPhone(member.phone)}</p>
-                  </td>
+      {!members.isLoading && list.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="Jamoada faqat siz borsiz"
+          hint="Xodim qo'shsangiz buyurtmalarga u ham javob bera oladi — javob vaqti qisqaradi."
+        />
+      ) : null}
 
-                  <td className="px-4 py-3">
-                    {member.isStoreOwner ? (
-                      <span className="text-muted-foreground">{ROLE_LABEL.owner}</span>
-                    ) : (
-                      <select
-                        className="field py-1.5 text-sm"
-                        value={member.role}
-                        disabled={changeRole.isPending}
-                        onChange={(event) =>
-                          changeRole.mutate({
-                            id: member.id,
-                            next: event.target.value as MemberRole,
-                          })
-                        }
-                      >
-                        {ROLES.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </td>
-
-                  <td className="px-4 py-3 text-xs text-dim">
-                    {member.lastActiveAt
-                      ? new Date(member.lastActiveAt).toLocaleDateString('uz-UZ')
-                      : 'hali kirmagan'}
-                  </td>
-
-                  <td className="px-4 py-3 text-right">
-                    {member.isStoreOwner ? (
-                      <span className="text-xs text-dim">o'chirib bo'lmaydi</span>
-                    ) : (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        type="button"
-                        className="h-auto p-0 text-sm text-dim hover:text-danger"
-                        disabled={remove.isPending}
-                        onClick={() => remove.mutate(member.id)}
-                      >
-                        Chiqarish
-                      </Button>
-                    )}
-                  </td>
+      {list.length > 0 ? (
+        <SectionCard icon={Users} title="Xodimlar" padded={false}>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] text-sm">
+              <thead className="thead">
+                <tr>
+                  <th>Xodim</th>
+                  <th>Rol</th>
+                  <th>Oxirgi faollik</th>
+                  <th />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {list.map((member) => (
+                  <tr key={member.id} className="transition-colors hover:bg-surface2/40">
+                    <td className="px-4 py-3">
+                      <p className="text-foreground">{member.fullName ?? '—'}</p>
+                      <p className="text-xs text-dim">{formatPhone(member.phone)}</p>
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {member.isStoreOwner ? (
+                        <span className="text-muted-foreground">{ROLE_LABEL.owner}</span>
+                      ) : (
+                        <select
+                          className="field py-1.5 text-sm"
+                          value={member.role}
+                          disabled={changeRole.isPending}
+                          onChange={(event) =>
+                            changeRole.mutate({
+                              id: member.id,
+                              next: event.target.value as MemberRole,
+                            })
+                          }
+                        >
+                          {ROLES.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3 text-xs text-dim">
+                      {member.lastActiveAt
+                        ? new Date(member.lastActiveAt).toLocaleDateString('uz-UZ')
+                        : 'hali kirmagan'}
+                    </td>
+
+                    <td className="px-4 py-3 text-right">
+                      {member.isStoreOwner ? (
+                        <span className="text-xs text-dim">o'chirib bo'lmaydi</span>
+                      ) : (
+                        <Button
+                          variant="link"
+                          size="sm"
+                          type="button"
+                          className="h-auto p-0 text-sm text-dim hover:text-danger"
+                          disabled={remove.isPending}
+                          onClick={() => remove.mutate(member.id)}
+                        >
+                          Chiqarish
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
       ) : null}
     </div>
   );
