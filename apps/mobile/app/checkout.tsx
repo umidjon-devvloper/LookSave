@@ -1,7 +1,9 @@
 import { addressSchema } from '@looksave/validation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -15,12 +17,14 @@ import {
 import { ApiError } from '../src/api/client';
 import { translations } from '../src/i18n';
 import { createOrder, getCart, type CreateOrderInput } from '../src/api/endpoints';
-import { Button, ErrorView, Field, Loading, Screen } from '../src/components/ui';
+import { ErrorView, Field, Loading, Screen } from '../src/components/ui';
+import { Icon, type IconName } from '../src/components/Icon';
 import { useAuthStore } from '../src/store/authStore';
 import { useI18n } from '../src/i18n';
 import { useLocationStore } from '../src/store/locationStore';
 import { money } from '../src/theme/format';
 import { colors, radius, spacing, text } from '../src/theme/tokens';
+import { goBack } from '../src/navigation/back';
 
 /**
  * Server xatolari foydalanuvchi tushunadigan matnga o'giriladi (05-mobile §6.12).
@@ -57,6 +61,7 @@ export default function Checkout(): JSX.Element {
   const user = useAuthStore((state) => state.user);
   const t = useI18n((state) => state.t);
   const { coords, isFallback } = useLocationStore();
+  const insets = useSafeAreaInsets();
 
   const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('delivery');
   const [contactName, setContactName] = useState(user?.fullName ?? '');
@@ -131,7 +136,7 @@ export default function Checkout(): JSX.Element {
     return <ErrorView message="Savatni yuklab bo'lmadi" onRetry={() => void cart.refetch()} />;
   }
   if (!group) {
-    return <ErrorView message="Bu do'kon savatda yo'q" onRetry={() => router.back()} />;
+    return <ErrorView message="Bu do'kon savatda yo'q" onRetry={() => goBack('/cart')} />;
   }
 
   return (
@@ -140,32 +145,68 @@ export default function Checkout(): JSX.Element {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <Screen>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Text style={styles.store}>{group.store.name}</Text>
+        <View style={[styles.topBar, { paddingTop: insets.top + spacing.sm }]}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t.order.title}
+            onPress={() => goBack('/cart')}
+            style={styles.roundButton}
+          >
+            <Icon name="back" size={20} color={colors.accent} />
+          </Pressable>
+          <Text style={styles.topTitle}>{t.order.title}</Text>
+          {/* Sarlavhani markazda ushlaydigan ko'rinmas muvozanat */}
+          <View style={styles.roundButtonGhost} />
+        </View>
+
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Qaysi do'kondan buyurtma qilinayotgani — birinchi navbatda aniq bo'lsin */}
+          <View style={styles.storeCard}>
+            <View style={styles.storeIcon}>
+              <Icon name="shop" size={22} color={colors.accent} />
+            </View>
+            <View style={styles.storeText}>
+              <Text style={styles.storeName} numberOfLines={1}>
+                {group.store.name}
+              </Text>
+              <Text style={styles.storeMeta}>
+                {group.items.length} {t.cart.products.toLowerCase()}
+              </Text>
+            </View>
+          </View>
 
           <Text style={styles.label}>{t.checkout.deliveryType}</Text>
           <View style={styles.options}>
             {(
               [
-                { value: 'pickup', label: t.checkout.pickup },
-                { value: 'delivery', label: t.cart.delivery },
-              ] as const
-            ).map((option) => (
-              <Pressable
-                key={option.value}
-                onPress={() => setDeliveryType(option.value)}
-                style={[styles.option, deliveryType === option.value && styles.optionActive]}
-              >
-                <Text
-                  style={[
-                    styles.optionText,
-                    deliveryType === option.value && { color: colors.text },
-                  ]}
+                { value: 'pickup', label: t.checkout.pickup, icon: 'stores' },
+                { value: 'delivery', label: t.cart.delivery, icon: 'delivery' },
+              ] as Array<{ value: 'pickup' | 'delivery'; label: string; icon: IconName }>
+            ).map((option) => {
+              const active = deliveryType === option.value;
+              return (
+                <Pressable
+                  key={option.value}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => setDeliveryType(option.value)}
+                  style={[styles.option, active && styles.optionActive]}
                 >
-                  {option.label}
-                </Text>
-              </Pressable>
-            ))}
+                  <Icon
+                    name={option.icon}
+                    size={20}
+                    color={active ? colors.accent : colors.textDim}
+                  />
+                  <Text style={[styles.optionText, active && styles.optionTextActive]}>
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
 
           <Field label={t.auth.fullName} value={contactName} onChangeText={setContactName} />
@@ -243,15 +284,29 @@ export default function Checkout(): JSX.Element {
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          <Button
-            title={t.cart.placeOrder}
-            disabled={!canSubmit}
-            loading={submit.isPending}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !canSubmit || submit.isPending }}
+            disabled={!canSubmit || submit.isPending}
             onPress={() => {
               setError(null);
               submit.mutate();
             }}
-          />
+          >
+            <LinearGradient
+              colors={
+                canSubmit ? [colors.accent, colors.primary] : [colors.surface2, colors.surface2]
+              }
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.submit, canSubmit && styles.submitReady]}
+            >
+              <Icon name="bag" size={18} color={canSubmit ? colors.text : colors.textDim} />
+              <Text style={[styles.submitText, !canSubmit && { color: colors.textDim }]}>
+                {submit.isPending ? t.common.loading : t.cart.placeOrder}
+              </Text>
+            </LinearGradient>
+          </Pressable>
         </ScrollView>
       </Screen>
     </KeyboardAvoidingView>
@@ -260,19 +315,92 @@ export default function Checkout(): JSX.Element {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { padding: spacing.md, paddingBottom: spacing.xxl },
-  store: { ...text.h3, color: colors.text, marginBottom: spacing.md },
-  label: { ...text.label, color: colors.textDim, marginBottom: spacing.sm },
-  options: { gap: spacing.sm, marginBottom: spacing.md },
-  option: {
-    padding: spacing.md,
+
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+    gap: spacing.md,
+  },
+  topTitle: { ...text.h3, color: colors.text, flex: 1, textAlign: 'center' },
+  roundButton: {
+    width: 44,
+    height: 44,
     borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderAccent,
+    backgroundColor: colors.surface,
+  },
+  roundButtonGhost: { width: 44, height: 44 },
+
+  content: { padding: spacing.md, paddingTop: 0, paddingBottom: spacing.xxl },
+
+  storeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
   },
-  optionActive: { borderColor: colors.primary, backgroundColor: colors.surface2 },
-  optionText: { ...text.body, color: colors.textMuted },
+  storeIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderAccent,
+    backgroundColor: colors.primarySoft,
+  },
+  storeText: { flex: 1, gap: 2 },
+  storeName: { ...text.bodyMed, color: colors.text, fontWeight: '700' },
+  storeMeta: { ...text.tiny, color: colors.textDim },
+
+  submit: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md + 4,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.pill,
+    marginTop: spacing.sm,
+  },
+  // Nurlanish faqat tugma FAOL bo'lganda — o'chiq tugma yorqin ko'rinmasin
+  submitReady: {
+    shadowColor: colors.primary,
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  submitText: { ...text.bodyMed, color: colors.text, fontWeight: '700' },
+
+  label: { ...text.label, color: colors.accent, marginBottom: spacing.sm },
+  // Ikki variant yonma-yon — ustma-ust bo'lganda ular ro'yxatga o'xshab
+  // ketardi va tanlov ekanligi darrov ko'rinmasdi
+  options: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  option: {
+    flex: 1,
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  optionActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  optionText: { ...text.small, color: colors.textMuted },
+  optionTextActive: { color: colors.text, fontWeight: '600' },
   phoneBox: {
     padding: spacing.md,
     borderRadius: radius.md,

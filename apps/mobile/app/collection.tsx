@@ -19,6 +19,7 @@ import { useAuthStore } from '../src/store/authStore';
 import { useLocationStore } from '../src/store/locationStore';
 import { money } from '../src/theme/format';
 import { colors, radius, spacing, text } from '../src/theme/tokens';
+import { goBack } from '../src/navigation/back';
 
 /**
  * Kolleksiya — Marketplace'dagi MEN / WOMEN / LIMITED kartalari ochadigan
@@ -60,11 +61,11 @@ function CollectionCard({
           styles.imageWrap,
           /*
            * Neon ramka — kiyib ko'rish mumkin bo'lgan mahsulotda.
-           * Zich gridda «3D» yozuvi o'qilmasdi, ramka esa uzoqdan
-           * ko'rinadi va aynan shu mahsulotlar ilovaning asosiy
-           * qiymatini ko'rsatadi.
+           * Zich gridda yozuv o'qilmasdi, ramka esa uzoqdan ko'rinadi
+           * va aynan shu mahsulotlar ilovaning asosiy qiymatini
+           * ko'rsatadi.
            */
-          product.has3d && styles.imageWrapGlow,
+          product.canTryOn && styles.imageWrapGlow,
         ]}
       >
         {product.image ? (
@@ -172,7 +173,7 @@ export default function Collection(): JSX.Element {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={title}
-          onPress={() => router.back()}
+          onPress={() => goBack('/marketplace')}
           style={styles.roundButton}
         >
           <Icon name="back" size={20} color={colors.text} />

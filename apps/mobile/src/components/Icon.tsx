@@ -1,6 +1,7 @@
 import {
   BadgeCheck,
   Camera,
+  Clock,
   Bell,
   ChevronLeft,
   ChevronRight,
@@ -11,6 +12,7 @@ import {
   MessageSquareText,
   LayoutGrid,
   LayoutList,
+  LocateFixed,
   Store,
   LogOut,
   MapPin,
@@ -95,6 +97,10 @@ const LUCIDE = {
   logout: LogOut,
   trash: Trash2,
   location: Navigation,
+  /** «Joylashuvimni ishlatish» — nishon, `location` esa yo'nalish o'qi */
+  locate: LocateFixed,
+  /** Ish vaqti: «Ochiq · 21:00 gacha» */
+  clock: Clock,
   limited: Zap,
 
   // ── Ishonch belgilari (deck 01-slayd) ──

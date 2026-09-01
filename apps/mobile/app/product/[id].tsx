@@ -12,6 +12,7 @@ import { Button, ErrorView, Loading, Screen } from '../../src/components/ui';
 import { useI18n } from '../../src/i18n';
 import { money } from '../../src/theme/format';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
+import { goBack } from '../../src/navigation/back';
 
 /**
  * Karusel sahifasining kengligi.
@@ -212,7 +213,11 @@ export default function Product(): JSX.Element {
           />
 
           <View style={[styles.heroBar, { top: insets.top + spacing.md }]}>
-            <RoundButton icon="back" label={t.common.close} onPress={() => router.back()} />
+            <RoundButton
+              icon="back"
+              label={t.common.close}
+              onPress={() => goBack('/marketplace')}
+            />
 
             <View style={styles.heroActions}>
               <RoundButton

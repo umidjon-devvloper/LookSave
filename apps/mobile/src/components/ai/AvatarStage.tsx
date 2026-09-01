@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Animated, Easing, Image, StyleSheet, Text, View } from 'react-native';
 
 import { colors, radius, spacing, text } from '../../theme/tokens';
@@ -36,6 +36,7 @@ export function AvatarStage({
   measurements,
   dimmed = false,
   showRings = true,
+  children,
 }: {
   imageUrl: string | null;
   cutoutUrl?: string | null;
@@ -44,6 +45,18 @@ export function AvatarStage({
   dimmed?: boolean;
   /** Halqalar va o'lchovlar — kiyintirish paytida chalg'itmasin uchun o'chiriladi */
   showRings?: boolean;
+  /**
+   * Suratning O'RNIGA qo'yiladigan tarkib — svayp tasmasi uchun.
+   *
+   * ⚠️ NEGA ALMASHTIRADI, USTIGA QO'SHMAYDI. Svayp tasmasi o'zi surat
+   * chizadi; ostida yana bir `<Image>` qolsa, karta qiyshayganda uning
+   * chetidan eski surat ko'rinib turardi.
+   *
+   * Sahnaning qolgan bezagi (to'r, platforma, halqalar, o'lchovlar)
+   * saqlanadi — ular tasma ustidan o'tadi va maketdagi ko'rinish
+   * buzilmaydi.
+   */
+  children?: ReactNode;
 }): JSX.Element {
   const pulse = useRef(new Animated.Value(0)).current;
 
@@ -94,7 +107,7 @@ export function AvatarStage({
       {/* Pastdagi nur — odam "platforma" ustida turgandek */}
       <Animated.View style={[styles.floorGlow, { opacity }]} pointerEvents="none">
         <LinearGradient
-          colors={['rgba(139,92,246,0.45)', 'rgba(139,92,246,0)']}
+          colors={['rgba(139,92,246,0.28)', 'rgba(139,92,246,0)']}
           style={StyleSheet.absoluteFill}
         />
       </Animated.View>
@@ -115,7 +128,9 @@ export function AvatarStage({
         </Animated.View>
       ) : null}
 
-      {source ? (
+      {children ? (
+        <View style={[StyleSheet.absoluteFill, dimmed && styles.dimmed]}>{children}</View>
+      ) : source ? (
         <Image
           source={{ uri: source }}
           style={[styles.person, dimmed && styles.dimmed]}
@@ -131,17 +146,25 @@ export function AvatarStage({
       */}
       {showRings ? (
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          {[0.32, 0.54, 0.74].map((top) => (
+          {/*
+            ⚠️ ELLIPS, TO'G'RI CHIZIQ EMAS. Ilgari bu gorizontal gradient
+            chiziq edi va gavdani KESIB o'tgandek ko'rinardi. Maketda esa
+            halqa gavdani O'RAB oladi — old tomoni odamning ustidan,
+            orqa tomoni ostidan o'tadi.
+            
+            To'liq o'rash uchun halqani ikkiga bo'lish kerak bo'lardi
+            (yarmi odam ostida, yarmi ustida) va bu kesim shaklini
+            bilishni talab qiladi — biz uni bilmaymiz. Shuning uchun
+            yassi ellips ishlatiladi: perspektivada ko'rilgan halqa
+            aynan shunday ko'rinadi va ko'z uni o'ralgan deb qabul
+            qiladi.
+          */}
+          {[0.34, 0.56].map((top) => (
             <Animated.View
               key={top}
               style={[styles.ring, { top: `${top * 100}%`, transform: [{ scaleX: scale }] }]}
             >
-              <LinearGradient
-                colors={['rgba(192,132,252,0)', colors.accent, 'rgba(192,132,252,0)']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.ringLine}
-              />
+              <View style={styles.ringEllipse} />
             </Animated.View>
           ))}
         </View>
@@ -211,12 +234,18 @@ const styles = StyleSheet.create({
   gridLine: { position: 'absolute', left: 0, right: 0, height: 1, backgroundColor: colors.border },
   gridLineV: { position: 'absolute', top: 0, bottom: 0, width: 1, backgroundColor: colors.border },
 
+  /*
+   * ⚠️ TOR VA PAST. Avval kadrning 70% kengligi va 18% balandligi edi —
+   * oyoq ostida katta binafsha dog' bo'lib turardi va sahnaning eng
+   * ko'zga tashlanadigan qismiga aylanib qolgandi. Nur odamni FONDAN
+   * ajratish uchun, o'ziga e'tibor tortish uchun emas.
+   */
   floorGlow: {
     position: 'absolute',
-    left: '15%',
-    right: '15%',
+    left: '30%',
+    right: '30%',
     bottom: 0,
-    height: '18%',
+    height: '10%',
     borderRadius: 999,
     overflow: 'hidden',
   },
@@ -229,13 +258,34 @@ const styles = StyleSheet.create({
   person: { position: 'absolute', top: 0, left: 0, right: 0, bottom: '14%' },
   dimmed: { opacity: 0.35 },
 
-  ring: { position: 'absolute', left: '14%', right: '14%', height: 3, justifyContent: 'center' },
-  ringLine: { height: 3, borderRadius: 2 },
+  /*
+   * ⚠️ KENGLIK GAVDAGA YAQIN. Avval 12% edi — halqa deyarli butun kadrni
+   * egallab, gavdani o'ragandek emas, ustidan o'tgan katta to'rtburchakdek
+   * ko'rinardi. Odam kadrning o'rtadagi ~45% ini egallaydi, halqa esa
+   * undan bir oz kengroq bo'lishi kerak.
+   */
+  ring: { position: 'absolute', left: '27%', right: '27%', height: 26, justifyContent: 'center' },
+  /*
+   * Ellips — balandligi kichik, `borderRadius` esa yarmiga teng.
+   * Faqat CHEGARA bo'yaladi, ichi shaffof: to'ldirilsa u odamni
+   * bekitardi.
+   */
+  ringEllipse: {
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 2,
+    borderColor: colors.accent,
+    // Neon taassuroti — chegara atrofidagi yorug'lik
+    shadowColor: colors.accent,
+    shadowOpacity: 0.9,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 },
+  },
 
   platform: {
     position: 'absolute',
-    left: '18%',
-    right: '18%',
+    left: '30%',
+    right: '30%',
     bottom: '13%',
     height: 40,
     alignItems: 'center',

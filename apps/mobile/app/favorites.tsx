@@ -76,7 +76,7 @@ export default function Favorites(): JSX.Element {
               </Text>
               <Text style={styles.store} numberOfLines={1}>
                 {item.store.name}
-                {item.has3d ? ' · 3D' : ''}
+                {item.canTryOn ? ' · AI' : ''}
               </Text>
               <Text style={styles.price}>{money(item.price, item.currency)}</Text>
               {!item.isAvailable ? (

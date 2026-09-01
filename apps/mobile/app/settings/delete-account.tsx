@@ -9,6 +9,7 @@ import { ApiError } from '../../src/api/client';
 import { useI18n } from '../../src/i18n';
 import { useAuthStore } from '../../src/store/authStore';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
+import { goBack } from '../../src/navigation/back';
 
 /**
  * Akkauntni o'chirish (App Store Guideline 5.1.1(v)).
@@ -118,7 +119,7 @@ export default function DeleteAccount(): JSX.Element {
         title={t.common.cancel}
         variant="ghost"
         onPress={() => {
-          router.back();
+          goBack('/profile');
         }}
       />
     </ScrollView>

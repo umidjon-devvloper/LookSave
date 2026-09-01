@@ -99,8 +99,10 @@ export default function TabsLayout(): JSX.Element {
         name="tryon"
         options={{
           title: t.product.tryOn,
-          // 3D sahna GPU xotirasini ushlab turadi — tabdan chiqilganda render
-          // to'xtatiladi (04-3d-pipeline.md). React Navigation 7 da `unmountOnBlur`
+          // Ekranning o'zida «Kiyintirish» sarlavhasi bor — ikkinchisi ortiqcha
+          headerShown: false,
+          // Svayp tasmasi GL kontekstni ushlab turadi — tabdan chiqilganda
+          // chizish to'xtatiladi. React Navigation 7 da `unmountOnBlur`
           // olib tashlangan, uning o'rniga `freezeOnBlur`.
           freezeOnBlur: true,
           tabBarButton: (props) => (
@@ -117,6 +119,8 @@ export default function TabsLayout(): JSX.Element {
         name="cart"
         options={{
           title: t.tabs.cart,
+          // Savatda o'z sarlavhasi bor (nom va tozalash tugmasi bir qatorda)
+          headerShown: false,
           tabBarIcon: ({ color }) => <Icon name="bag" size={22} color={color} />,
         }}
       />

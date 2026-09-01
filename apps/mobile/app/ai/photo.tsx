@@ -13,6 +13,7 @@ import { getFullProfile, uploadBodyPhoto } from '../../src/api/endpoints';
 import { useAuthStore } from '../../src/store/authStore';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { goBack } from '../../src/navigation/back';
 
 /**
  * To'liq bo'yli surat — AI kiyintirishning asosi.
@@ -146,7 +147,7 @@ export default function BodyPhotoScreen(): JSX.Element {
           accessibilityRole="button"
           accessibilityLabel="Orqaga"
           hitSlop={10}
-          onPress={() => router.back()}
+          onPress={() => goBack('/ai')}
           style={styles.back}
         >
           <Icon name="back" size={20} color={colors.text} />

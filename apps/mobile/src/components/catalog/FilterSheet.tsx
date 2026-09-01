@@ -13,11 +13,11 @@ import { colors, radius, spacing, text } from '../../theme/tokens';
  * ⚠️ NEGA ALOHIDA PANEL, CHIPLAR YETMAYDIMI. Chiplar qatori kategoriya va
  * tartibni beradi, lekin narx oralig'i va jins ular bilan sig'maydi:
  * narx ikkita kiritish maydonini talab qiladi. Filtr tugmasi ilgari
- * shunchaki «faqat 3D» ni almashtirardi — foydalanuvchi uchun u
+ * shunchaki «kiyib ko'rish mumkin» ni almashtirardi — foydalanuvchi uchun u
  * «ishlamayotgan» tugma bo'lib ko'rinardi.
  *
  * ⚠️ HAMMA FILTRNI API BOSHIDAN QO'LLAB-QUVVATLAGAN
- * (`productsQuerySchema`: `gender`, `priceMin`, `priceMax`, `only3d`,
+ * (`productsQuerySchema`: `gender`, `priceMin`, `priceMax`, `onlyTryon`,
  * `limited`). Ilovada esa `ProductFilters` tipida ularning yarmi yo'q edi,
  * ya'ni hech qachon yuborilmasdi. Bu panel o'sha bo'shliqni yopadi.
  *
@@ -30,11 +30,11 @@ export interface CatalogFilters {
   gender?: 'male' | 'female';
   priceMin?: number;
   priceMax?: number;
-  only3d: boolean;
+  onlyTryon: boolean;
   limited: boolean;
 }
 
-export const EMPTY_FILTERS: CatalogFilters = { only3d: false, limited: false };
+export const EMPTY_FILTERS: CatalogFilters = { onlyTryon: false, limited: false };
 
 /** Faol filtrlar soni — tugmadagi belgi uchun. */
 export function countFilters(filters: CatalogFilters): number {
@@ -42,7 +42,7 @@ export function countFilters(filters: CatalogFilters): number {
     (filters.gender ? 1 : 0) +
     (filters.priceMin !== undefined ? 1 : 0) +
     (filters.priceMax !== undefined ? 1 : 0) +
-    (filters.only3d ? 1 : 0) +
+    (filters.onlyTryon ? 1 : 0) +
     (filters.limited ? 1 : 0)
   );
 }
@@ -200,8 +200,8 @@ export function FilterSheet({
           <View style={styles.toggles}>
             <Toggle
               label={t.product.tryOn}
-              active={draft.only3d}
-              onPress={() => setDraft((d) => ({ ...d, only3d: !d.only3d }))}
+              active={draft.onlyTryon}
+              onPress={() => setDraft((d) => ({ ...d, onlyTryon: !d.onlyTryon }))}
             />
             <Toggle
               label={t.catalog.onlyLimited}

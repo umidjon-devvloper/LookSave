@@ -6,6 +6,8 @@ import { HologramFigure } from '../../src/components/ai/HologramFigure';
 import { Icon, type IconName } from '../../src/components/Icon';
 import { Button } from '../../src/components/ui';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
+import { MOODS, OCCASIONS, STYLES, useAiFlowStore } from '../../src/store/aiFlowStore';
+import { goBack } from '../../src/navigation/back';
 
 /**
  * AI Designer — oqimning kirish ekrani.
@@ -32,9 +34,53 @@ const HOW_IT_WORKS: Array<{ icon: IconName; title: string }> = [
   { icon: 'favorite', title: 'Yoqqanini tanlaysiz' },
 ];
 
+/**
+ * Bitta tanlov qatori — bosilganda keyingi qiymatga o'tadi.
+ *
+ * ⚠️ RO'YXAT EMAS, AYLANTIRISH. Har tanlov uchun pastdan chiqadigan
+ * panel ochish uch marta bosishni talab qilardi va oqim cho'zilardi.
+ * Variantlar oz (4–5 ta), shuning uchun bosgan sari keyingisiga o'tadi —
+ * joriy qiymat doim ko'rinib turadi.
+ */
+function Choice<T extends string>({
+  label,
+  value,
+  options,
+  onPick,
+}: {
+  label: string;
+  value: T;
+  options: readonly T[];
+  onPick: (value: T) => void;
+}): JSX.Element {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${label}: ${value}`}
+      onPress={() => {
+        const next = options[(options.indexOf(value) + 1) % options.length];
+        if (next) onPick(next);
+      }}
+      style={styles.choice}
+    >
+      <Text style={styles.choiceLabel}>{label}</Text>
+      <Text style={styles.choiceValue} numberOfLines={1}>
+        {value}
+      </Text>
+    </Pressable>
+  );
+}
+
 export default function AiDesigner(): JSX.Element {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+
+  const occasion = useAiFlowStore((state) => state.occasion);
+  const style = useAiFlowStore((state) => state.style);
+  const mood = useAiFlowStore((state) => state.mood);
+  const setOccasion = useAiFlowStore((state) => state.setOccasion);
+  const setStyle = useAiFlowStore((state) => state.setStyle);
+  const setMood = useAiFlowStore((state) => state.setMood);
 
   return (
     <View style={styles.root}>
@@ -49,7 +95,7 @@ export default function AiDesigner(): JSX.Element {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Orqaga"
-          onPress={() => router.back()}
+          onPress={() => goBack('/(tabs)')}
           hitSlop={10}
           style={styles.close}
         >
@@ -61,36 +107,6 @@ export default function AiDesigner(): JSX.Element {
         </Text>
         <Text style={styles.subtitle}>Shaxsiy AI stilistingiz</Text>
 
-        {/*
-          ⚠️ FAQAT DEV. `/ai/studio` — backendsiz 3D studiya: Blender'dan
-          olingan tana (`male-base-v1.glb`) va `assets/models` dagi kiyimlar.
-          Marshrutga ilova ichidan havola yo'q edi, ya'ni modelni qurilmada
-          ko'rishning yagona yo'li deep link edi. Bu tugma shu teshikni
-          yopadi va ishlab chiqarish to'plamiga tushmaydi.
-        */}
-        {__DEV__ ? (
-          <View style={styles.devRow}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push('/ai/studio')}
-              style={styles.devLink}
-            >
-              <Text style={styles.devLinkText}>DEV · 3D studiya</Text>
-            </Pressable>
-            {/*
-              Siqish sinovi — 04-3d-pipeline §0, roadmapning 1-raqamli
-              kritik yo'li. Marshrutga ilova ichidan havola bo'lmasa uni
-              ochishning yagona yo'li deep link bo'lardi.
-            */}
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push('/compression-test')}
-              style={styles.devLink}
-            >
-              <Text style={styles.devLinkText}>DEV · siqish sinovi</Text>
-            </Pressable>
-          </View>
-        ) : null}
         <Text style={styles.lead}>
           Uslubingiz, kayfiyatingiz yoki tadbir haqida ayting — AI siz uchun mos komplekt yasaydi.
         </Text>
@@ -135,8 +151,24 @@ export default function AiDesigner(): JSX.Element {
           ko'pincha boshqa odamning yordami kerak — ko'p foydalanuvchi shu
           yerda to'xtardi. Selfi esa hammaga qulay.
         */}
+        {/*
+          Tanlovlar — maketdagi OCCASION / STYLE / MOOD kartalari.
+
+          ⚠️ ULAR QAYTA TIKLANDI. Bir vaqtlar olib tashlangan edi
+          («gologramma rasmida ular allaqachon bor») — lekin rasmdagilari
+          BEZAK, bosib bo'lmaydi. Natijada `aiFlowStore` dagi qiymatlar
+          sukut bo'yicha qolib ketardi va AI hammaga bir xil komplekt
+          taklif qilardi. Deckning va'dasi esa aynan shu: «user shares
+          the occasion».
+        */}
+        <View style={styles.choices}>
+          <Choice label="Tadbir" value={occasion} options={OCCASIONS} onPick={setOccasion} />
+          <Choice label="Uslub" value={style} options={STYLES} onPick={setStyle} />
+          <Choice label="Kayfiyat" value={mood} options={MOODS} onPick={setMood} />
+        </View>
+
         <View style={styles.cta}>
-          <Button title="Meni kiyintir" onPress={() => router.push('/ai/avatar')} />
+          <Button title="AI komplekt yasasin" onPress={() => router.push('/ai/look')} />
         </View>
       </View>
     </View>
@@ -144,6 +176,20 @@ export default function AiDesigner(): JSX.Element {
 }
 
 const styles = StyleSheet.create({
+  choices: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.md },
+  choice: {
+    flex: 1,
+    gap: 2,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: 'rgba(10, 10, 15, 0.72)',
+  },
+  choiceLabel: { ...text.tiny, color: colors.textDim },
+  choiceValue: { ...text.bodyMed, color: colors.text },
+
   /*
    * Sof qora — brend foni `#0A0A0F` emas. Sabab: gologramma rasmi shaffof
    * emas va uning foni `#000000`. Ranglar bir xil bo'lmasa rasm atrofida
@@ -209,16 +255,4 @@ const styles = StyleSheet.create({
   cta: { marginTop: spacing.lg },
 
   // ⚠️ Faqat dev — `__DEV__` bilan o'ralgan
-  devRow: { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap', justifyContent: 'center' },
-  devLink: {
-    alignSelf: 'center',
-    marginTop: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    backgroundColor: colors.surface,
-  },
-  devLinkText: { ...text.tiny, color: colors.accent },
 });

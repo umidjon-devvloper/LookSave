@@ -36,6 +36,7 @@ import {
 import { SignInRequired } from '../../src/components/SignInRequired';
 import { useAuthStore } from '../../src/store/authStore';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
+import { goBack } from '../../src/navigation/back';
 
 /**
  * O'lchamlar 3D avatarning shaklini belgilaydi. Server ularni
@@ -186,7 +187,7 @@ export default function MeasurementsScreen(): JSX.Element {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="O'lchamlarim"
-            onPress={() => router.back()}
+            onPress={() => goBack('/profile')}
             style={styles.roundButton}
           >
             <Icon name="back" size={20} color={colors.text} />

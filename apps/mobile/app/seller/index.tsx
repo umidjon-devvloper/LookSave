@@ -20,6 +20,7 @@ import { Button, Empty, ErrorView, Screen } from '../../src/components/ui';
 import { useAuthStore } from '../../src/store/authStore';
 import { money } from '../../src/theme/format';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
+import { goBack } from '../../src/navigation/back';
 
 /**
  * Sotuvchi paneli — bosh ekran.
@@ -138,7 +139,7 @@ export default function SellerOrders(): JSX.Element {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Orqaga"
-            onPress={() => router.back()}
+            onPress={() => goBack('/profile')}
             style={styles.iconButton}
           >
             <Icon name="back" size={20} color={colors.accent} />

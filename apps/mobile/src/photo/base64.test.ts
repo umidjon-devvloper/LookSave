@@ -1,101 +1,41 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-
-// @ts-expect-error — jpeg-js/lib/decoder tip e'lonisiz; qaytishi quyida tiplanadi
-import decodeJpeg from 'jpeg-js/lib/decoder';
 import { describe, expect, it } from 'vitest';
 
 import { base64ToBytes } from './base64';
 
 /**
- * ⚠️ NEGA BU TEST BOR. Mato suratlari qurilmada base64 → bayt → JPEG dekod
- * zanjiridan o'tadi va uning har bo'g'ini Hermes cheklovlari tufayli
- * qo'lda yozilgan (`atob` ham, `Buffer` ham yo'q). Zanjir uzilsa kod
- * jimgina protsedural teksturaga tushadi — xato ko'rinmaydi, shunchaki
- * mato skani hech qachon chiqmaydi. Simulyator esa 3D ni umuman
- * chizmaydi, ya'ni ko'z bilan ham tekshirib bo'lmaydi.
+ * ⚠️ NEGA BU TEST BOR. Suratlar qurilmada base64 → bayt → JPEG dekod
+ * zanjiridan o'tadi va uning birinchi bo'g'ini QO'LDA yozilgan: Hermes'da
+ * na `atob`, na `Buffer` bor. Zanjir uzilsa kod jimgina zaxira yo'liga
+ * tushadi — xato ko'rinmaydi, shunchaki surat chiqmaydi.
  *
- * Shu sabab zanjir HAQIQIY aktiv fayli ustida tekshiriladi.
+ * ⚠️ MATO SURATLARI SINOVI OLIB TASHLANDI. U `assets/textures` dagi
+ * haqiqiy fayllarni tekshirardi — ular 3D kiyim modellari bilan birga
+ * o'chirildi. Dekoderning o'zi qoldi va u hozir ikki joyda ishlatiladi:
+ * `photoTexture.ts` (svayp suratlari) va `brightness.ts` (selfi
+ * yorug'ligi).
  */
-
-const TEXTURES = join(__dirname, '../../assets/textures');
-
 describe('base64ToBytes', () => {
-  it("malum satrni to'g'ri baytga aylantiradi", () => {
+  it("ma'lum satrni to'g'ri baytga aylantiradi", () => {
     // "Man" → base64 "TWFu" (klassik namuna, to'ldirishsiz)
     expect(Array.from(base64ToBytes('TWFu'))).toEqual([77, 97, 110]);
   });
 
-  it('yangi qator va toldirishni tashlab ketadi', () => {
+  it("yangi qator va to'ldirishni tashlab ketadi", () => {
     // `FileSystem.readAsStringAsync` qaytargan satrda ular uchraydi
     expect(Array.from(base64ToBytes('TW\nFu==')).slice(0, 3)).toEqual([77, 97, 110]);
   });
-});
 
-describe('mato suratlari', () => {
-  const kinds = ['knit', 'denim', 'twill', 'smooth'];
-
-  for (const kind of kinds) {
-    for (const map of ['albedo', 'normal']) {
-      it(`${kind}-${map} base64 orqali dekod bo'ladi`, () => {
-        const file = join(TEXTURES, `${kind}-${map}.jpg`);
-        const base64 = readFileSync(file).toString('base64');
-
-        const bytes = base64ToBytes(base64);
-        const decoded = decodeJpeg(bytes, { useTArray: true }) as {
-          width: number;
-          height: number;
-          data: Uint8Array;
-        };
-
-        expect(decoded.width).toBe(256);
-        expect(decoded.height).toBe(256);
-        // RGBA — `DataTexture` aynan shu formatni kutadi
-        expect(decoded.data.length).toBe(256 * 256 * 4);
-      });
-    }
-  }
-
-  it('albedo KULRANG — aks holda mahsulot rangi buziladi', () => {
-    /*
-     * Ilova albedo ni bazaviy rangga KO'PAYTIRADI. Rangli surat oq
-     * futbolkani jigarrang qilib qo'yardi (sinab ko'rilgan).
-     */
-    const base64 = readFileSync(join(TEXTURES, 'knit-albedo.jpg')).toString('base64');
-    const { data } = decodeJpeg(base64ToBytes(base64), { useTArray: true }) as {
-      data: Uint8Array;
-    };
-
-    let maxSpread = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      const [r, g, b] = [data[i] as number, data[i + 1] as number, data[i + 2] as number];
-      maxSpread = Math.max(maxSpread, Math.max(r, g, b) - Math.min(r, g, b));
-    }
-
-    // JPEG siqilishi bir necha birlik og'ish qoldiradi — 12 shunga chidamli
-    expect(maxSpread).toBeLessThan(12);
+  it("bo'sh satrdan bo'sh massiv qaytaradi", () => {
+    expect(base64ToBytes('').length).toBe(0);
   });
 
-  it('toqima YOQOLMAGAN — surat bir tekis rang emas', () => {
+  it("uzunlik to'ldirishga qarab hisoblanadi", () => {
     /*
-     * 1024→256 KICHRAYTIRISHDA mayda to'quv averaging'da yo'qolardi va
-     * natija bir tekis rang bo'lib chiqardi (o'lchangan: spread ≈ 0).
-     * Shuning uchun suratlar qirqib olingan. Bu test o'sha regressiyani
-     * ushlaydi.
+     * Base64 da har 4 belgi 3 baytga aylanadi; `=` esa oxirgi baytlarni
+     * chiqarib tashlaydi. Bu hisob noto'g'ri bo'lsa massiv oxirida ortiqcha
+     * nollar qolardi va JPEG dekoder «buzuq fayl» deb xato berardi.
      */
-    const base64 = readFileSync(join(TEXTURES, 'knit-albedo.jpg')).toString('base64');
-    const { data } = decodeJpeg(base64ToBytes(base64), { useTArray: true }) as {
-      data: Uint8Array;
-    };
-
-    let min = 255;
-    let max = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      const v = data[i] as number;
-      if (v < min) min = v;
-      if (v > max) max = v;
-    }
-
-    expect(max - min).toBeGreaterThan(20);
+    expect(base64ToBytes('TWE=').length).toBe(2); // "Ma"
+    expect(base64ToBytes('TQ==').length).toBe(1); // "M"
   });
 });

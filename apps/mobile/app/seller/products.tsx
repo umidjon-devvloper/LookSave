@@ -18,6 +18,7 @@ import { SkeletonList } from '../../src/components/Skeleton';
 import { Button, Empty, ErrorView, Screen } from '../../src/components/ui';
 import { money } from '../../src/theme/format';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
+import { goBack } from '../../src/navigation/back';
 
 /**
  * Do'kon mahsulotlari.
@@ -79,7 +80,7 @@ export default function SellerProducts(): JSX.Element {
           accessibilityRole="button"
           accessibilityLabel="Orqaga"
           hitSlop={10}
-          onPress={() => router.back()}
+          onPress={() => goBack('/seller')}
           style={styles.back}
         >
           <Icon name="back" size={20} color={colors.text} />

@@ -38,7 +38,7 @@ export interface NearbyStore {
   closesAt: string | null;
   opensAt: string | null;
   productCount: number;
-  product3dCount: number;
+  tryonCount: number;
   currency: string;
   location: { lat: number; lng: number };
 }
@@ -46,14 +46,14 @@ export interface NearbyStore {
 export const getNearbyStores = (
   lat: number,
   lng: number,
-  options: { radius?: number; only3d?: boolean; openNow?: boolean } = {},
+  options: { radius?: number; onlyTryon?: boolean; openNow?: boolean } = {},
 ): Promise<NearbyStore[]> => {
   const params = new URLSearchParams({
     lat: String(lat),
     lng: String(lng),
     radius: String(options.radius ?? 5000),
   });
-  if (options.only3d) params.set('only3d', 'true');
+  if (options.onlyTryon) params.set('onlyTryon', 'true');
   if (options.openNow) params.set('openNow', 'true');
   return api<NearbyStore[]>(`/stores/nearby?${params.toString()}`);
 };
@@ -69,7 +69,8 @@ export interface ProductCard {
   oldPrice: string | null;
   currency: string;
   image: string | null;
-  has3d: boolean;
+  /** AI kiyintirish shu mahsulotda ishlaydimi — serverda slotdan hisoblanadi */
+  canTryOn: boolean;
   isLimited: boolean;
   availableSizes: string[];
 }
@@ -81,7 +82,7 @@ export interface ProductFilters {
   gender?: string;
   brand?: string;
   q?: string;
-  only3d?: boolean;
+  onlyTryon?: boolean;
   /**
    * Narx oralig'i va LIMITED kolleksiyasi — API buni boshidan
    * qo'llab-quvvatlagan (`productsQuerySchema`), lekin bu tipda yo'q edi,
@@ -156,6 +157,9 @@ export interface Cart {
 }
 
 export const getCart = (): Promise<Cart> => api<Cart>('/cart');
+
+/** Savatni butunlay bo'shatadi — API'da `DELETE /v1/cart` boshidan bor edi. */
+export const clearCart = (): Promise<void> => api<void>('/cart', { method: 'DELETE' });
 
 export const addToCart = (variantId: string, size: string, qty = 1): Promise<Cart> =>
   api<Cart>('/cart/items', { method: 'POST', body: { variantId, size, qty } });
@@ -520,10 +524,16 @@ export interface Garment {
  * variantga bog'lanadi (rang muhim). `/tryon/slot/:slot` ham yaramaydi —
  * u 3D modeli borlarini qaytaradi, AI'ga esa oddiy surat kerak.
  */
-export const getGarments = (slot?: string, gender?: string): Promise<Garment[]> => {
+export const getGarments = (
+  slot?: string,
+  gender?: string,
+  /** Kategoriya — slotdan aniqroq. Kiyintirish tablari shu bo'yicha */
+  category?: string,
+): Promise<Garment[]> => {
   const params = new URLSearchParams({ limit: '30' });
   if (slot) params.set('slot', slot);
   if (gender) params.set('gender', gender);
+  if (category) params.set('category', category);
   return api<Garment[]>(`/tryon/garments?${params.toString()}`);
 };
 
@@ -550,18 +560,37 @@ export const getRenders = (
     : api<TryonRender[]>(`/tryon/renders?angle=${angle}&variantIds=${variantIds.join(',')}`);
 
 /**
- * AI kiyintirish qaysi slotlarda ishlaydi.
- *
- * ⚠️ MODEL FAQAT KIYIM UCHUN O'QITILGAN. Oyoq kiyim, soat, sumka va bosh
- * kiyimda natija ishonchsiz chiqadi — ularni AI'ga yubormaymiz va oddiy
- * mahsulot suratini ko'rsatamiz. Pul ham, foydalanuvchining ishonchi ham
- * behuda ketmaydi.
+ * ⚠️ RO'YXAT ENDI `@looksave/validation` DA. Ilgari u shu yerda edi va
+ * server uni bilmasdi — ikki tomon bir-biridan ajralib ketishi mumkin
+ * edi. Qayta eksport qilinadi, chunki ekranlar shu fayldan o'qiydi.
  */
-export const AI_TRYON_SLOTS = ['top', 'outer', 'bottom'] as const;
+export { AI_TRYON_SLOTS, supportsAiTryon } from '@looksave/validation';
 
-export function supportsAiTryon(slot: string): boolean {
-  return (AI_TRYON_SLOTS as readonly string[]).includes(slot);
+/**
+ * AI Designer taklifi — tadbir va uslubga qarab to'liq komplekt.
+ *
+ * ⚠️ BU PUL TURMAYDI. Taklif katalog ustidagi tanlov, AI chaqiruvi emas —
+ * shuning uchun ekran ochilishi bilan so'ralishi mumkin. Kiyintirish esa
+ * (`requestRender`) alohida va faqat foydalanuvchi so'raganda.
+ */
+export interface SuggestedLook {
+  key: string;
+  items: Garment[];
+  total: string;
+  currency: string;
 }
+
+export const suggestLooks = (params: {
+  occasion: string;
+  style: string;
+  gender?: string;
+  budget?: number;
+}): Promise<SuggestedLook[]> => {
+  const query = new URLSearchParams({ occasion: params.occasion, style: params.style });
+  if (params.gender) query.set('gender', params.gender);
+  if (params.budget !== undefined) query.set('budget', String(params.budget));
+  return api<SuggestedLook[]>(`/looks/suggest?${query.toString()}`);
+};
 
 // ── Sevimlilar ──
 
@@ -571,7 +600,7 @@ export interface FavoriteProduct {
   price: string;
   currency: string;
   image: string | null;
-  has3d: boolean;
+  canTryOn: boolean;
   isAvailable: boolean;
   store: { id: string; name: string };
 }
@@ -822,7 +851,7 @@ export interface StoreProduct {
   image: string | null;
   category: { slug: string; name: string } | null;
   stock: { total: number; reserved: number; available: number };
-  has3d: boolean;
+  canTryOn: boolean;
 }
 
 /** Batafsil — variantlar va o'lchamlar shu yerda. */

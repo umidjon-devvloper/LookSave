@@ -54,9 +54,15 @@ function TrendingCard({
           <Icon name="favorite" size={16} color={colors.text} />
         </View>
 
-        {product.has3d ? (
-          <View style={styles.badge3d}>
-            <Text style={styles.badge3dText}>3D</Text>
+        {/*
+          ⚠️ «3D» EMAS, «AI». Ilgari bu belgi 3D modeli bor mahsulotni
+          ko'rsatardi. Kiyib ko'rish endi suratdan AI orqali bo'ladi va
+          shart butunlay boshqa — modeli borlar emas, sloti mos
+          keladiganlar. Eski belgi yolg'on va'da berardi.
+        */}
+        {product.canTryOn ? (
+          <View style={styles.badgeTryon}>
+            <Text style={styles.badgeTryonText}>AI</Text>
           </View>
         ) : null}
       </View>
@@ -334,7 +340,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(10,10,15,0.55)',
   },
-  badge3d: {
+  badgeTryon: {
     position: 'absolute',
     top: spacing.sm,
     left: spacing.sm,
@@ -345,7 +351,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderAccent,
   },
-  badge3dText: { ...text.tiny, color: colors.accent },
+  badgeTryonText: { ...text.tiny, color: colors.accent },
   cardTitle: { ...text.small, color: colors.text, marginTop: spacing.sm },
   price: { ...text.price, color: colors.text, fontSize: 15, lineHeight: 20 },
 

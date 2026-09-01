@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -17,6 +16,7 @@ import { ApiError } from '../../src/api/client';
 import { Icon } from '../../src/components/Icon';
 import { Button, ErrorView, Field, Loading, Screen } from '../../src/components/ui';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
+import { goBack } from '../../src/navigation/back';
 
 /**
  * Do'kon sozlamalari.
@@ -33,7 +33,6 @@ export default function StoreSettings(): JSX.Element {
    * Aks holda sarlavha soat va batareya ustiga chiqib ketadi.
    */
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const queryClient = useQueryClient();
 
   const profile = useQuery({ queryKey: ['store', 'profile'], queryFn: getStoreProfile });
@@ -89,7 +88,7 @@ export default function StoreSettings(): JSX.Element {
           accessibilityRole="button"
           accessibilityLabel="Orqaga"
           hitSlop={10}
-          onPress={() => router.back()}
+          onPress={() => goBack('/seller')}
           style={styles.back}
         >
           <Icon name="back" size={20} color={colors.text} />

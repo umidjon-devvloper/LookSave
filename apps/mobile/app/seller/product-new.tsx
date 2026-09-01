@@ -26,6 +26,7 @@ import { ApiError } from '../../src/api/client';
 import { Icon } from '../../src/components/Icon';
 import { Button, Field, Screen } from '../../src/components/ui';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
+import { goBack } from '../../src/navigation/back';
 
 /**
  * Yangi mahsulot.
@@ -199,7 +200,7 @@ export default function NewProduct(): JSX.Element {
           accessibilityRole="button"
           accessibilityLabel="Orqaga"
           hitSlop={10}
-          onPress={() => router.back()}
+          onPress={() => goBack('/seller/products')}
           style={styles.back}
         >
           <Icon name="back" size={20} color={colors.text} />

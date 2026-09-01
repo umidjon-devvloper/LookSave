@@ -90,9 +90,11 @@ function AppShell(): JSX.Element {
           {/* Rasm status bar ostiga chiqadi — sahifa o'z tugmalarini chizadi */}
           <Stack.Screen name="product/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="store/[id]" options={{ title: '' }} />
-          <Stack.Screen name="checkout" options={{ title: t.order.title }} />
+          {/* Checkout'da o'z sarlavhasi bor */}
+          <Stack.Screen name="checkout" options={{ headerShown: false }} />
           <Stack.Screen name="order/[id]" options={{ title: t.order.title }} />
-          <Stack.Screen name="orders" options={{ title: t.order.myOrders }} />
+          {/* Buyurtmalarda o'z sarlavhasi bor */}
+          <Stack.Screen name="orders" options={{ headerShown: false }} />
           <Stack.Screen name="favorites" options={{ title: 'Sevimlilar' }} />
           <Stack.Screen name="looks" options={{ title: 'Komplektlarim' }} />
           {/* Katalog va kolleksiyada o'z sarlavhasi bor (orqaga, nom, savat) */}

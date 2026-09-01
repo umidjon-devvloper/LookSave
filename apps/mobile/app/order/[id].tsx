@@ -9,6 +9,7 @@ import { SignInRequired } from '../../src/components/SignInRequired';
 import { useAuthStore } from '../../src/store/authStore';
 import { money, phone as formatPhone } from '../../src/theme/format';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
+import { statusTone } from '../../src/theme/orderStatus';
 
 const STEPS = ['Yuborildi', 'Tasdiqlandi', 'Tayyor', 'Topshirildi'];
 
@@ -18,17 +19,6 @@ const STEP_INDEX: Record<string, number> = {
   confirmed: 1,
   ready: 2,
   completed: 3,
-};
-
-const STATUS_TONE: Record<string, string> = {
-  new: colors.warning,
-  seen: colors.warning,
-  confirmed: colors.success,
-  ready: colors.success,
-  completed: colors.textMuted,
-  rejected: colors.danger,
-  cancelled: colors.textMuted,
-  expired: colors.danger,
 };
 
 function remaining(expiresAt: string): string {
@@ -56,7 +46,7 @@ function Progress({ status }: { status: string }): JSX.Element | null {
 }
 
 function StatusBanner({ order }: { order: OrderDetail }): JSX.Element {
-  const tone = STATUS_TONE[order.status] ?? colors.textMuted;
+  const tone = statusTone(order.status);
 
   return (
     <View style={[styles.banner, { borderColor: tone }]}>

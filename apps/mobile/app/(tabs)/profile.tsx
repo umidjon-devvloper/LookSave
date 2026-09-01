@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRef } from 'react';
@@ -142,15 +141,15 @@ export default function Profile(): JSX.Element {
           useNativeDriver: true,
         })}
       >
-        {/* Sarlavha kartasi — surat, ism va uchta raqam */}
-        <View style={[styles.header, { paddingTop: insets.top + spacing.lg }]}>
-          <LinearGradient
-            colors={['rgba(76,42,158,0.35)', 'rgba(10,10,15,0)']}
-            start={{ x: 0.5, y: 0 }}
-            end={{ x: 0.5, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
+        {/*
+          Sarlavha kartasi — surat, ism va uchta raqam.
 
+          ⚠️ ILGARI ORQASIDA BINAFSHA GRADIENT BOR EDI — tepadan pastga
+          so'nib tushadigan. Mijoz uni olib tashlashni so'radi: ekran
+          tepasi «xira dog'» bo'lib ko'rinardi. Endi fon toza, urg'u
+          faqat matn va raqamlarda.
+        */}
+        <View style={[styles.header, { paddingTop: insets.top + spacing.lg }]}>
           {/*
             Avatar CHAPDA, ism va holat o'ngda. Ilgari hammasi markazda
             ustma-ust turardi va tepa blok ekranning uchdan birini

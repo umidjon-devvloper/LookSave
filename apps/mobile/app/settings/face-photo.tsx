@@ -9,6 +9,7 @@ import { SignInRequired } from '../../src/components/SignInRequired';
 import { Button, ErrorView, Loading } from '../../src/components/ui';
 import { useAuthStore } from '../../src/store/authStore';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
+import { goBack } from '../../src/navigation/back';
 
 /**
  * Yuz surati — ko'rish va o'chirish.
@@ -126,7 +127,7 @@ export default function FacePhoto(): JSX.Element {
             }
           />
 
-          <Pressable onPress={() => router.back()} style={styles.back}>
+          <Pressable onPress={() => goBack('/profile')} style={styles.back}>
             <Text style={styles.backText}>Orqaga</Text>
           </Pressable>
         </>

@@ -19,6 +19,7 @@ import { useAuthStore } from '../src/store/authStore';
 import { useLocationStore } from '../src/store/locationStore';
 import { distance, money } from '../src/theme/format';
 import { colors, radius, spacing, text } from '../src/theme/tokens';
+import { goBack } from '../src/navigation/back';
 
 /** Yorliqlar tarjimadan olinadi — avval o'zbekcha qatorlar kodga yozib qo'yilgan edi. */
 const SORTS: ProductSort[] = ['nearest', 'popular', 'newest', 'priceAsc', 'priceDesc'];
@@ -127,7 +128,7 @@ export default function Catalog(): JSX.Element {
         ...(filters.gender ? { gender: filters.gender } : {}),
         ...(filters.priceMin !== undefined ? { priceMin: filters.priceMin } : {}),
         ...(filters.priceMax !== undefined ? { priceMax: filters.priceMax } : {}),
-        ...(filters.only3d ? { only3d: true } : {}),
+        ...(filters.onlyTryon ? { onlyTryon: true } : {}),
         ...(filters.limited ? { limited: true } : {}),
         sort,
         lat: coords.lat,
@@ -154,7 +155,7 @@ export default function Catalog(): JSX.Element {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t.catalog.title}
-          onPress={() => router.back()}
+          onPress={() => goBack('/marketplace')}
           style={styles.roundButton}
         >
           <Icon name="back" size={20} color={colors.text} />
@@ -282,8 +283,8 @@ export default function Catalog(): JSX.Element {
                 <Chip
                   label={t.product.tryOn}
                   icon="tryon"
-                  active={filters.only3d}
-                  onPress={() => setFilters((f) => ({ ...f, only3d: !f.only3d }))}
+                  active={filters.onlyTryon}
+                  onPress={() => setFilters((f) => ({ ...f, onlyTryon: !f.onlyTryon }))}
                 />
               </View>
             </ScrollView>
@@ -339,9 +340,10 @@ export default function Catalog(): JSX.Element {
                 <View style={[styles.image, styles.placeholder]} />
               )}
 
-              {item.has3d ? (
-                <View style={styles.badge3d}>
-                  <Text style={styles.badge3dText}>3D</Text>
+              {/* «AI» — shu mahsulotni o'zingda ko'rish mumkin */}
+              {item.canTryOn ? (
+                <View style={styles.badgeTryon}>
+                  <Text style={styles.badgeTryonText}>AI</Text>
                 </View>
               ) : null}
 
@@ -519,7 +521,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   placeholder: { borderWidth: 1, borderColor: colors.border },
-  badge3d: {
+  badgeTryon: {
     position: 'absolute',
     top: spacing.sm,
     left: spacing.sm,
@@ -528,7 +530,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     backgroundColor: 'rgba(10,10,15,0.7)',
   },
-  badge3dText: { ...text.tiny, color: colors.text },
+  badgeTryonText: { ...text.tiny, color: colors.text },
   heart: {
     position: 'absolute',
     top: spacing.sm,

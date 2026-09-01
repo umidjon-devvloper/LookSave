@@ -29,15 +29,18 @@ import {
   type Measurements,
   type UserAvatar,
 } from '../../src/api/endpoints';
+import { ApiError } from '../../src/api/client';
 import { AvatarBuilding } from '../../src/components/ai/AvatarBuilding';
 import { Icon, type IconName } from '../../src/components/Icon';
 import { distanceMeters } from '../../src/map/distance';
+import { averageBrightness, MIN_BRIGHTNESS } from '../../src/photo/brightness';
 import { Button, ErrorView, Field, Loading } from '../../src/components/ui';
 import { useAuthStore } from '../../src/store/authStore';
 import { SignInRequired } from '../../src/components/SignInRequired';
 import { useAiFlowStore } from '../../src/store/aiFlowStore';
 import { useLocationStore } from '../../src/store/locationStore';
 import { colors, fonts, radius, spacing, text } from '../../src/theme/tokens';
+import { goBack as leaveWizard } from '../../src/navigation/back';
 
 /**
  * Avatar yasash oqimi — bitta ekran, ichida qadamlar.
@@ -61,20 +64,26 @@ type StepKey = 'gender' | 'body' | 'shoe' | 'store' | 'face' | 'done';
 /**
  * Qadam tartibi.
  *
- * ⚠️ YUZ SKANERI OXIRIDA. Ilgari u ikkinchi qadam edi va oqim boshida
- * kamerani so'rardi — foydalanuvchi hali ilova nima qilishini tushunmasdan
- * turib ruxsat berishi kerak bo'lardi. Bunda rad etish ehtimoli yuqori.
+ * ⚠️ YUZ SKANERI BIRINCHI — MAKETDAGIDEK. Ilgari u OXIRIDA edi va sabab
+ * yozib qo'yilgan edi: oqim boshida kamera so'ralsa, foydalanuvchi ilova
+ * nima qilishini tushunmasdan ruxsat berishi kerak bo'ladi va rad etish
+ * ehtimoli yuqori.
  *
- * Oxirida esa avatar deyarli tayyor: jins, o'lchamlar va do'kon tanlangan.
- * Foydalanuvchi nima uchun surat kerakligini ko'rib turadi va bu so'rovni
- * qabul qilishi osonroq.
+ * Bu xavf yo'qolgani yo'q — u ochiq qabul qilindi. Sabab: yuz skaneri
+ * butun oqimning MA'NOSI. Foydalanuvchi «o'zini kiyintirish» uchun kelgan
+ * va birinchi ko'radigan narsa aynan shu bo'lishi kerak. O'lchamlardan
+ * boshlansa oqim so'rovnomaga o'xshab qoladi.
+ *
+ * Xavfni yumshatish uchun `FaceStep` ichida kamera so'ralishidan OLDIN
+ * nima uchun kerakligi tushuntiriladi (`FACE_CONSENT`) — ya'ni ruxsat
+ * so'rovi baribir izohsiz kelmaydi.
  */
 const STEPS: Array<{ key: StepKey; label: string; icon: IconName }> = [
+  { key: 'face', label: 'Yuz', icon: 'camera' },
   { key: 'gender', label: 'Jins', icon: 'profile' },
   { key: 'body', label: 'Tana', icon: 'slotTop' },
   { key: 'shoe', label: 'Oyoq', icon: 'slotFeet' },
   { key: 'store', label: "Do'kon", icon: 'stores' },
-  { key: 'face', label: 'Yuz', icon: 'camera' },
   { key: 'done', label: 'Tayyor', icon: 'authentic' },
 ];
 
@@ -177,7 +186,7 @@ export default function AvatarFlow(): JSX.Element {
   const setStore = useAiFlowStore((state) => state.setStore);
   const storeId = useAiFlowStore((state) => state.storeId);
 
-  const [step, setStep] = useState<StepKey>('gender');
+  const [step, setStep] = useState<StepKey>('face');
   const [gender, setGender] = useState<'male' | 'female' | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -229,14 +238,20 @@ export default function AvatarFlow(): JSX.Element {
     return <ErrorView message="Profil yuklanmadi" onRetry={() => void profile.refetch()} />;
   }
 
+  /*
+   * ⚠️ IKKI XIL «ORQAGA». Bu funksiya sehrgar QADAMLARI bo'ylab
+   * orqaga yuradi; birinchi qadamda esa ekranning o'zidan chiqadi.
+   * Ikkinchisi `leaveWizard` — u tarix bo'sh bo'lsa bosh sahifaga
+   * o'tadi (ilova deep link bilan ochilgan bo'lishi mumkin).
+   */
   const goBack = (): void => {
     const index = STEPS.findIndex((item) => item.key === step);
     setError(null);
     if (index <= 0) {
-      router.back();
+      leaveWizard('/(tabs)');
       return;
     }
-    setStep(STEPS[index - 1]?.key ?? 'gender');
+    setStep(STEPS[index - 1]?.key ?? 'face');
   };
 
   const goNext = (): void => {
@@ -392,6 +407,7 @@ export default function AvatarFlow(): JSX.Element {
             // Kiyintirish qadamlariga o'tamiz. `replace` — avatar yasash
             // tugagan, unga orqaga qaytishning ma'nosi yo'q
             onStart={() => router.replace('/ai/fitting')}
+            onRescan={() => setStep('face')}
           />
         ) : null}
       </ScrollView>
@@ -647,6 +663,28 @@ function FaceStep({
         format: SaveFormat.JPEG,
       });
 
+      /*
+       * ⚠️ YORUG'LIK TEKSHIRUVI — YUKLASHDAN OLDIN.
+       *
+       * Server yuz nuqtalarini qorong'i suratdan topa olmaydi: bazadagi
+       * ikki sinov selfisi o'lchandi, biri 30/255, ikkinchisi 3/255 —
+       * ikkinchisida yuz umuman ko'rinmaydi. Bunday surat jimgina
+       * yuklanadi, `face_morphs` bo'sh qoladi va foydalanuvchi
+       * skanerlaganini ko'rgani uchun avatar o'zgarishini kutadi.
+       *
+       * Bu yerda u darhol qayta suratga oladi.
+       */
+      stage = 'yorug`likni tekshirish';
+      const brightness = await averageBrightness(upright.uri);
+
+      if (brightness !== null && brightness < MIN_BRIGHTNESS) {
+        onError(
+          'Juda qorong‘i — yuz tanilmaydi. Yorug‘ joyga o‘ting yoki chiroqni yoqing va qayta urinib ko‘ring.',
+        );
+        setScanning(false);
+        return;
+      }
+
       stage = 'yuklash';
       // ⚠️ `face` — shaxsiy kesh. `avatar` bo'lsa surat ochiq va bir yil
       // keshlanadigan qoidada saqlanardi (12-tz.md D-43)
@@ -880,7 +918,7 @@ function StoreStep({
             <StoreRow
               key={store.id}
               name={store.name}
-              meta={`${(store.distanceM / 1000).toFixed(1)} km · ${store.product3dCount} ta 3D model`}
+              meta={`${(store.distanceM / 1000).toFixed(1)} km · ${store.tryonCount} ta AI kiyim`}
               selected={selectedId === store.id}
               onPress={() => onSelect(store.id, store.name)}
             />
@@ -925,7 +963,14 @@ function StoreStep({
  * ⚠️ TAYYOR AVATAR QAYTA YASALMAYDI: server manba hashini solishtiradi.
  * Shuning uchun bu ekranga qayta kirish xavfsiz.
  */
-function DoneStep({ onStart }: { onStart: () => void }): JSX.Element {
+function DoneStep({
+  onStart,
+  onRescan,
+}: {
+  onStart: () => void;
+  /** Yuz skaneri qadamiga qaytaradi — surat bo'lmasa yagona yo'l */
+  onRescan: () => void;
+}): JSX.Element {
   const storeName = useAiFlowStore((state) => state.storeName);
   const occasion = useAiFlowStore((state) => state.occasion);
   const style = useAiFlowStore((state) => state.style);
@@ -1010,6 +1055,45 @@ function DoneStep({ onStart }: { onStart: () => void }): JSX.Element {
    * biladi. Shuning uchun u birinchi.
    */
   const status = avatar.data?.status ?? startAvatar.data?.status ?? 'none';
+
+  /*
+   * ⚠️ SO'ROVNING XATOSI ALOHIDA TEKSHIRILADI.
+   *
+   * Ilgari faqat `startAvatar.data` o'qilardi. So'rov RAD ETILGANDA esa
+   * `data` bo'sh qoladi va holat `none` bo'lib turadi — quyidagi shart
+   * uni «hali ishlayapti» deb tushunardi va ekran ABADIY aylanardi.
+   *
+   * Qurilmada ko'rildi: yuz skaneri o'tkazib yuborilgan, server
+   * «Avval yuzingizni skaner qiling» deb rad etgan, foydalanuvchi esa
+   * besh daqiqa aylanayotgan doiraga qarab o'tirgan. Chiqish yo'li ham
+   * yo'q edi — bu sehrgarning OXIRGI qadami.
+   */
+  const startError = startAvatar.error;
+
+  if (startError) {
+    const message = startError instanceof ApiError ? startError.message : 'Avatar yasalmadi';
+    /*
+     * Yuz surati yo'qligi — eng ko'p uchraydigan sabab va u tuzatiladi.
+     * Shuning uchun bu holatda skanerga qaytish tugmasi ko'rsatiladi.
+     */
+    const needsFace = !profile.data?.faceTextureUrl;
+
+    return (
+      <View style={styles.card}>
+        <View style={styles.doneIcon}>
+          <Icon name="camera" size={32} color={colors.accent} />
+        </View>
+        <Text style={styles.cardTitle}>{needsFace ? 'Yuz surati kerak' : 'Avatar yasalmadi'}</Text>
+        <Text style={styles.cardHint}>{message}</Text>
+        {needsFace ? (
+          <Button title="Yuzni skaner qilish" onPress={onRescan} />
+        ) : (
+          <Button title="Qaytadan urinish" onPress={() => startAvatar.mutate()} />
+        )}
+        <RealPhotoLink />
+      </View>
+    );
+  }
 
   if (status === 'processing' || status === 'none') {
     return <AvatarBuilding faceUrl={profile.data?.faceTextureUrl ?? null} />;
