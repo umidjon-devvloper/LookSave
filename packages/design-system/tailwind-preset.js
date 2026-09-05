@@ -27,6 +27,7 @@ const TOKENS = {
   '--panel': '253 26% 7%' /* #0F0D16 — panel foni, saytnikidan bir zina ochiq */,
   '--surface': '252 22% 9%' /* #14121C */,
   '--surface-2': '252 23% 13%' /* #1C1928 */,
+  '--surface-3': '254 26% 17%' /* #252036 — hover / bosilgan holat */,
 
   '--card': '252 22% 9%' /* #14121C */,
   '--card-foreground': '0 0% 100%',
@@ -55,8 +56,26 @@ const TOKENS = {
   '--warning': '38 92% 50%' /* #F59E0B */,
   '--limited': '46 92% 53%' /* #F5C518 — cheklangan seriya */,
 
+  /*
+   * Buyurtma holati. Qiymatlar semantik ranglarni takrorlaydi, lekin nomi
+   * boshqa — va bu ataylab: `success` «yaxshi natija», `status-confirmed`
+   * esa «do'kon tasdiqladi». Ikkisi bir kunda ajralishi mumkin
+   * (`06-dizayn.md` §2, mobil `theme/orderStatus.ts`).
+   */
+  '--status-waiting': '38 92% 50%' /* #F59E0B — harakat kutilmoqda */,
+  '--status-confirmed': '142 71% 45%' /* #22C55E */,
+  '--status-rejected': '0 84% 60%' /* #EF4444 */,
+  '--status-done': '253 13% 42%' /* #635D78 — e'tibor talab qilmaydi */,
+
   '--border': '255 24% 16%' /* #241F33 */,
   '--border-strong': '255 27% 23%' /* #332B4A */,
+  /*
+   * ⚠️ `--ring` (#8B5CF6) EMAS. Mobil `tokens.ts` da faol maydonning
+   * chegarasi #7C3AED — bir zina to'qroq binafsha. Fokus halqasi bilan
+   * bir xil qilib qo'yilsa, ikki xil holat (fokus va tanlangan) bir xil
+   * ko'rinadi va maydon «yonib turgandek» tuyuladi.
+   */
+  '--border-accent': '262 83% 58%' /* #7C3AED — faol / tanlangan */,
   '--input': '255 24% 16%',
   '--ring': '258 90% 66%',
 
@@ -114,11 +133,26 @@ export default {
         panel: v('--panel'),
         surface: v('--surface'),
         surface2: v('--surface-2'),
+        surface3: v('--surface-3'),
+        /*
+         * `primarySoft` — mobil `tokens.ts` dagi rgba(139,92,246,0.14).
+         * `bg-primary/15` YARAMAYDI: 0.15 ≠ 0.14 va ikki platformada
+         * yumshoq fon boshqacha chiqadi. Shaffoflik shu yerda qotirilgani
+         * uchun `<alpha-value>` ishlatilmaydi.
+         */
+        primarySoft: 'hsl(var(--primary) / 0.14)',
         borderStrong: v('--border-strong'),
+        borderAccent: v('--border-accent'),
         dim: v('--dim'),
         success: v('--success'),
         warning: v('--warning'),
         limited: v('--limited'),
+        status: {
+          waiting: v('--status-waiting'),
+          confirmed: v('--status-confirmed'),
+          rejected: v('--status-rejected'),
+          done: v('--status-done'),
+        },
 
         chart: {
           1: v('--chart-1'),
@@ -150,7 +184,89 @@ export default {
         sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
       },
 
-      letterSpacing: { label: '0.1em', wordmark: '0.32em' },
+      /*
+       * Tipografika shkalasi — `06-dizayn.md` §3 va mobil `theme/tokens.ts`
+       * dan. Nomlar ikki platformada bir xil: `text-h2` saytda ham,
+       * ilovada ham o'sha sarlavha.
+       *
+       * ⚠️ NEGA `clamp`: ilovada o'lcham qat'iy (telefon eni ma'lum),
+       * saytda esa 320px dan 2560px gacha. Pastki chegara — ilovadagi
+       * qiymat, ya'ni telefon brauzerida sayt va ilova bir xil o'lchamda
+       * yoziladi. Yuqori chegara — katta ekran uchun.
+       *
+       * ⚠️ NEGA `em`, `px` EMAS: ilovada `letterSpacing` piksel
+       * (`label` 11px shriftda 1.6px). Web'da `px` bersak, `clamp` bilan
+       * shrift o'sganda oraliq o'smaydi va sarlavha yoyilib ketadi.
+       * 1.6 / 11 = 0.145em — nisbat saqlanadi.
+       */
+      fontSize: {
+        /*
+         * `display` — faqat bosh sahifa hero'si uchun, ilovada yo'q.
+         *
+         * ⚠️ NEGA `hero` YETMADI: uning yuqori chegarasi 4.5rem va u
+         * ilovadagi 40px dan kelib chiqqan. 1440px monitorda esa bu
+         * sarlavha kichkina bo'lib qoladi — premium moda saytida hero
+         * matni ekranni egallashi kerak. `hero` boshqa sahifalarda
+         * (katalog, mahsulot) o'z o'rnida qoladi.
+         */
+        display: ['clamp(3rem, 7.5vw, 7rem)', { lineHeight: '0.98', letterSpacing: '-0.035em' }],
+        hero: ['clamp(2.5rem, 6vw, 4.5rem)', { lineHeight: '1.15', letterSpacing: '-0.02em' }],
+        h1: ['clamp(1.875rem, 3vw, 3rem)', { lineHeight: '1.2', letterSpacing: '-0.0167em' }],
+        h2: ['1.375rem', { lineHeight: '1.273', letterSpacing: '-0.0136em' }],
+        h3: ['1.0625rem', { lineHeight: '1.412' }],
+        /*
+         * `lead` — ilovada YO'Q, faqat saytda. Marketing bo'limining
+         * kirish xatboshisi: ilovada bunday matn umuman uchramaydi
+         * (u yerda hamma narsa qisqa), saytda esa har bo'lim shunday
+         * boshlanadi. Shkalaga kiritilgani uchun u ham token, ixtiyoriy
+         * `text-lg` emas.
+         */
+        lead: ['1.125rem', { lineHeight: '1.62' }],
+        body: ['0.9375rem', { lineHeight: '1.467' }],
+        small: ['0.8125rem', { lineHeight: '1.385' }],
+        tiny: ['0.6875rem', { lineHeight: '1.273' }],
+        label: ['0.6875rem', { lineHeight: '1.273', letterSpacing: '0.145em' }],
+        price: ['1.125rem', { lineHeight: '1.333' }],
+        /* Logotip: «L O O K S A V E» — 14px, oraliq 4.5px = 0.32em */
+        wordmark: ['0.875rem', { lineHeight: '1.2', letterSpacing: '0.32em' }],
+      },
+
+      /*
+       * ⚠️ `label` 0.1em EDI — bu 11px shriftda 1.1px beradi, ilovada esa
+       * 1.6px. Farq 45%: «TRENDING NOW» ikki platformada boshqacha keng
+       * chiqardi va sabab hech kimga ko'rinmasdi (12-tz.md P-05).
+       */
+      letterSpacing: { label: '0.145em', wordmark: '0.32em' },
+
+      /*
+       * `control` — tugma va input balandligi. Ilovada 52px
+       * (`components/ui.tsx`), va bu raqam ikkalasida bir xil bo'lishi
+       * shart: shadcn'ning 36/40px tugmasi yonma-yon qo'yilganda darrov
+       * boshqa mahsulotdek ko'rinadi.
+       */
+      spacing: { control: '3.25rem' },
+
+      /*
+       * Asosiy tugma gradienti. Yassi bir rang «veb-sahifa tugmasi» bo'lib
+       * ko'rinadi — ikki tomonlama o'tish hajm beradi. Burchagi 135° :
+       * ilovadagi `start {0,0} → end {1,1}` shuning aynan o'zi.
+       */
+      backgroundImage: {
+        'primary-grad': 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-dim)))',
+      },
+
+      /* Ilovadagi `Animated.spring` ning web muqobili */
+      transitionTimingFunction: { spring: 'cubic-bezier(0.16, 1, 0.3, 1)' },
+
+      /*
+       * Ikkalasi ham mobil `components/ui.tsx` dan aniq qiymatlar:
+       * bosishda 0.97 ga kichrayish va o'chiq tugmaning 0.45 shaffofligi.
+       * Tailwind shkalasida bu raqamlar yo'q — qo'shilmasa har chaqiruvda
+       * `scale-[0.97]` yozishga to'g'ri kelardi va bir kun kimdir 0.95 deb
+       * yozib qo'yardi.
+       */
+      scale: { 97: '.97' },
+      opacity: { 45: '.45' },
 
       boxShadow: {
         glow: '0 0 60px -12px hsl(var(--primary) / 0.55)',
@@ -166,6 +282,16 @@ export default {
           '0%, 100%': { opacity: '0.35', transform: 'scale(0.97)' },
           '50%': { opacity: '0.75', transform: 'scale(1.03)' },
         },
+        /*
+         * Skeleton pulsi — mobil `Skeleton.tsx` bilan bir xil: 0.45 → 0.85,
+         * har tomonga 900 ms. Bitta nom ostida turgani uchun sahifadagi
+         * barcha skeletonlar bir maromda yonadi; har biri o'z vaqtida
+         * yonsa ro'yxat titrayotgandek ko'rinadi.
+         */
+        'pulse-soft': {
+          '0%, 100%': { opacity: '0.45' },
+          '50%': { opacity: '0.85' },
+        },
         'accordion-down': {
           from: { height: '0' },
           to: { height: 'var(--radix-accordion-content-height)' },
@@ -178,6 +304,7 @@ export default {
       animation: {
         rise: 'rise 700ms cubic-bezier(0.16, 1, 0.3, 1) both',
         breathe: 'breathe 5.2s ease-in-out infinite',
+        'pulse-soft': 'pulse-soft 1.8s ease-in-out infinite',
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
       },
