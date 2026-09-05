@@ -41,8 +41,9 @@ Deckda bu yo'q edi, lekin eng kuchli tomon shu: **geolokatsiya + mahalliy do'kon
 | 10 | `10-roadmap.md` | Fazalar, sprintlar, milestone'lar, risklar | ✅ |
 | 11 | `11-deck-audit.md` | Deck ↔ kod solishtiruvi, nomuvofiqliklar | ✅ |
 | 12 | `12-tz.md` | Kamchiliklar reyestri (D-01…D-40), ish paketlari (IP-00…IP-10) | ✅ |
-| 13 | `13-sayt.md` | `apps/web` spetsifikatsiyasi | ⏳ IP-05 |
+| 13 | `13-sayt.md` | Sayt: sahifalar, dizayn tengligi, 4 til + RTL, SEO, relizlar | ✅ |
 | 14 | `14-test.md` | Lokal ishga tushirish, simulyator, qurilma, smoke ro'yxati | ✅ |
+| 15 | `15-sayt-dizayn.md` | Sayt dizayni: «premium» ta'rifi, sahifa-sahifa maket, qabul ro'yxati | ✅ |
 | 11 | `11-shartnoma.md` | Mijoz uchun ko'lam, narx, istisnolar | ⏳ |
 
 ---

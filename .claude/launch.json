@@ -2,8 +2,14 @@
   "version": "0.0.1",
   "_comment": [
     "Brauzerda ochiladigan uchta ilova (docs/12-tz.md, IP-06).",
-    "Uchalasi bir vaqtda ishlashi kerak — portlar shuning uchun qattiq belgilangan",
+    "Uchalasi bir vaqtda ishlashi kerak — portlar shuning uchun belgilangan",
     "va vite.config.ts dagi qiymatlar bilan bir xil.",
+    "",
+    "`autoPort` — port band bo'lsa boshqasini olishga ruxsat. Sayt uchun bu",
+    "xavfsiz: u /v1 ni proksilaydi (CORS ishlatilmaydi) va tashqaridan",
+    "qaytadigan manzili yo'q. Panellarda yo'q, chunki apps/api/.env dagi",
+    "CORS_ORIGINS aynan 5173 va 5174 ni sanaydi — port o'zgarsa ular",
+    "to'g'ridan-to'g'ri so'rovda CORS xatosiga uchraydi.",
     "",
     "Har biri /v1 ni http://127.0.0.1:3000 ga proksilaydi, ya'ni CORS kerak emas.",
     "Avval backendni ko'taring:  ./scripts/dev-up.sh",
@@ -16,7 +22,8 @@
       "name": "looksave-web",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--workspace", "@looksave/web"],
-      "port": 5175
+      "port": 5175,
+      "autoPort": true
     },
     {
       "name": "looksave-store-panel",

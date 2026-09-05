@@ -9,6 +9,22 @@ export default tseslint.config(
       '**/build/**',
       '**/coverage/**',
       '**/.expo/**',
+      /*
+       * Claude sessiyalari vaqtinchalik git worktree yaratadi
+       * (`.claude/worktrees/`). Ular loyiha kodi emas — boshqa tarmoqning
+       * nusxasi — lekin repo ichida yotgani uchun lintga tushib, `npm run
+       * check` ni yiqitib turardi. `.git/info/exclude` da bo'lgani bilan
+       * eslint uni bilmaydi.
+       */
+      '**/.claude/worktrees/**',
+      /*
+       * React Router marshrut tiplarini O'ZI yasaydi (`.react-router/types`).
+       * Ular `.gitignore` da, lekin lintga tushib turardi va 130 ta
+       * «xato» berardi — hech biri tuzatib bo'ladigan emas, chunki fayllar
+       * har `react-router typegen` da qaytadan yoziladi. Shu sabab butun
+       * `npm run check` yiqilib turardi.
+       */
+      '**/.react-router/**',
       'docs/**',
       'assets-3d/**',
       'infra/**',
@@ -50,7 +66,13 @@ export default tseslint.config(
     // Yig'ish skriptlari — Node muhitida yuguradi, brauzerda emas
     files: ['**/scripts/*.mjs', '**/*.config.mjs'],
     languageOptions: {
-      globals: { console: 'readonly', process: 'readonly', URL: 'readonly' },
+      // `fetch` — Node 18+ da global; smoke skriptlari shundan foydalanadi
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        URL: 'readonly',
+        fetch: 'readonly',
+      },
     },
   },
 

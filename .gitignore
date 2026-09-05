@@ -87,3 +87,10 @@ __pycache__/
 #   mobil: apps/mobile/scripts/sync-models.mjs   (prestart / preios)
 apps/web/public/models/
 apps/mobile/assets/models/
+
+# React Router yasaydigan marshrut tiplari
+.react-router/
+
+# MediaPipe modeli — `@vladmandic/human` ga o'tilgandan keyin ishlatilmaydi,
+# lekin 3.6 MB. Kerak bo'lsa qaytadan yuklab olinadi, gitda saqlanmaydi.
+assets-3d/generator/models/

@@ -386,6 +386,7 @@ GET /stores/nearby?lat=41.3111&lng=69.2797&radius=5000&category=shoes&limit=20
       "id": "…",
       "name": "Chilonzor Fashion",
       "logoUrl": "https://cdn…",
+      "coverUrl": "https://cdn…",
       "address": "Chilonzor tumani, Bunyodkor ko'chasi 12",
       "distanceM": 340,
       "rating": 4.6,
