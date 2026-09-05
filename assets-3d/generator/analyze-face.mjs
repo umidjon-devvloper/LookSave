@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import sharp from 'sharp';
 
+import { closeFaceDetector, faceMorphs } from './lib/faceShape.mjs';
+
 /**
  * Selfidan avatar YUZINI shaxsiylashtiradi (12-tz.md, "yuz" ishi).
  *
@@ -100,10 +102,11 @@ async function skinTone(url) {
 const pool = new pg.Pool({ connectionString: env('DATABASE_URL') });
 
 const { rows } = await pool.query(
-  `SELECT p.user_id, p.face_texture_url
+  `SELECT p.user_id, p.face_texture_url, (p.skin_tone IS NULL) AS need_tone,
+          (p.face_morphs IS NULL) AS need_shape
      FROM profiles p
     WHERE p.face_texture_url IS NOT NULL
-      AND p.skin_tone IS NULL`,
+      AND (p.skin_tone IS NULL OR p.face_morphs IS NULL)`,
 );
 
 if (rows.length === 0) {
@@ -119,19 +122,40 @@ let failed = 0;
 
 for (const row of rows) {
   try {
-    const tone = await skinTone(row.face_texture_url);
-    if (!tone) {
-      console.log(`  ⚠️ ${row.user_id.slice(0, 8)}: ishonchli teri rangi topilmadi`);
+    const who = row.user_id.slice(0, 8);
+    const tone = row.need_tone ? await skinTone(row.face_texture_url) : null;
+
+    /*
+     * ⚠️ SHAKL TERI RANGIDAN MUSTAQIL. Qorong'i selfida yuz nuqtalari
+     * topilmasligi mumkin, teri rangi esa baribir chiqadi — va aksincha.
+     * Shuning uchun ikkalasi alohida yoziladi: biri bo'lmasa ikkinchisi
+     * yo'qolmaydi.
+     */
+    const shape = row.need_shape ? await faceMorphs(row.face_texture_url) : null;
+
+    if (!tone && !shape) {
+      console.log(`  ⚠️ ${who}: na teri rangi, na yuz nuqtalari topildi`);
       continue;
     }
 
-    console.log(`  ${APPLY ? '↑' : '·'} ${row.user_id.slice(0, 8)} → teri ${tone}`);
+    const parts = [];
+    if (tone) parts.push(`teri ${tone}`);
+    if (shape) parts.push(`shakl (${Object.keys(shape).length} morf)`);
+    console.log(`  ${APPLY ? '↑' : '·'} ${who} → ${parts.join(' · ')}`);
 
     if (APPLY) {
-      await pool.query(`UPDATE profiles SET skin_tone = $2 WHERE user_id = $1`, [
-        row.user_id,
-        tone,
-      ]);
+      if (tone) {
+        await pool.query(`UPDATE profiles SET skin_tone = $2 WHERE user_id = $1`, [
+          row.user_id,
+          tone,
+        ]);
+      }
+      if (shape) {
+        await pool.query(`UPDATE profiles SET face_morphs = $2::jsonb WHERE user_id = $1`, [
+          row.user_id,
+          JSON.stringify(shape),
+        ]);
+      }
     }
     done += 1;
   } catch (error) {
@@ -140,8 +164,9 @@ for (const row of rows) {
   }
 }
 
+closeFaceDetector();
 await pool.end();
 console.log(
-  `\n${APPLY ? '✅' : 'Reja:'} ${done} ta teri rangi${failed ? `, ${failed} ta xato` : ''}` +
+  `\n${APPLY ? '✅' : 'Reja:'} ${done} ta profil${failed ? `, ${failed} ta xato` : ''}` +
     (APPLY ? '' : '\nBajarish: node assets-3d/generator/analyze-face.mjs --apply'),
 );

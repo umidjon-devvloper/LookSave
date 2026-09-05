@@ -52,5 +52,11 @@
     "tsx": "^4.23.12",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.18.1"
+  },
+  "dependencies": {
+    "@tensorflow/tfjs-backend-wasm": "^4.22.0",
+    "@tensorflow/tfjs-converter": "^4.22.0",
+    "@tensorflow/tfjs-core": "^4.22.0",
+    "@vladmandic/human": "^3.3.6"
   }
 }
