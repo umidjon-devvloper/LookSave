@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { cursorSchema, uuidSchema } from './common';
 
-/** 3D avatarda kiyim qaysi joyga tushadi (02-database: categories.slot). */
+/** Kiyim tanada qaysi joyga tushadi (02-database: categories.slot). */
 export const slotSchema = z.enum([
   'head',
   'face',
@@ -16,6 +16,25 @@ export const slotSchema = z.enum([
 ]);
 
 export type Slot = z.output<typeof slotSchema>;
+
+/**
+ * AI kiyintirish qaysi slotlarda ishlaydi.
+ *
+ * ⚠️ MODEL FAQAT KIYIM UCHUN O'QITILGAN. Oyoq kiyim, soat, sumka va bosh
+ * kiyimda natija ishonchsiz chiqadi — ularni AI'ga yubormaymiz va oddiy
+ * mahsulot suratini ko'rsatamiz. Pul ham, foydalanuvchining ishonchi ham
+ * behuda ketmaydi.
+ *
+ * ⚠️ NEGA SHU YERDA, ILOVADA EMAS. Ro'yxat ilgari faqat mobil tomonda
+ * edi, server esa uni bilmasdi — natijada katalogdagi «kiyib ko'rish
+ * mumkin» belgisi va serverning haqiqiy qarori bir-biridan ajralib
+ * ketishi mumkin edi. Endi manba bitta va ikkala tomon shundan o'qiydi.
+ */
+export const AI_TRYON_SLOTS: readonly Slot[] = ['top', 'outer', 'bottom'];
+
+export function supportsAiTryon(slot: string): boolean {
+  return (AI_TRYON_SLOTS as readonly string[]).includes(slot);
+}
 
 /**
  * Svayp uchun ro'yxat. Ilova buni butunlay xotirada saqlaydi va
@@ -41,6 +60,22 @@ export const lookItemSchema = z.object({
   slot: slotSchema,
   variantId: uuidSchema,
   size: z.string().trim().min(1).max(10).optional(),
+});
+
+/**
+ * AI Designer so'rovi — tadbir, uslub va byudjet.
+ *
+ * ⚠️ HAMMASI IXTIYORIY EMAS: tadbir va uslub SHART, chunki ularsiz
+ * taklif tasodifiy ro'yxatga aylanadi va «AI siz uchun tanladi» degan
+ * va'da bo'sh bo'lib qoladi.
+ */
+export const suggestLookSchema = z.object({
+  occasion: z.string().trim().min(1).max(40),
+  style: z.string().trim().min(1).max(40),
+  gender: z.enum(['male', 'female', 'unisex']).optional(),
+  // Umumiy narx chegarasi. Pul butun songda — tiyin yo'q
+  budget: z.coerce.number().int().min(0).max(1e10).optional(),
+  count: z.coerce.number().int().min(1).max(5).default(3),
 });
 
 export const createLookSchema = z.object({
@@ -102,6 +137,7 @@ export const bodyPhotoSchema = z.object({
 
 export type TryonSlotQuery = z.output<typeof tryonSlotQuerySchema>;
 export type CreateLookInput = z.output<typeof createLookSchema>;
+export type SuggestLookInput = z.output<typeof suggestLookSchema>;
 export type TryonEventInput = z.output<typeof tryonEventSchema>;
 export type RenderRequestInput = z.output<typeof renderRequestSchema>;
 export type BodyPhotoInput = z.output<typeof bodyPhotoSchema>;

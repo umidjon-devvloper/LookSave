@@ -18,7 +18,13 @@ export const nearbyQuerySchema = z.object({
   // 50 km dan kattasi butun shaharni qamrab oladi va so'rov qimmatlashadi
   radius: z.coerce.number().int().min(100).max(50_000).default(5_000),
   category: z.string().min(1).max(64).optional(),
-  only3d: boolQuery,
+  /**
+   * ⚠️ ILGARI `only3d` EDI — «3D modeli bor mahsulotlar». 3D olib
+   * tashlangandan keyin filtr o'z ma'nosini yo'qotdi: foydalanuvchi uni
+   * «kiyib ko'rsa bo'ladiganlar» deb tushunardi, baza esa butunlay
+   * boshqa ustunni tekshirardi.
+   */
+  onlyTryon: boolQuery,
   openNow: boolQuery,
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
@@ -50,7 +56,7 @@ export const productsQuerySchema = z
     storeId: uuidSchema.optional(),
     priceMin: z.coerce.number().min(0).max(1e10).optional(),
     priceMax: z.coerce.number().min(0).max(1e10).optional(),
-    only3d: boolQuery,
+    onlyTryon: boolQuery,
     /** Deckning 07-slaydidagi LIMITED kolleksiyasi */
     limited: boolQuery,
     q: z.string().trim().min(2).max(64).optional(),

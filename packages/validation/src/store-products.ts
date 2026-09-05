@@ -53,7 +53,6 @@ export const createProductSchema = z
     isLimited: z.boolean().default(false),
     status: productStatusSchema.default('draft'),
     variants: z.array(variantInputSchema).min(1).max(20),
-    request3d: z.boolean().default(false),
   })
   .refine(
     (value) => value.oldPrice === undefined || Number(value.oldPrice) > Number(value.basePrice),
