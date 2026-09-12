@@ -15,9 +15,18 @@
     "Avval backendni ko'taring:  ./scripts/dev-up.sh",
     "",
     "Mobil ilova bu yerda YO'Q — u brauzerda ochilmaydi.",
-    "Simulyator uchun: ./scripts/sim.sh"
+    "Simulyator uchun: ./scripts/sim.sh",
+    "",
+    "`looksave-api` — backendning o'zi (3000). Baza avval tayyor bo'lsin:",
+    "./scripts/dev-up.sh --no-api  (migratsiya + seed), keyin shu konfiguratsiya."
   ],
   "configurations": [
+    {
+      "name": "looksave-api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--workspace", "@looksave/api"],
+      "port": 3000
+    },
     {
       "name": "looksave-web",
       "runtimeExecutable": "npm",
