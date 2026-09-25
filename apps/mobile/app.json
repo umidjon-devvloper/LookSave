@@ -20,7 +20,7 @@
         "NSLocationWhenInUseUsageDescription": "Yaqin atrofdagi do'konlarni ko'rsatish uchun",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "15"
+      "buildNumber": "20"
     },
     "android": {
       "package": "com.looksave.looksave",
@@ -63,7 +63,7 @@
     "extra": {
       "apiUrl": null,
       "eas": {
-        "projectId": "5503e8f4-4f2a-4e86-8ff3-8ab012c74531"
+        "projectId": "8573157d-f4a2-47e9-b708-0bbc0cea5519"
       }
     },
     "icon": "./assets/logo.png",
@@ -76,7 +76,8 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/5503e8f4-4f2a-4e86-8ff3-8ab012c74531"
-    }
+      "url": "https://u.expo.dev/8573157d-f4a2-47e9-b708-0bbc0cea5519"
+    },
+    "owner": "umidjon_looksave_developer"
   }
 }
