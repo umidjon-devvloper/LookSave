@@ -91,6 +91,7 @@ export default function TryOnPage({ loaderData }: Route.ComponentProps): JSX.Ele
     current,
     shown,
     worn,
+    wornFront,
     layerBase,
     stripBase,
     renderIndex,
@@ -194,11 +195,17 @@ export default function TryOnPage({ loaderData }: Route.ComponentProps): JSX.Ele
    * ⚠️ SAHNADA JORIY TANLOV TURADI, komplektning eng tepasi emas.
    * Foydalanuvchi futbolkalar tabida turganda ular KURTKASIZ
    * ko'rsatiladi — u aynan futbolkani tanlayapti.
+   *
+   * ⚠️ YON/ORQADA `wornFront` ZAXIRA (2026-09-26). Server operator faqat
+   * OLD burchakni chizadi (yon/orqa qo'shimcha varaqdan kesiladi); yon
+   * renderi hali tayyor bo'lmasa o'sha kiyimning OLD suratini ko'rsatamiz
+   * — hech qachon boshqa kiyim (past qatlam) chalg'itmaydi.
    */
   const stageImage =
     (shown?.status === 'ready' ? (shown.imageUrl ?? shown.cutoutUrl) : null) ??
     layerBase?.imageUrl ??
     worn?.imageUrl ??
+    wornFront?.imageUrl ??
     baseImage;
 
   const sizes = current?.sizes ?? [];

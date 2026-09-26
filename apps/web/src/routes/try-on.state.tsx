@@ -6,6 +6,8 @@ import {
   slotForCategory,
   type OutfitLayer,
 } from '@looksave/validation';
+// Yon/orqa uchun FRONT zanjiri kerak — server operator 3 panelli varaqni
+// qo'shimcha burchak yozuvlariga FRONT bazasi bilan yozadi (mobil bilan bir xil).
 
 import {
   getAvatar,
@@ -73,6 +75,15 @@ export interface TryonState {
   garments: Garment[];
   outfitRenders: TryonRender[];
   stripRenders: TryonRender[];
+  /**
+   * FRONT burchak renderlari.
+   *
+   * ⚠️ YON/ORQA UCHUN. Server operator 3 panelli varaqni chizganda
+   * qo'shimcha burchak yozuvlari FRONT so'rovi bazasi bilan saqlanadi.
+   * Mijoz yon/orqada zanjirni FRONT'dan yuradi va har qatlamning shu
+   * bazadagi yon/orqa renderini izlaydi. Old burchakda bo'sh massiv.
+   */
+  frontRenders: TryonRender[];
   /** Joriy turkumdagi kiyimlar qaysi natija ustiga kiydiriladi */
   base: { baseRenderId: string | null; ready: boolean };
   error: string | null;
@@ -115,6 +126,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     garments: [],
     outfitRenders: [],
     stripRenders: [],
+    frontRenders: [],
     base: { baseRenderId: null, ready: true },
     fitSize: null,
     error: null,
@@ -229,13 +241,20 @@ export async function loader({ params, request }: Route.LoaderArgs) {
      * Komplekt natijalari `scope: 'all'` bilan olinadi — HAR asos
      * ustidagisi. Zanjirni aynan shundan tiklaymiz: qaysi qatlam
      * qaysining ustida turgani natijalarning o'zidan o'qiladi.
+     *
+     * ⚠️ YON/ORQA UCHUN FRONT RENDERLARI HAM YUKLANADI (2026-09-26).
+     * Server operator 3 panelli varaqni qo'shimcha burchak yozuvlariga
+     * FRONT bazasi bilan yozadi — mijoz zanjirni FRONT'dan yurishi kerak.
+     * Old burchakda `frontRenders` bo'sh (`outfitRenders` ning o'zi
+     * front bo'ladi).
      */
-    const [garments, outfitRenders] = await Promise.all([
+    const variantIds = outfit.map((layer) => layer.variantId);
+    const [garments, outfitRenders, frontRenders] = await Promise.all([
       getGarments({ category, storeId, size, gender: profile.gender, limit: 30 }, context.options),
-      getRenders(
-        { variantIds: outfit.map((layer) => layer.variantId), angle, scope: 'all' },
-        context.options,
-      ),
+      getRenders({ variantIds, angle, scope: 'all' }, context.options),
+      angle === 'front'
+        ? Promise.resolve([] as TryonRender[])
+        : getRenders({ variantIds, angle: 'front', scope: 'all' }, context.options),
     ]);
 
     /*
@@ -243,8 +262,13 @@ export async function loader({ params, request }: Route.LoaderArgs) {
      * (`@looksave/validation`), lekin u payt tasma natijalari uchun
      * IKKINCHI so'rov kerak bo'lardi: asosning `id` si birinchi javobdan
      * chiqadi. Bu yerda ikkalasi bitta yo'lda bajariladi.
+     *
+     * ⚠️ `base` HAR DOIM FRONT ZANJIRIDAN. Yon/orqa render kalitlari ham
+     * FRONT bazasi bilan yoziladi (yuqoridagi izohga qarang), shuning
+     * uchun strip so'rovi ham FRONT bazasi bilan chaqiriladi.
      */
-    const resolved = resolveOutfit(outfit, indexRenders(outfitRenders));
+    const chainRenders = angle === 'front' ? outfitRenders : frontRenders;
+    const resolved = resolveOutfit(outfit, indexRenders(chainRenders));
     const base = baseForCategory(resolved, category);
 
     const stripRenders = base.ready
@@ -258,7 +282,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
         )
       : [];
 
-    return Response.json({ ...state, garments, outfitRenders, stripRenders, base }, { headers });
+    return Response.json(
+      { ...state, garments, outfitRenders, stripRenders, frontRenders, base },
+      { headers },
+    );
   } catch (error) {
     return Response.json(
       {
