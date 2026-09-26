@@ -304,3 +304,46 @@ export function nextPending<R extends LayerRender>(
   }
   return null;
 }
+
+/**
+ * Zanjirni FRONT renderlariga qarab tiklab, har qatlamning JORIY
+ * BURCHAKDAGI renderini beradi (yon · orqa uchun).
+ *
+ * ⚠️ NEGA KERAK. Server operator 3 panelli varaqni chizib, qo'shimcha
+ * burchaklarni (yon · orqa) yozganda, ularning `baseRenderId` maydonini
+ * so'rov ishlatgan FRONT bazasi bilan yozadi (bir generatsiya — bir
+ * `base`). Ya'ni yon renderning kaliti (variantId, FRONT_base), yon
+ * bazasi emas. Oddiy `resolveOutfit` yon burchakda yon zanjirini
+ * qursa — birinchi qatlam yon renderi boshqa `id` oladi va keyingi
+ * qatlamlarning bazasi mos kelmaydi.
+ *
+ * Bu funksiya FRONT zanjirini yuradi (baza id'larini FRONT renderdan
+ * oladi), har qatlam uchun esa JORIY burchak renderini shu bazadan
+ * izlaydi — natijada yon/orqada zanjir uzilmaydi.
+ */
+export function resolveAtFrontChain<R extends LayerRender>(
+  outfit: readonly OutfitLayer[],
+  frontRenders: Map<string, R>,
+  angleRenders: Map<string, R>,
+): Array<ResolvedLayer<R>> {
+  const resolved: Array<ResolvedLayer<R>> = [];
+
+  let frontBase: string | null = null;
+  let blocked = false;
+
+  for (const layer of sortOutfit([...outfit])) {
+    if (blocked) {
+      resolved.push({ ...layer, baseRenderId: null, render: undefined, blocked: true });
+      continue;
+    }
+
+    const front = frontRenders.get(renderKey(layer.variantId, frontBase));
+    const render = angleRenders.get(renderKey(layer.variantId, frontBase));
+    resolved.push({ ...layer, baseRenderId: frontBase, render, blocked: false });
+
+    if (front?.status === 'ready') frontBase = front.id;
+    else blocked = true;
+  }
+
+  return resolved;
+}

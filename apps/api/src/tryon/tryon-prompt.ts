@@ -32,17 +32,30 @@ const REST_OF_OUTFIT: Record<string, string> = {
 const SHEET_FRONT =
   // ⚠️ AYNAN avatar old pozasi bilan bir xil (avatar-prompt.ts ANGLE_TEXT.front) —
   // kiyim natijasi avatarning o'sha pozasida chiqsin.
+  //
+  // ⚠️ YUZ QAT'IY QULFLANGAN (2026-09-26). Model old panelda yuzni «chiroyliroq»
+  // qilib qayta chizishga moyil — bir necha buyruq ustma-ust yozildi.
   'Standing upright with the torso turned about 40 degrees to the LEFT into a dynamic ' +
   'three-quarter pose — the left shoulder is closer to the camera and the right shoulder ' +
   'further back — while the FACE turns directly toward the camera with a calm, confident ' +
   'expression and clear eye contact. Both hands rest casually inside the trouser pockets, ' +
   'elbows relaxed and slightly away from the body. The feet are shoulder-width apart, ' +
   'planted flat. Keep the body axis upright, with relaxed shoulders, an elegant confident ' +
-  'stance, realistic anatomy and no exaggerated curve or lean.';
+  'stance, realistic anatomy and no exaggerated curve or lean. ' +
+  'MANDATORY FACE RULE for this panel: the face MUST be the EXACT SAME face as in the ' +
+  'reference photo — pixel-level identity. Do NOT redraw, re-generate, beautify, smooth, ' +
+  'de-age, slim, retouch or re-imagine any facial feature. Every feature (eyes, nose, ' +
+  'lips, jawline, skin texture, moles, freckles, facial hair) stays EXACTLY as in the ' +
+  'reference. If the model is tempted to "improve" the face, DO NOT — reproduce it as-is.';
+// ⚠️ O'NG TOMONGA QAYRILGAN (2026-09-26). Ilgari «facing the LEFT edge» edi —
+// mijoz o'ng burilishni so'radi (avatar bilan yaxshiroq mos tushadi).
 const SHEET_SIDE =
-  'The whole body turned 90 degrees so we see a clean full side profile, facing the LEFT edge ' +
-  'of the image. Standing straight, arms relaxed at the sides and slightly away from the body, ' +
-  'feet slightly apart. The face is seen in profile.';
+  'The whole body turned 90 degrees to the RIGHT so we see a clean full side profile, ' +
+  'facing the RIGHT edge of the image (the person\'s LEFT shoulder is closer to the camera, ' +
+  'their RIGHT shoulder is further away). MANDATORY: the person MUST be turned to face the ' +
+  'RIGHT edge of the panel — never the left, never a three-quarter view, never the camera. ' +
+  'Standing straight, arms relaxed at the sides and slightly away from the body, feet ' +
+  'slightly apart. The face is seen in true profile (nose points to the RIGHT edge).';
 const SHEET_BACK =
   'Seen directly from behind — the back of the head and the back of the clothing face the ' +
   'camera, the face is NOT visible. Standing straight, arms relaxed at the sides and slightly ' +

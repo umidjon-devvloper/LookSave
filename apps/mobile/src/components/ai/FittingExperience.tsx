@@ -20,10 +20,12 @@ import {
   GARMENT_STYLES,
   type GarmentStyle,
   indexRenders,
+  layerRank,
   nextPending,
   matchSize,
   recommendSize,
   renderKey,
+  resolveAtFrontChain,
   resolveOutfit,
   topReady,
 } from '@looksave/validation';
@@ -216,11 +218,24 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
   const storeName = useAiFlowStore((state) => state.storeName);
   const setStore = useAiFlowStore((state) => state.setStore);
 
-  /** Kiyintirish — AI faqat shu yerdan (kiyim bosilganda) ishga tushadi */
+  /**
+   * Kiyintirish — AI faqat shu yerdan (kiyim bosilganda) ishga tushadi.
+   *
+   * ⚠️ AVTOMATIK OLD BURCHAKKA O'TAMIZ (2026-09-26). AI generatsiyasi
+   * faqat `angle === 'front'` da ishga tushadi (yon/orqa varaqdan
+   * kesiladi, alohida kredit sarflamaslik uchun). Foydalanuvchi Yon yoki
+   * Orqa burchakda turib kiyim bossa, sahna qotib qolardi: hech narsa
+   * generatsiyaga ketmasdi va vizual signal ham chiqmasdi. Endi bosish
+   * bilan sahna Old ga qaytadi — foydalanuvchi kiyintirish jarayonini
+   * ko'radi. Tayyor bo'lgach yon/orqa ham keshda bo'ladi (server 3
+   * burchakni bitta varaqdan kesadi) va tegishli tugmani bosib yana
+   * yonga o'tsa bo'ladi.
+   */
   const putOn = (category: string, variantId: string): void => {
     wear(category, variantId);
     setSize(null);
     setNotice(null);
+    if (angle !== 'front') setAngle('front');
   };
 
   const remove = (category: string): void => {
@@ -384,33 +399,66 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
     staleTime: 30_000,
   });
 
-  const resolved = useMemo(
-    () => resolveOutfit(outfit, indexRenders(outfitRenders.data ?? [])),
-    [outfit, outfitRenders.data],
-  );
-
   /*
-   * ⚠️ YON/ORQA UCHUN OLD ZAXIRASI (2026-09-25). Yon/orqa varaqdan
-   * kesiladi; agar tanlangan kiyimning yon bo'lagi hali yo'q bo'lsa,
-   * AVATARNING yon tomoni (boshqa kiyimdagi) ko'rsatilib qolardi. Buning
-   * o'rniga O'SHA kiyimning OLD suratini ko'rsatamiz — hech qachon boshqa
-   * kiyim ko'rinmaydi. Old ko'rinishda bu zaxira kerak emas.
+   * ⚠️ FRONT ZANJIRI HAR JOYDA (2026-09-26). Server operator 3 panelli
+   * varaqni chizib, qo'shimcha burchaklar (yon · orqa) yozuvlariga
+   * ONA-RENDER (=FRONT so'rovda ishlatilgan) BAZASINI yozadi. Ya'ni
+   * yon renderining kaliti (variantId, FRONT_base). Ilgari mobile
+   * yon burchakda YON zanjirini qurardi — birinchi qatlam yon renderi
+   * boshqa id oladi va keyingi qatlamlar «bu bazadagi yon» ni topa
+   * olmasdi (haqiqatda ular FRONT bazasi bilan yozilgan). Endi:
+   *
+   * - `frontRenders` — FRONT so'rovidan olingan indeks (yon burchakda
+   *   `frontFallback` dan, old burchakda `outfitRenders` dan). BAZA
+   *   ZANJIRI shundan tiklanadi.
+   * - `frontResolved` — komplekt FRONT zanjiri; `stripBase` shundan.
+   * - `resolved` — sahna uchun. Old: bir xil chiqadi. Yon/Orqa: FRONT
+   *   zanjiri yuriladi, har qatlamning shu bazadagi YON renderi
+   *   izlanadi — zanjir uzilmaydi.
    */
   const frontFallback = useQuery({
     queryKey: ['renders', 'outfit', 'front-fallback', outfitIds.join(',')],
     queryFn: () => getRenders(outfitIds, 'front', null, 'all'),
     enabled: ready && angle !== 'front' && outfitIds.length > 0,
   });
-  const wornFront = useMemo(
+
+  const frontRenders = useMemo(
     () =>
-      angle === 'front'
-        ? null
-        : topReady(resolveOutfit(outfit, indexRenders(frontFallback.data ?? []))),
-    [angle, outfit, frontFallback.data],
+      indexRenders(
+        angle === 'front' ? (outfitRenders.data ?? []) : (frontFallback.data ?? []),
+      ),
+    [angle, outfitRenders.data, frontFallback.data],
   );
 
-  /** Joriy turkumdagi kiyimlar qaysi surat ustiga kiydiriladi */
-  const stripBase = useMemo(() => baseForCategory(resolved, tab), [resolved, tab]);
+  /** FRONT zanjiri — `stripBase` va yon/orqa render izlashi uchun. */
+  const frontResolved = useMemo(
+    () => resolveOutfit(outfit, frontRenders),
+    [outfit, frontRenders],
+  );
+
+  /**
+   * Yon/orqa uchun old zaxirasi — STRICTLY joriy tab qatlami.
+   *
+   * ⚠️ `topReady` EMAS, VA TAB QATLAMIGACHA. Ko'ylak (top layer) old
+   * renderi hali kelmagan bo'lsa yoki foydalanuvchi Futbolka tabida
+   * bo'lsa, ekranda faqat tabga mos qatlam ko'rinishi kerak.
+   */
+  const wornFront = useMemo(() => {
+    if (angle === 'front') return null;
+    const top = frontResolved
+      .filter((layer) => layerRank(layer.category) <= layerRank(tab))
+      .at(-1);
+    return top?.render?.status === 'ready' ? top.render : null;
+  }, [angle, frontResolved, tab]);
+
+  /**
+   * Joriy turkumdagi kiyimlar qaysi surat ustiga kiydiriladi.
+   *
+   * ⚠️ FRONT ZANJIRIDAN. Yon/orqa burchakda ham baza FRONT bo'ladi —
+   * chunki strip so'rovi ham (variantId, FRONT_base) bilan kalitlangan
+   * yon renderlarni oladi.
+   */
+  const stripBase = useMemo(() => baseForCategory(frontResolved, tab), [frontResolved, tab]);
 
   const stripIds = useMemo(() => items.map((item) => item.variantId), [items]);
 
@@ -488,6 +536,25 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
     () => indexRenders([...(stripRenders.data ?? []), ...(outfitRenders.data ?? [])]),
     [stripRenders.data, outfitRenders.data],
   );
+
+  /**
+   * Sahna va zanjir rejasi uchun ishlatiladigan resolved.
+   *
+   * ⚠️ OLD BURCHAKDA: `renderIndex` (outfit + strip) ga tayanadi — bu
+   * kiyim tasmadan bosilgan zahoti tepadagi sahna almashishini
+   * ta'minlaydi (kartochkadagi render outfit query kelguncha kutmaydi).
+   *
+   * ⚠️ YON/ORQADA: FRONT zanjiri yuriladi, har qatlamning shu bazadagi
+   * yon/orqa renderi izlanadi. Chunki server operator 3 panelli varaqni
+   * qo'shimcha burchaklarga FRONT bazasi bilan yozadi.
+   *
+   * ⚠️ `nextPending` HAM shu resolved ustida ishlaydi — strip'da tayyor
+   * bo'lgan renderni topsa, yangi generatsiya so'rovi yuborilmaydi.
+   */
+  const resolved = useMemo(() => {
+    if (angle === 'front') return resolveOutfit(outfit, renderIndex);
+    return resolveAtFrontChain(outfit, frontRenders, renderIndex);
+  }, [angle, outfit, renderIndex, frontRenders]);
 
   /* ── So'rovlar ── */
 
@@ -615,8 +682,38 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
     !avatar.data.cutoutUrl &&
     !ensureCutout.isError;
 
-  /** Komplektning eng tepa tayyor surati — sahnada shu turadi */
-  const worn = topReady(resolved);
+  /**
+   * Sahnada ko'rsatiladigan natija.
+   *
+   * ⚠️ TAB QATLAMIGACHA (2026-09-26). Foydalanuvchi Futbolka tabga
+   * o'tsa-yu ustida ko'ylak/kurtka bor bo'lsa, sahnada u kiyimlar tabi
+   * bilan mos kelmasdi va foydalanuvchi tanlagan futbolkasini KO'RA
+   * OLMASDI. Endi sahna JORIY TAB qatlamigacha chiqadi — yuqoridagi
+   * qatlamlar vaqtincha yashiriladi (komplekt buzilmaydi, faqat ko'rish
+   * uchun). Tab almashilsa yuqoridagilar qaytadan ko'rinadi.
+   *
+   * ⚠️ NOMA'LUM TURKUM (oyoq kiyim tabining `category: ''` bo'ladi) eng
+   * tepaga tushadi (`layerRank(unknown) = LAYER_ORDER.length`), ya'ni
+   * oyoq kiyim tabida butun komplekt ko'rinadi.
+   *
+   * ⚠️ OLD VA YON/ORQADA MANTIQ HAR XIL. Old: progressive (`topReady`) —
+   * kutayotgan qatlam paytida oldingi tayyor qatlam ko'rinadi.
+   * Yon/Orqa: STRICTLY eng tepa qatlam — u qatlamning shu burchakdagi
+   * surati yo'q bo'lsa `null` (past qatlam chiqmaydi), `wornFront`
+   * old zaxirasi ishga tushadi.
+   */
+  const tabRank = layerRank(tab);
+  const visibleResolved = useMemo(
+    () => resolved.filter((layer) => layerRank(layer.category) <= tabRank),
+    [resolved, tabRank],
+  );
+  const visibleTop = visibleResolved.at(-1);
+  const worn =
+    angle === 'front'
+      ? topReady(visibleResolved)
+      : visibleTop?.render?.status === 'ready'
+        ? visibleTop.render
+        : null;
 
   const failed = resolved.find((layer) => layer.render?.status === 'failed');
 
