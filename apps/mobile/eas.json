@@ -11,12 +11,18 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "http://10.0.2.2:3000"
       },
-      "android": { "buildType": "apk" },
-      "ios": { "simulator": false }
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": false
+      }
     },
     "development-simulator": {
       "extends": "development",
-      "ios": { "simulator": true }
+      "ios": {
+        "simulator": true
+      }
     },
     "preview": {
       "distribution": "internal",
@@ -24,7 +30,9 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.looksave.uz"
       },
-      "android": { "buildType": "apk" }
+      "android": {
+        "buildType": "apk"
+      }
     },
     "production": {
       "channel": "production",
@@ -32,16 +40,20 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.looksave.uz"
       },
-      "android": { "buildType": "app-bundle" },
-      "ios": { "image": "macos-tahoe-26.5-xcode-26.6" }
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "ios": {
+        "image": "macos-tahoe-26.5-xcode-26.6"
+      }
     }
   },
   "submit": {
     "production": {
       "ios": {
         "ascAppId": "6813230137",
-        "ascApiKeyPath": "/Users/umidjon2/.appstoreconnect/private_keys/AuthKey_Y4BK8G3895.p8",
-        "ascApiKeyId": "Y4BK8G3895",
+        "ascApiKeyPath": "/Users/umidjongafforov/Desktop/LookSave/apps/mobile/AuthKey_Q7UZ3MJ33D.p8",
+        "ascApiKeyId": "Q7UZ3MJ33D",
         "ascApiKeyIssuerId": "1fe4411f-92e9-4881-8288-8aeae4f2ad86"
       }
     }
