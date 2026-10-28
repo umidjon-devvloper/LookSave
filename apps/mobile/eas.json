@@ -22,7 +22,7 @@
       "distribution": "internal",
       "channel": "preview",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.looksave.app"
+        "EXPO_PUBLIC_API_URL": "https://api.looksave.uz"
       },
       "android": { "buildType": "apk" }
     },
@@ -30,7 +30,7 @@
       "channel": "production",
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.looksave.app"
+        "EXPO_PUBLIC_API_URL": "https://api.looksave.uz"
       },
       "android": { "buildType": "app-bundle" }
     }

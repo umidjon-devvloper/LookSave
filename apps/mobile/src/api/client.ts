@@ -96,7 +96,7 @@ function apiUrl(): string {
   }
 
   const fromConfig = Constants.expoConfig?.extra?.['apiUrl'];
-  return typeof fromConfig === 'string' ? fromConfig : 'https://api.looksave.app';
+  return typeof fromConfig === 'string' ? fromConfig : 'https://api.looksave.uz';
 }
 
 let accessToken: string | null = null;
