@@ -64,7 +64,7 @@ import { goBack as leaveWizard } from '../../src/navigation/back';
  * bo'sh qolaveradi). Hozircha rasm profil suratiga tushadi.
  */
 
-type StepKey = 'gender' | 'body' | 'shoe' | 'store' | 'face' | 'done';
+type StepKey = 'gender' | 'body' | 'store' | 'face' | 'done';
 
 /**
  * Qadam tartibi.
@@ -83,11 +83,15 @@ type StepKey = 'gender' | 'body' | 'shoe' | 'store' | 'face' | 'done';
  * nima uchun kerakligi tushuntiriladi (`FACE_CONSENT`) — ya'ni ruxsat
  * so'rovi baribir izohsiz kelmaydi.
  */
+/*
+ * TZ 1-qism (D-56): tana ma'lumotlari uchun faqat bo'y, vazn, oyoq
+ * kiyim o'lchami so'raladi — ko'krak/bel/ustki/pastki razmer chiqarildi.
+ * Shu bois 'body' va 'shoe' bitta qadamga birlashtirildi.
+ */
 const STEPS: Array<{ key: StepKey; icon: IconName }> = [
   { key: 'face', icon: 'camera' },
   { key: 'gender', icon: 'profile' },
   { key: 'body', icon: 'slotTop' },
-  { key: 'shoe', icon: 'slotFeet' },
   { key: 'store', icon: 'stores' },
   { key: 'done', icon: 'authentic' },
 ];
@@ -97,7 +101,6 @@ const STEP_LABEL: Record<StepKey, keyof Dictionary['avatar']> = {
   face: 'stepFace',
   gender: 'stepGender',
   body: 'stepBody',
-  shoe: 'stepShoe',
   store: 'stepStore',
   done: 'stepDone',
 };
@@ -183,16 +186,16 @@ function isStepDone(
      * bajarilgan hisoblanadi — `recommendSize` ularni zaxira sifatida
      * razmerga aylantiradi.
      */
+    /*
+     * TZ 1-qism — faqat bo'y, vazn, oyoq kiyim o'lchami majburiy.
+     * Ko'krak/bel/ustki/pastki razmer olib tashlandi (D-56).
+     */
     case 'body':
       return (
         typeof profile.measurements.height === 'number' &&
         typeof profile.measurements.weight === 'number' &&
-        (Boolean(profile.measurements.topSize) || typeof profile.measurements.chest === 'number') &&
-        (Boolean(profile.measurements.bottomSize) || typeof profile.measurements.waist === 'number')
+        typeof profile.measurements.shoeSize === 'number'
       );
-
-    case 'shoe':
-      return typeof profile.measurements.shoeSize === 'number';
 
     case 'store':
       return Boolean(storeId);
@@ -528,8 +531,8 @@ export default function AvatarFlow(): JSX.Element {
 
         {step === 'body' ? (
           <MeasureStep
-            title="Bo'y, vazn va razmer"
-            hint="Bo'y va vazn avatar gavdasini belgilaydi. Razmeringizni tanlang — do'kondan aynan sizga mos kiyimlar ko'rsatiladi."
+            title="Bo'y, vazn va oyoq o'lchami"
+            hint="Shu uch ma'lumot avatar gavdasi va oyoq kiyim razmerini belgilaydi. Boshqa tana o'lchamlari so'ralmaydi."
             keys={['height', 'weight']}
             values={values}
             busy={busy}
@@ -537,50 +540,13 @@ export default function AvatarFlow(): JSX.Element {
             onNext={async () => {
               const ok = await submitMeasurements(
                 ['height', 'weight'],
-                {
-                  ...(topSize ? { topSize } : {}),
-                  ...(bottomSize ? { bottomSize } : {}),
-                },
-                [
-                  { ok: Boolean(topSize), label: 'Ustki kiyim razmeri' },
-                  { ok: Boolean(bottomSize), label: 'Shim razmeri' },
-                ],
+                shoeSize !== null ? { shoeSize } : {},
+                [{ ok: shoeSize !== null, label: 'Oyoq kiyim razmeri' }],
               );
               if (ok) goNext();
             }}
           >
-            <Text style={styles.chipsLabel}>Ustki kiyim razmeri</Text>
-            <SizeChips
-              options={CLOTHING_SIZES}
-              value={topSize}
-              onChange={setTopSize}
-              accessibilityLabel="Ustki kiyim razmeri"
-            />
-            <Text style={styles.chipsLabel}>Shim razmeri</Text>
-            <SizeChips
-              options={CLOTHING_SIZES}
-              value={bottomSize}
-              onChange={setBottomSize}
-              accessibilityLabel="Shim razmeri"
-            />
-          </MeasureStep>
-        ) : null}
-
-        {step === 'shoe' ? (
-          <MeasureStep
-            title="Oyoq kiyim razmeri"
-            hint="Krossovka va poyabzalni to'g'ri razmerda ko'rsatish uchun (EU)."
-            keys={[]}
-            values={values}
-            busy={busy}
-            onChange={(key, value) => setValues((current) => ({ ...current, [key]: value }))}
-            onNext={async () => {
-              const ok = await submitMeasurements([], shoeSize !== null ? { shoeSize } : {}, [
-                { ok: shoeSize !== null, label: 'Oyoq kiyim razmeri' },
-              ]);
-              if (ok) goNext();
-            }}
-          >
+            <Text style={styles.chipsLabel}>Oyoq kiyim razmeri (EU)</Text>
             <SizeChips
               options={SHOE_SIZES}
               value={shoeSize as (typeof SHOE_SIZES)[number] | null}
