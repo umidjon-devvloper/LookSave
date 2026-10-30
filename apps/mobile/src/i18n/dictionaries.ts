@@ -787,6 +787,9 @@ const uz = {
     viewOrdersEmpty: 'Hozircha yangi buyurtma yo‘q',
     editStore: 'Do‘kon sozlamalari',
     editStoreDesc: 'Nom, logo, manzil, ish vaqti',
+    notSellerTitle: 'Siz hali sotuvchi emassiz',
+    notSellerDesc: 'Do‘kon ochish uchun qisqa ariza to‘ldiring — tasdiqni kutish shart emas, panelga darhol kirasiz.',
+    applyNow: 'Ariza berish',
   },
   sellerAnalytics: {
     title: 'Statistika',
@@ -1578,6 +1581,9 @@ const ru: Dictionary = {
     viewOrdersEmpty: 'Пока нет новых заказов',
     editStore: 'Настройки магазина',
     editStoreDesc: 'Название, логотип, адрес, график',
+    notSellerTitle: 'Вы ещё не продавец',
+    notSellerDesc: 'Чтобы открыть магазин, заполните короткую заявку — ждать подтверждения не нужно, вы сразу попадёте в панель.',
+    applyNow: 'Подать заявку',
   },
   sellerAnalytics: {
     title: 'Статистика',
@@ -2355,6 +2361,9 @@ const en: Dictionary = {
     viewOrdersEmpty: 'No new orders yet',
     editStore: 'Store settings',
     editStoreDesc: 'Name, logo, address, hours',
+    notSellerTitle: 'You are not a seller yet',
+    notSellerDesc: 'Fill in a short application to open your store — no approval wait, you reach the panel right away.',
+    applyNow: 'Apply now',
   },
   sellerAnalytics: {
     title: 'Analytics',
@@ -3119,6 +3128,9 @@ const ar: Dictionary = {
     viewOrdersEmpty: 'لا توجد طلبات جديدة بعد',
     editStore: 'إعدادات المتجر',
     editStoreDesc: 'الاسم، الشعار، العنوان، ساعات العمل',
+    notSellerTitle: 'أنت لست بائعًا بعد',
+    notSellerDesc: 'املأ طلبًا قصيرًا لفتح متجرك — لا حاجة لانتظار الموافقة، تدخل اللوحة فورًا.',
+    applyNow: 'قدِّم الطلب',
   },
   sellerAnalytics: {
     title: 'الإحصائيات',

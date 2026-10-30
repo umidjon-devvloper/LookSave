@@ -18,6 +18,7 @@ import { SellerHeader } from '../../src/components/SellerHeader';
 import { SkeletonList } from '../../src/components/Skeleton';
 import { Button, Empty, ErrorView, Screen } from '../../src/components/ui';
 import { useI18n, type Dictionary } from '../../src/i18n';
+import { useAuthStore } from '../../src/store/authStore';
 import { money } from '../../src/theme/format';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 import { goBack } from '../../src/navigation/back';
@@ -61,11 +62,14 @@ export default function SellerProducts(): JSX.Element {
   const router = useRouter();
   const queryClient = useQueryClient();
   const t = useI18n((state) => state.t);
+  const user = useAuthStore((state) => state.user);
+  const isSeller = user?.role === 'store_owner';
   const [filter, setFilter] = useState<ProductStatusFilter>('all');
 
   const products = useQuery({
     queryKey: ['store', 'products', filter],
     queryFn: () => getMyProducts(filter),
+    enabled: isSeller,
   });
 
   const remove = useMutation({
@@ -73,6 +77,22 @@ export default function SellerProducts(): JSX.Element {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['store', 'products'] }),
     onError: (err) => Alert.alert(t.facePhoto.deleteFailedTitle, explainError(err, t)),
   });
+
+  if (!isSeller) {
+    return (
+      <Screen>
+        <SellerHeader title={t.sellerTabs.products} onBack={() => router.replace('/seller')} />
+        <Empty
+          icon="shop"
+          title={t.sellerDashboard.notSellerTitle}
+          hint={t.sellerDashboard.notSellerDesc}
+          action={
+            <Button title={t.sellerDashboard.applyNow} onPress={() => router.push('/seller/apply')} />
+          }
+        />
+      </Screen>
+    );
+  }
 
   return (
     <Screen>

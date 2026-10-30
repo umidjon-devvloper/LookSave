@@ -38,23 +38,43 @@ const TILES: ReadonlyArray<MetricTile> = [
 
 export default function SellerDashboard(): JSX.Element {
   const authStatus = useAuthStore((state) => state.status);
+  const user = useAuthStore((state) => state.user);
   const t = useI18n((state) => state.t);
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
+  // Faqat store_owner uchun — xaridor rolidagilarga ariza taklifi.
+  const isSeller = user?.role === 'store_owner';
+
   const dashboard = useQuery({
     queryKey: ['store', 'dashboard'],
     queryFn: getStoreDashboard,
-    enabled: authStatus === 'signedIn',
+    enabled: authStatus === 'signedIn' && isSeller,
   });
 
   const profile = useQuery({
     queryKey: ['store', 'profile'],
     queryFn: getStoreProfile,
-    enabled: authStatus === 'signedIn',
+    enabled: authStatus === 'signedIn' && isSeller,
   });
 
   if (authStatus !== 'signedIn') return <SignInRequired />;
+
+  if (!isSeller) {
+    return (
+      <View style={[styles.applyWrap, { paddingTop: insets.top + spacing.xl * 2 }]}>
+        <View style={styles.applyIco}>
+          <Icon name="shop" size={48} color={colors.accent} />
+        </View>
+        <Text style={styles.applyTitle}>{t.sellerDashboard.notSellerTitle}</Text>
+        <Text style={styles.applyDesc}>{t.sellerDashboard.notSellerDesc}</Text>
+        <Pressable style={styles.applyBtn} onPress={() => router.push('/seller/apply')}>
+          <Text style={styles.applyBtnText}>{t.sellerDashboard.applyNow}</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   if (dashboard.isLoading || profile.isLoading) return <Loading />;
   if (dashboard.isError) {
     return <ErrorView error={dashboard.error} onRetry={() => void dashboard.refetch()} />;
@@ -312,4 +332,40 @@ const styles = StyleSheet.create({
     backgroundColor: colors.danger,
   },
   badgeText: { ...text.tiny, color: colors.text, fontWeight: '800' },
+
+  applyWrap: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.bg,
+  },
+  applyIco: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
+  applyTitle: {
+    ...text.h2,
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  applyDesc: {
+    ...text.body,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginBottom: spacing.xl,
+    maxWidth: 320,
+  },
+  applyBtn: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+  },
+  applyBtnText: { ...text.bodyMed, color: colors.text, fontWeight: '700' },
 });

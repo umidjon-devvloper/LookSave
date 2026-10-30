@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,23 +25,41 @@ const PERIODS: ReadonlyArray<7 | 30 | 90> = [7, 30, 90];
 
 export default function SellerAnalytics(): JSX.Element {
   const authStatus = useAuthStore((state) => state.status);
+  const user = useAuthStore((state) => state.user);
   const t = useI18n((state) => state.t);
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [days, setDays] = useState<7 | 30 | 90>(30);
+  const isSeller = user?.role === 'store_owner';
 
   const analytics = useQuery({
     queryKey: ['store', 'analytics', days],
     queryFn: () => getStoreAnalytics(days),
-    enabled: authStatus === 'signedIn',
+    enabled: authStatus === 'signedIn' && isSeller,
   });
 
   const profile = useQuery({
     queryKey: ['store', 'profile'],
     queryFn: getStoreProfile,
-    enabled: authStatus === 'signedIn',
+    enabled: authStatus === 'signedIn' && isSeller,
   });
 
   if (authStatus !== 'signedIn') return <SignInRequired />;
+  if (!isSeller) {
+    // Dashboard'ga yo'naltirmaymiz — foydalanuvchi tanlab bosgan; faqat
+    // ariza taklifini ko'rsatamiz, bir xil UX bilan Dashboard'dagi kabi.
+    return (
+      <Pressable
+        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg }}
+        onPress={() => router.push('/seller/apply')}
+      >
+        <Icon name="shop" size={48} color={colors.accent} />
+        <Text style={{ ...text.body, color: colors.textMuted, textAlign: 'center', marginTop: spacing.md }}>
+          {t.sellerDashboard.notSellerTitle}
+        </Text>
+      </Pressable>
+    );
+  }
   if (analytics.isLoading) return <Loading />;
   if (analytics.isError) {
     return <ErrorView error={analytics.error} onRetry={() => void analytics.refetch()} />;
