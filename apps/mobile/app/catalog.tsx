@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { FlatList, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { getCart, getCategories, getProducts, type ProductSort } from '../src/api/endpoints';
+import { getCart, getProducts, type ProductSort } from '../src/api/endpoints';
 import {
   countFilters,
   EMPTY_FILTERS,
@@ -102,8 +102,6 @@ export default function Catalog(): JSX.Element {
     return () => clearTimeout(timer);
   }, [query]);
 
-  const categories = useQuery({ queryKey: ['categories'], queryFn: getCategories });
-
   /* Savatdagi soni — sarlavhadagi belgi uchun. Kirmagan foydalanuvchida so'ralmaydi. */
   const cart = useQuery({ queryKey: ['cart'], queryFn: getCart, enabled: signedIn });
   const cartCount = cart.data?.stores.reduce((sum, group) => sum + group.items.length, 0) ?? 0;
@@ -144,8 +142,17 @@ export default function Catalog(): JSX.Element {
 
   const items = products.data?.pages.flatMap((page) => page.items) ?? [];
 
-  /* Kategoriyalar daraxti tekis ro'yxatga yoyiladi — chiplar bitta qatorda */
-  const flatCategories = (categories.data ?? []).flatMap((parent) => [parent, ...parent.children]);
+  /*
+   * TZ 1-qism: faqat 3 ta katta slot — Ustki/Pastki/Oyoq. Mayda kategoriya
+   * (futbolka, mayka, ko'ylak va h.k.) qidiruvdan topiladi. Slug'lar
+   * seed'dan (infra/migrations/008_seed.sql) qattiq — backend ildiz
+   * tanlansa, ichki hamma kategoriya avtomatik qamraladi.
+   */
+  const SLOT_CHIPS: ReadonlyArray<{ slug: string; label: string }> = [
+    { slug: 'tops', label: t.catalog.top },
+    { slug: 'bottoms', label: t.catalog.bottom },
+    { slug: 'shoes', label: t.catalog.footwear },
+  ];
 
   return (
     <Screen>
@@ -257,14 +264,14 @@ export default function Catalog(): JSX.Element {
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.chips}>
                 <Chip
-                  label={t.home.categories}
+                  label={t.catalog.allItems}
                   active={category === undefined}
                   onPress={() => setCategory(undefined)}
                 />
-                {flatCategories.map((item) => (
+                {SLOT_CHIPS.map((item) => (
                   <Chip
-                    key={item.id}
-                    label={item.name}
+                    key={item.slug}
+                    label={item.label}
                     active={category === item.slug}
                     onPress={() => setCategory(item.slug)}
                   />

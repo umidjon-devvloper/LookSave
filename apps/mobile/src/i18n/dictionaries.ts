@@ -207,6 +207,10 @@ const uz = {
     cityPlaceholder: 'Masalan: Toshkent',
     district: 'Tuman',
     districtPlaceholder: 'Masalan: Chilonzor',
+    allItems: 'Hammasi',
+    top: 'Ustki',
+    bottom: 'Pastki',
+    footwear: 'Oyoq kiyim',
   },
   home: {
     categories: 'Kategoriyalar',
@@ -1006,6 +1010,10 @@ const ru: Dictionary = {
     cityPlaceholder: 'Например: Ташкент',
     district: 'Район',
     districtPlaceholder: 'Например: Чиланзар',
+    allItems: 'Все',
+    top: 'Верх',
+    bottom: 'Низ',
+    footwear: 'Обувь',
   },
   home: {
     categories: 'Категории',
@@ -1789,6 +1797,10 @@ const en: Dictionary = {
     cityPlaceholder: 'e.g. Tashkent',
     district: 'District',
     districtPlaceholder: 'e.g. Chilonzor',
+    allItems: 'All',
+    top: 'Tops',
+    bottom: 'Bottoms',
+    footwear: 'Shoes',
   },
   home: {
     categories: 'Categories',
@@ -2567,6 +2579,10 @@ const ar: Dictionary = {
     cityPlaceholder: 'مثال: طشقند',
     district: 'الحي',
     districtPlaceholder: 'مثال: جيلانزار',
+    allItems: 'الكل',
+    top: 'علوي',
+    bottom: 'سفلي',
+    footwear: 'الأحذية',
   },
   home: {
     categories: 'الفئات',
