@@ -1,7 +1,8 @@
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { rtlStyles, useI18n } from '../../i18n';
 import { Icon } from '../Icon';
+import { StoreLogo } from '../StoreLogo';
 import type { Brand } from '../../api/endpoints';
 import { colors, radius, spacing, text } from '../../theme/tokens';
 
@@ -45,28 +46,20 @@ export function BrandRow({
     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
       <View style={styles.brandRow}>
         {brands.map((brand) => (
+          /*
+            ⚠️ TASHQI KUTI OLIB TASHLANDI. Ilgari `brandTile` ning o'z chegarasi
+            bor edi va `StoreLogo` ning ichida ham chegara bor — natija "ikki
+            quti ichida bir harf" bo'lib ko'rinardi. Endi faqat `StoreLogo`
+            o'zi — toza va kattaroq, deckdagi logotip tasavvuriga yaqinroq.
+          */
           <Pressable key={brand.id} style={styles.brandTile} onPress={() => onPress(brand)}>
-            <View style={styles.brandMark}>
-              {brand.logoUrl ? (
-                <Image
-                  source={{ uri: brand.logoUrl }}
-                  style={styles.brandLogo}
-                  resizeMode="contain"
-                />
-              ) : (
-                // Logotip yo'q bo'lsa — brend nomi. Deckda logotiplar oq, shuning
-                // uchun nom ham oq va siqilgan harflar bilan beriladi.
-                <Text style={styles.brandName} numberOfLines={2}>
-                  {brand.name}
-                </Text>
-              )}
-            </View>
-            {/* @username — sotuvchi brendini tanitadi; yo'q bo'lsa ko'rsatilmaydi */}
-            {brand.username ? (
-              <Text style={styles.brandHandle} numberOfLines={1}>
-                @{brand.username}
-              </Text>
-            ) : null}
+            <StoreLogo
+              logoUrl={brand.logoUrl}
+              name={brand.name}
+              size={76}
+              width={112}
+              style={styles.brandMark}
+            />
           </Pressable>
         ))}
       </View>
@@ -85,35 +78,8 @@ const styles = StyleSheet.create({
   action: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   actionText: { ...text.tiny, color: colors.accent },
   brandRow: { flexDirection: 'row', gap: spacing.sm },
-  brandTile: {
-    width: 92,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
-    gap: 6,
-  },
-  brandMark: {
-    width: '100%',
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  brandLogo: { width: '100%', height: '100%' },
-  brandHandle: {
-    ...text.tiny,
-    color: colors.textDim,
-    textAlign: 'center',
-    maxWidth: '100%',
-  },
-  brandName: {
-    ...text.tiny,
-    color: colors.text,
-    textAlign: 'center',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
+  // Nomlar olib tashlandi — logo o'zi tanish. Faqat quti qoladi,
+  // ixcham va zich qator sifatida.
+  brandTile: { alignItems: 'center', justifyContent: 'center' },
+  brandMark: { borderRadius: radius.lg, borderWidth: 0 },
 });

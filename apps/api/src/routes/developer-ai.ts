@@ -14,6 +14,7 @@ import {
   claimTask,
   completeTask,
   failTask,
+  heartbeatTask,
   listTasks,
   releaseTask,
   taskCustomer,
@@ -56,18 +57,27 @@ developerAiRouter.post(
   }),
 );
 
+/**
+ * POST /v1/developer-ai/tasks/:id/heartbeat — «men hali ishlayapman».
+ *
+ * ⚠️ BIR NECHTA KENGAYTMA BITTA NAVBATDAN ISHLAYDI. Biri qotib qolsa
+ * yoki brauzeri yopilsa, ish uning nomida abadiy qolardi. Tirik belgisi
+ * yangilanmay qolgach, supuruvchi uni navbatga qaytaradi va ikkinchi
+ * kengaytma davom ettiradi.
+ */
+developerAiRouter.post(
+  '/developer-ai/tasks/:id/heartbeat',
+  route({ params: idParamSchema }, async (input, _req, res) => {
+    sendData(res, await heartbeatTask(input.params.id, getAuth(res).sub));
+  }),
+);
+
 /** POST /v1/developer-ai/tasks/:id/result — natijani topshirish */
 developerAiRouter.post(
   '/developer-ai/tasks/:id/result',
-  route(
-    { params: idParamSchema, body: taskResultSchema },
-    async (input, _req, res) => {
-      sendData(
-        res,
-        await completeTask(input.params.id, getAuth(res).sub, input.body.resultUrl),
-      );
-    },
-  ),
+  route({ params: idParamSchema, body: taskResultSchema }, async (input, _req, res) => {
+    sendData(res, await completeTask(input.params.id, getAuth(res).sub, input.body.resultUrl));
+  }),
 );
 
 /** POST /v1/developer-ai/tasks/:id/fail — bajara olmadim */
@@ -121,11 +131,8 @@ developerAiRouter.get(
  */
 developerAiRouter.post(
   '/developer-ai/tasks/:id/garments/:variantId',
-  route(
-    { params: variantParamSchema, body: dressResultSchema },
-    async (input, _req, res) => {
-      const { userId } = await taskCustomer(input.params.id);
-      sendData(res, await submitDress(userId, input.params.variantId, input.body.resultUrl));
-    },
-  ),
+  route({ params: variantParamSchema, body: dressResultSchema }, async (input, _req, res) => {
+    const { userId } = await taskCustomer(input.params.id);
+    sendData(res, await submitDress(userId, input.params.variantId, input.body.resultUrl));
+  }),
 );

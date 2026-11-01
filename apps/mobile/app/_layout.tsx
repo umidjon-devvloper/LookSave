@@ -58,6 +58,7 @@ function AppShell(): JSX.Element {
   const status = useAuthStore((state) => state.status);
   const restore = useAuthStore((state) => state.restore);
   const restoreStore = useAiFlowStore((state) => state.restoreStore);
+  const restoreOutfit = useAiFlowStore((state) => state.restoreOutfit);
   const restoreOnboarding = useOnboardingStore((state) => state.restore);
   const onboardingSeen = useOnboardingStore((state) => state.seen);
   const t = useI18n((state) => state.t);
@@ -90,7 +91,10 @@ function AppShell(): JSX.Element {
      * foydalanuvchini sehrgarga yuborib yuborardi.
      */
     void restoreStore();
-  }, [restore, restoreStore, restoreOnboarding]);
+    // Mijoz "Look" bosib yig'gan komplekt ham qurilmada saqlangan — tiklaymiz,
+    // shunda primerka ekrani darhol yig'ilgan kiyimlar bilan ochiladi.
+    void restoreOutfit();
+  }, [restore, restoreStore, restoreOutfit, restoreOnboarding]);
 
   // Splash animatsiyasi tugagunicha qatlam ekranda turadi. `appReady` — sahnaga
   // "endi chiqishing mumkin" degan signal; sahna o'z animatsiyasini yarim yo'lda
@@ -130,7 +134,7 @@ function AppShell(): JSX.Element {
           <Stack.Screen name="seller" options={{ headerShown: false }} />
           {/* Rasm status bar ostiga chiqadi — sahifa o'z tugmalarini chizadi */}
           <Stack.Screen name="product/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="store/[id]" options={{ title: '' }} />
+          <Stack.Screen name="store/[id]" options={{ headerShown: false }} />
           {/* Checkout'da o'z sarlavhasi bor */}
           <Stack.Screen name="checkout" options={{ headerShown: false }} />
           <Stack.Screen name="order/[id]" options={{ title: t.order.title }} />

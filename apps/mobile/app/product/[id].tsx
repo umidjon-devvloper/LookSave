@@ -10,6 +10,7 @@ import { addFavorite, addToCart, removeFavorite, supportsAiTryon } from '../../s
 import { Icon, type IconName } from '../../src/components/Icon';
 import { Button, ErrorView, Loading, Screen } from '../../src/components/ui';
 import { useI18n } from '../../src/i18n';
+import { useAiFlowStore } from '../../src/store/aiFlowStore';
 import { money } from '../../src/theme/format';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 import { goBack } from '../../src/navigation/back';
@@ -85,6 +86,10 @@ export default function Product(): JSX.Element {
   const [cartError, setCartError] = useState<string | null>(null);
   const [favorite, setFavorite] = useState<boolean | null>(null);
   const [imageIndex, setImageIndex] = useState(0);
+  // Lookga qo'shish — mahsulotning joriy rangi (variant) outfit'ga qo'yiladi,
+  // keyin kiyintirish ekrani ochiladi: foydalanuvchi natijani darhol ko'radi.
+  const outfit = useAiFlowStore((state) => state.outfit);
+  const wear = useAiFlowStore((state) => state.wear);
 
   const product = useQuery({
     queryKey: ['product', id],
@@ -360,9 +365,41 @@ export default function Product(): JSX.Element {
 
           {cartError ? <Text style={styles.cartError}>{cartError}</Text> : null}
 
-          {canTryOn ? (
-            <Button title={t.product.tryOn} variant="ghost" onPress={() => router.push('/tryon')} />
-          ) : null}
+          {canTryOn && variant ? (() => {
+            const inLook = outfit.some((layer) => layer.variantId === variant.id);
+            // ⚠️ Hech qanday navigatsiya yo'q — faqat qo'shadi/olib tashlaydi.
+            // Primerkani FAQAT headerdagi AI ikonka ochadi, u yerda butun
+            // yig'ilgan komplekt birdaniga ko'rinadi.
+            return (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={inLook ? 'Lookga qo`shilgan' : "Lookga qo'shish"}
+                onPress={() => wear(data.slot, variant.id)}
+                style={styles.lookBtnWrap}
+                disabled={inLook}
+              >
+                <LinearGradient
+                  colors={
+                    inLook
+                      ? [colors.success, '#15803D']
+                      : [colors.accent, colors.primary]
+                  }
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.lookBtn}
+                >
+                  <Icon
+                    name={inLook ? 'check' : 'tryon'}
+                    size={18}
+                    color={colors.text}
+                  />
+                  <Text style={styles.lookBtnText}>
+                    {inLook ? "Lookga qo'shildi" : "Lookga qo'shish"}
+                  </Text>
+                </LinearGradient>
+              </Pressable>
+            );
+          })() : null}
 
           {/* Asosiy amal va do'kon bilan bog'lanish — maketdagi juft */}
           <View style={styles.actions}>
@@ -562,4 +599,23 @@ const styles = StyleSheet.create({
   },
   trustItem: { flex: 1, alignItems: 'center', gap: spacing.xs },
   trustText: { ...text.tiny, color: colors.textMuted, textAlign: 'center' },
+
+  // Lookga qo'shish tugmasi — binafsha gradient, nurli, savatdan oldin turadi
+  lookBtnWrap: {
+    borderRadius: radius.pill,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+  },
+  lookBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.pill,
+  },
+  lookBtnText: { ...text.bodyMed, color: colors.text, fontWeight: '700' },
 });

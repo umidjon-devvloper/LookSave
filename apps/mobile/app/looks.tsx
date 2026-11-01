@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import { Alert, FlatList, Image, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 
 import {
@@ -12,6 +13,7 @@ import { Empty, ErrorView, Screen } from '../src/components/ui';
 import { SignInRequired } from '../src/components/SignInRequired';
 import { SkeletonList } from '../src/components/Skeleton';
 import { useI18n } from '../src/i18n';
+import { useAiFlowStore } from '../src/store/aiFlowStore';
 import { useAuthStore } from '../src/store/authStore';
 import { money } from '../src/theme/format';
 import { colors, radius, spacing, text } from '../src/theme/tokens';
@@ -39,7 +41,22 @@ function totalPrice(look: Look): { amount: string; currency: string } {
 
 export default function Looks(): JSX.Element {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const t = useI18n((state) => state.t);
+  const resetOutfit = useAiFlowStore((state) => state.resetOutfit);
+  const wear = useAiFlowStore((state) => state.wear);
+
+  // Saqlangan lookni qayta kiyish — bir bosishda kiyintirish ekraniga.
+  // Slot nomi category sifatida ishlatiladi: fitting ekrani barcha slot
+  // nomlarini ham qabul qiladi (`CATEGORY_SLOT` fallback orqali), tabda
+  // aniqrok mos kelmasligi mumkin, lekin avatarda to'liq ko'rinadi.
+  const wearLook = (look: Look): void => {
+    resetOutfit();
+    look.items.forEach((piece) => {
+      wear(piece.slot, piece.variantId);
+    });
+    router.push('/ai/fitting');
+  };
 
   /*
    * ⚠️ QOROVUL BARCHA HOOKLARDAN KEYIN QAYTARADI, lekin holat SHU YERDA
@@ -116,11 +133,13 @@ export default function Looks(): JSX.Element {
           return (
             <View style={styles.card}>
               <View style={styles.header}>
-                {item.thumbnailUrl ? (
-                  <Image source={{ uri: item.thumbnailUrl }} style={styles.thumb} />
-                ) : (
-                  <View style={[styles.thumb, styles.thumbPlaceholder]} />
-                )}
+                <Pressable onPress={() => wearLook(item)} accessibilityRole="button">
+                  {item.thumbnailUrl ? (
+                    <Image source={{ uri: item.thumbnailUrl }} style={styles.thumb} />
+                  ) : (
+                    <View style={[styles.thumb, styles.thumbPlaceholder]} />
+                  )}
+                </Pressable>
 
                 <View style={{ flex: 1 }}>
                   <Text style={styles.name}>{item.name ?? t.looks.unnamed}</Text>
@@ -129,6 +148,14 @@ export default function Looks(): JSX.Element {
                     {new Date(item.createdAt).toLocaleDateString('uz-UZ')}
                   </Text>
                   <Text style={styles.total}>{money(total.amount, total.currency)}</Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Komplektni qayta kiyib ko'rish"
+                    onPress={() => wearLook(item)}
+                    style={styles.wearBtn}
+                  >
+                    <Text style={styles.wearBtnText}>Qayta kiyib ko'r</Text>
+                  </Pressable>
                 </View>
 
                 <Pressable
@@ -187,6 +214,18 @@ const styles = StyleSheet.create({
   total: { ...text.bodyMed, color: colors.text, marginTop: 2 },
   share: { ...text.small, color: colors.accent },
   remove: { ...text.h3, color: colors.textDim, paddingHorizontal: spacing.sm },
+  // Birlamchi harakat — binafsha chip, komplekt tez chaqiriladigan joy.
+  wearBtn: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1,
+    borderColor: colors.borderAccent,
+  },
+  wearBtnText: { ...text.tiny, color: colors.text, fontWeight: '700' },
   items: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm, gap: 4 },
   item: { flexDirection: 'row', gap: spacing.sm },
   slot: { ...text.tiny, color: colors.textDim, width: 60 },

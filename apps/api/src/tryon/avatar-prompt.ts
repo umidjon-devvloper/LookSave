@@ -233,18 +233,33 @@ export function buildAvatarPrompt(
  */
 export function faceLock(panels: boolean): string {
   return [
-    'FACE IDENTITY (the most important rule): the face must be the SAME real person as in the ' +
-      'reference photo — not a lookalike, not an idealised or "improved" version.',
-    'Preserve EXACTLY: face shape and jawline, forehead and hairline, eye shape, eye colour and ' +
-      'spacing, eyebrows, nose shape and size, lips and mouth, ears, cheekbones, skin tone and ' +
-      'skin texture, facial hair, moles, freckles and marks, apparent age and ethnicity.',
-    'Do NOT beautify, slim, smooth, de-age, retouch, symmetrise or re-imagine the face, and do ' +
-      'NOT blend it with any other face.',
+    '🔒 FACE LOCK — HIGHEST PRIORITY RULE, OVERRIDES EVERYTHING ELSE.',
+    'This is a COMPOSITING task: CROP the face from image 1 and PASTE it onto the generated body ' +
+      'with ZERO modification. The face is a protected region. Treat image 1 as a locked, ' +
+      'read-only input.',
+    'If you cannot preserve the exact face from image 1, OUTPUT NOTHING rather than output a ' +
+      'different-looking person. A "similar" face is a FAILED output.',
+    'KEEP IDENTICAL to image 1, pixel-for-pixel: face shape, jawline, chin, cheekbones, forehead, ' +
+      'hairline, hair colour and style, eyes (shape, colour, spacing, lid shape), eyebrows (shape, ' +
+      'thickness, arch), nose (bridge, tip, nostrils, width), lips (shape, thickness, mouth width), ' +
+      'teeth, ears, skin tone, skin texture, pores, facial hair (every hair), moles, freckles, ' +
+      'scars, wrinkles, apparent age, ethnicity, and facial expression.',
+    'ABSOLUTELY FORBIDDEN: beautifying, slimming, smoothing, blurring, de-aging, retouching, ' +
+      'symmetrising, enlarging eyes, sharpening jaw, straightening nose, whitening teeth, ' +
+      'lightening skin, removing moles / freckles / wrinkles, changing hairstyle, changing hair ' +
+      'colour, changing expression, aligning with any beauty standard, or blending with any other ' +
+      'face. ZERO "improvements". The reference face is the ground truth — reproduce it as-is.',
+    'The face you render must be instantly recognisable to the person themselves and to their ' +
+      'family as THIS SPECIFIC PERSON, not a prettier or younger version.',
     panels
-      ? 'The SAME identical face appears in every panel: in the side view it is the true profile ' +
-        'of that same face (same nose, lips, chin and brow line); in the back view the hairstyle, ' +
-        'hair colour, head shape and ears match exactly.'
-      : 'Hairstyle and hair colour stay exactly as in the reference.',
+      ? 'ALL THREE PANELS show the IDENTICAL face from image 1. Front view: the face from image 1 ' +
+        'facing camera. Side view: the TRUE profile of that same face (same nose silhouette, same ' +
+        'lip shape, same chin, same brow line, same ear). Back view: hairstyle, hair colour, head ' +
+        'shape, ears and neckline match image 1 exactly.'
+      : 'Hairstyle, hair colour, hair parting and hair volume stay exactly as in image 1.',
+    '🔒 FINAL CHECK before output: compare your rendered face side-by-side with image 1. If any ' +
+      'feature differs, REDRAW using image 1 as the exact template. Only output when the two faces ' +
+      'are the same person.',
   ].join(' ');
 }
 

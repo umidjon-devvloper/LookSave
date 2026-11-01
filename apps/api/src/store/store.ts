@@ -245,10 +245,16 @@ export function toStoreOrderDto(row: StoreOrderRow) {
     customer: { name: row.contact_name, phone: row.contact_phone },
     deliveryType: row.delivery_type,
     deliveryWhen: deliveryWhenLabel(row.delivery_slot, row.delivery_date),
-    // ⚠️ MATN, OBYEKT EMAS. `orders.address` — JSONB {text,lat,lng,landmark}.
-    // Ilova buni satr sifatida `<Text>` da ko'rsatadi; obyekt bersak
-    // «Objects are not valid as a React child» bilan ekran qulaydi.
-    address: (row.address as { text?: string } | null)?.text ?? null,
+    // ⚠️ OBYEKT yoki null — mijoz tanlagan nuqta (lat/lng) bo'lsa, sotuvchi
+    // uni xaritada ko'ra oladi. Ilovaning `addressText()` yordamchisi
+    // ikkala shaklni ham qabul qiladi; to'g'ridan-to'g'ri `<Text>` da
+    // chizmang (JSX obyektni ko'rsata olmaydi).
+    address: row.address as {
+      text?: string;
+      lat?: number;
+      lng?: number;
+      landmark?: string;
+    } | null,
     note: row.note,
     items: row.items.map((item) => ({
       title: item.title,

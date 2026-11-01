@@ -19,6 +19,7 @@ import { clearLayer, setLayer, type OutfitLayer } from '@looksave/validation';
  * ortiqcha chiqadi, ilova esa yiqilmaydi.
  */
 const STORE_KEY = 'ai.store';
+const OUTFIT_KEY = 'ai.outfit';
 
 async function persistStore(id: string | null, name: string | null): Promise<void> {
   try {
@@ -26,6 +27,26 @@ async function persistStore(id: string | null, name: string | null): Promise<voi
     else await SecureStore.deleteItemAsync(STORE_KEY);
   } catch (err) {
     console.warn('[ai-flow] do`konni saqlab bo`lmadi', err);
+  }
+}
+
+/**
+ * Yig'ilgan komplektni qurilmaga saqlash.
+ *
+ * ⚠️ Ilova yopilib ochilganda ham mijoz "Look" bosganini yo'qotmaydi:
+ * primerka ekrani shu saqlangan ro'yxatni tiklab, kiyilgan mahsulotlarni
+ * avatar ustida ko'rsatadi. Faqat `{category, variantId}` saqlanadi,
+ * renderlar emas — ular serverda bepul kutib turadi.
+ */
+async function persistOutfit(outfit: OutfitLayer[]): Promise<void> {
+  try {
+    if (outfit.length > 0) {
+      await SecureStore.setItemAsync(OUTFIT_KEY, JSON.stringify(outfit));
+    } else {
+      await SecureStore.deleteItemAsync(OUTFIT_KEY);
+    }
+  } catch (err) {
+    console.warn('[ai-flow] komplektni saqlab bo`lmadi', err);
   }
 }
 
@@ -78,6 +99,8 @@ interface AiFlowState {
   setStore: (id: string | null, name: string | null) => void;
   /** Ilova ochilganda saqlangan do'konni tiklaydi */
   restoreStore: () => Promise<void>;
+  /** Qurilmada saqlangan komplektni tiklaydi (ilova ochilishida chaqiriladi). */
+  restoreOutfit: () => Promise<void>;
   wear: (category: string, variantId: string) => void;
   takeOff: (category: string) => void;
   resetOutfit: () => void;
@@ -98,6 +121,7 @@ const INITIAL = {
   | 'setMood'
   | 'setStore'
   | 'restoreStore'
+  | 'restoreOutfit'
   | 'wear'
   | 'takeOff'
   | 'resetOutfit'
@@ -147,14 +171,58 @@ export const useAiFlowStore = create<AiFlowState>((set) => ({
     }
   },
 
+  /*
+   * ⚠️ WEAR/TAKEOFF/RESETOUTFIT HAR DOIM QURILMAGA YOZADI (fire-and-forget).
+   * Shu bois mijoz Lookga qo'shib ilovani yopsa, keyingi ochishda primerka
+   * aynan o'sha komplekt bilan ochiladi — tanlov esdan chiqmaydi.
+   */
   wear: (category, variantId) =>
-    set((state) => ({ outfit: setLayer(state.outfit, category, variantId) })),
-  takeOff: (category) => set((state) => ({ outfit: clearLayer(state.outfit, category) })),
-  resetOutfit: () => set({ outfit: [] }),
+    set((state) => {
+      const next = setLayer(state.outfit, category, variantId);
+      void persistOutfit(next);
+      return { outfit: next };
+    }),
+  takeOff: (category) =>
+    set((state) => {
+      const next = clearLayer(state.outfit, category);
+      void persistOutfit(next);
+      return { outfit: next };
+    }),
+  resetOutfit: () => {
+    void persistOutfit([]);
+    set({ outfit: [] });
+  },
 
-  /* ⚠️ To'liq tozalash saqlangan do'konni ham o'chiradi — chiqishda chaqiriladi */
+  restoreOutfit: async () => {
+    try {
+      const raw = await SecureStore.getItemAsync(OUTFIT_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) return;
+      // Zararli yozuvdan himoyalanish — faqat to'g'ri shaklli yozuvlar
+      const outfit: OutfitLayer[] = [];
+      for (const item of parsed) {
+        if (
+          item && typeof item === 'object' &&
+          typeof (item as OutfitLayer).category === 'string' &&
+          typeof (item as OutfitLayer).variantId === 'string'
+        ) {
+          outfit.push({
+            category: (item as OutfitLayer).category,
+            variantId: (item as OutfitLayer).variantId,
+          });
+        }
+      }
+      set((state) => (state.outfit.length ? {} : { outfit }));
+    } catch (err) {
+      console.warn('[ai-flow] saqlangan komplektni o`qib bo`lmadi', err);
+    }
+  },
+
+  /* ⚠️ To'liq tozalash saqlangan do'konni ham, komplektni ham o'chiradi — chiqishda chaqiriladi */
   reset: () => {
     void persistStore(null, null);
+    void persistOutfit([]);
     set(INITIAL);
   },
 }));

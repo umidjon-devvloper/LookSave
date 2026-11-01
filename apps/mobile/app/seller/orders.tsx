@@ -76,6 +76,14 @@ function addressText(address: unknown): string {
   return '';
 }
 
+/** Mijoz tanlagan nuqta {lat,lng}, yo'q bo'lsa null — xarita tugmasi uchun. */
+function addressCoords(address: unknown): { lat: number; lng: number } | null {
+  if (!address || typeof address !== 'object') return null;
+  const { lat, lng } = address as { lat?: unknown; lng?: unknown };
+  if (typeof lat === 'number' && typeof lng === 'number') return { lat, lng };
+  return null;
+}
+
 /**
  * Yangi buyurtma kelganda ovoz + banner.
  *
@@ -572,6 +580,22 @@ function OrderCard({
         >
           <Icon name="phone" size={18} color={colors.accent} />
         </Pressable>
+
+        {addressCoords(order.address) ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Manzilni xaritada ochish"
+            onPress={() => {
+              const c = addressCoords(order.address)!;
+              // Universal `geo:` link iOS'da ishlamaydi — Google Maps web
+              // havolasi ikkala tizim ham ochadi (iOS tanlov beradi).
+              void Linking.openURL(`https://maps.google.com/?q=${c.lat},${c.lng}`);
+            }}
+            style={styles.callButton}
+          >
+            <Icon name="location" size={18} color={colors.accent} />
+          </Pressable>
+        ) : null}
 
         {next ? (
           <View style={styles.actionMain}>

@@ -18,7 +18,10 @@ import { colors, radius } from '../theme/tokens';
 interface StoreLogoProps {
   logoUrl: string | null | undefined;
   name: string;
+  /** Balandlik. `width` berilmasa — kenglik ham shu (kvadrat). */
   size?: number;
+  /** Alohida kenglik (plita cho'zilgan ko'rinishda). Berilmasa `size` ishlatiladi. */
+  width?: number;
   style?: ViewStyle;
 }
 
@@ -54,13 +57,30 @@ function firstLetter(name: string): string {
   }
 }
 
-export function StoreLogo({ logoUrl, name, size = 52, style }: StoreLogoProps): JSX.Element {
-  const dim: ViewStyle = { width: size, height: size, borderRadius: radius.md };
+export function StoreLogo({ logoUrl, name, size = 52, width, style }: StoreLogoProps): JSX.Element {
+  const outerDim: ViewStyle = { width: width ?? size, height: size, borderRadius: radius.lg };
 
   if (logoUrl) {
+    // Har brend uchun tanish rang-tangasi: palette.fg dan tark olingan
+    // yumshoq binafsha/ko'k/pushti nurlanish shisha quti taassurotini beradi.
+    const palette = pickPalette(name);
+    const pad = Math.round(size * 0.16);
     return (
-      <View style={[styles.wrap, dim, style]}>
-        <Image source={{ uri: logoUrl }} style={styles.image} resizeMode="cover" />
+      <View
+        style={[
+          styles.lift,
+          outerDim,
+          { shadowColor: palette.fg, backgroundColor: palette.bg },
+          style,
+        ]}
+      >
+        <View style={[styles.logoInner, { borderRadius: radius.lg }]}>
+          <Image
+            source={{ uri: logoUrl }}
+            style={[styles.image, { padding: pad }]}
+            resizeMode="contain"
+          />
+        </View>
       </View>
     );
   }
@@ -70,18 +90,36 @@ export function StoreLogo({ logoUrl, name, size = 52, style }: StoreLogoProps): 
   const fontSize = Math.round(size * 0.42);
 
   return (
-    <View style={[styles.wrap, dim, { backgroundColor: palette.bg }, style]}>
+    <View style={[styles.letterWrap, outerDim, { backgroundColor: palette.bg }, style]}>
       <Text style={[styles.letter, { color: palette.fg, fontSize }]}>{letter}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
+  // Tashqi quti — soya oladi, overflow ochiq (soya kesilmasin).
+  // Fon palette.bg bilan to'ldirilgan: brend rangi tiniq nur beradi.
+  lift: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  // Ichki qatlam — rasmni ushlab turadi, radiusni kesadi.
+  logoInner: {
+    width: '100%',
+    height: '100%',
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  letterWrap: {
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    backgroundColor: colors.surface2,
     borderWidth: 1,
     borderColor: colors.border,
   },

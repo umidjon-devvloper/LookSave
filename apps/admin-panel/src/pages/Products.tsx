@@ -6,6 +6,7 @@ import {
   approveProduct,
   getModerationProducts,
   rejectProduct,
+  setProductLimited,
   type ModerationProduct,
 } from '../api/admin';
 import { ReasonModal } from '../components/ReasonModal';
@@ -124,28 +125,45 @@ export function ProductsPage(): JSX.Element {
               <span>{new Date(product.createdAt).toLocaleDateString('uz-UZ')}</span>
             </div>
 
-            <div className="mt-4 flex flex-wrap justify-end gap-2">
-              {product.status !== 'rejected' ? (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+              {/*
+                LIMITED kolleksiyasi — faqat nashr qilingan mahsulotlar uchun.
+                Admin ko'rganda ma'qul topgan premium mahsulotlargagina qo'yiladi;
+                sotuvchi forma orqali o'zini "limited" qila olmaydi, aks holda
+                belgi ma'nosini yo'qotardi.
+              */}
+              {product.status === 'active' ? (
                 <Button
-                  variant="destructive"
                   type="button"
-
+                  variant={product.isLimited ? 'default' : 'outline'}
                   disabled={act.isPending}
-                  onClick={() => setRejecting(product)}
+                  onClick={() => act.mutate(() => setProductLimited(product.id, !product.isLimited))}
                 >
-                  Rad etish
+                  {product.isLimited ? '★ LIMITED — bosilsa olinadi' : 'LIMITED kolleksiyaga qo`shish'}
                 </Button>
-              ) : null}
-              {product.status !== 'active' ? (
-                <Button
-                  type="button"
+              ) : <span />}
 
-                  disabled={act.isPending || product.images.length === 0}
-                  onClick={() => act.mutate(() => approveProduct(product.id))}
-                >
-                  Nashr qilish
-                </Button>
-              ) : null}
+              <div className="flex gap-2">
+                {product.status !== 'rejected' ? (
+                  <Button
+                    variant="destructive"
+                    type="button"
+                    disabled={act.isPending}
+                    onClick={() => setRejecting(product)}
+                  >
+                    Rad etish
+                  </Button>
+                ) : null}
+                {product.status !== 'active' ? (
+                  <Button
+                    type="button"
+                    disabled={act.isPending || product.images.length === 0}
+                    onClick={() => act.mutate(() => approveProduct(product.id))}
+                  >
+                    Nashr qilish
+                  </Button>
+                ) : null}
+              </div>
             </div>
           </article>
         ))}

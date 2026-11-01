@@ -241,6 +241,12 @@ export interface ProductListDto {
   canTryOn: boolean;
   isLimited: boolean;
   availableSizes: string[];
+  /**
+   * Kiyintirish sloti — "top", "bottom", "outer", "feet", "wrist".
+   * Ilovaga «Lookga qo'sh» uchun kerak: aiFlowStore outfit layerni shu
+   * slot bo'yicha ajratadi (bitta slotda ikki buyum turmaydi).
+   */
+  slot: string | null;
 }
 
 export function toProductListDto(row: ProductListRow): ProductListDto {
@@ -257,6 +263,7 @@ export function toProductListDto(row: ProductListRow): ProductListDto {
     canTryOn: supportsAiTryon(row.slot),
     isLimited: row.is_limited,
     availableSizes: row.available_sizes ?? [],
+    slot: row.slot,
   };
 }
 

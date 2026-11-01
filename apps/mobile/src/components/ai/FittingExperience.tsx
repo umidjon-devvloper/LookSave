@@ -134,11 +134,24 @@ const STYLE_LABEL: Record<GarmentStyle, string> = {
 };
 
 const TABS: Array<{ category: string; label: string; icon: IconName; slot: string }> = [
+  // «Hammasi» — birinchi tab, do'kondagi barcha AI-mos kiyimlar bir ro'yxatda.
+  // Bo'sh category + bo'sh slot: backend `AI_TRYON_SLOTS` ni ishlatadi, hamma
+  // kiyim qaytadi. recommendSize uchun ham slot kerak emas — bu tab tanlanganda
+  // mos-o'lcham filtri qo'llanmaydi, barcha narsa ko'rinadi.
+  { category: 'all', label: 'Hammasi', icon: 'tryon', slot: '' },
+  // Ustki kiyimlar — sotuvchi formasidagi barcha variantlar
   { category: 'tshirt', label: 'Futbolka', icon: 'slotTop', slot: 'top' },
-  { category: 'hoodie', label: 'Xudi', icon: 'slotTop', slot: 'top' },
-  { category: 'jacket', label: 'Kurtka', icon: 'slotOuter', slot: 'outer' },
+  { category: 'hoodie', label: 'Hoody', icon: 'slotTop', slot: 'top' },
+  { category: 'sweater', label: 'Sviter', icon: 'slotTop', slot: 'top' },
   { category: 'shirt', label: "Ko'ylak", icon: 'slotTop', slot: 'top' },
+  // Tashqi — alohida qatlam, komplekt tepasiga tushadi
+  { category: 'jacket', label: 'Kurtka', icon: 'slotOuter', slot: 'outer' },
+  { category: 'coat', label: 'Palto', icon: 'slotOuter', slot: 'outer' },
+  // Pastki — bel o'lchamidan filtrlanadi
   { category: 'trousers', label: 'Shim', icon: 'slotBottom', slot: 'bottom' },
+  { category: 'jeans', label: 'Jinsi', icon: 'slotBottom', slot: 'bottom' },
+  { category: 'shorts', label: 'Shorti', icon: 'slotBottom', slot: 'bottom' },
+  { category: 'skirt', label: 'Yubka', icon: 'slotBottom', slot: 'bottom' },
   /*
    * ⚠️ OYOQ KIYIMIDA TURKUM YO'Q — ATAYIN.
    *
@@ -163,7 +176,7 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
   const queryClient = useQueryClient();
   const signedIn = useAuthStore((state) => state.status) === 'signedIn';
 
-  const [tab, setTab] = useState('tshirt');
+  const [tab, setTab] = useState('all');
   const [size, setSize] = useState<string | null>(null);
   const [zoomed, setZoomed] = useState(false);
   /*
@@ -331,8 +344,10 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
 
   const fetchGarments = (size: string | null) =>
     getGarments({
-      // Bo'sh turkum — «faqat slot bo'yicha» degani (oyoq kiyim tabi)
-      category: tab || undefined,
+      // «all» — na category, na slot: backend sukutdagi `AI_TRYON_SLOTS` bilan
+      // har bir slotdan kiyim qaytaradi. Bo'sh category (`''`) esa «faqat
+      // slot bo'yicha» (oyoq kiyim tabi): kategoriya yo'q, lekin slot bor.
+      category: tab && tab !== 'all' ? tab : undefined,
       slot: tab ? undefined : (activeTab?.slot ?? 'feet'),
       style: styleFilter,
       storeId,
@@ -944,19 +959,40 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
             </View>
           </View>
 
-          {/* Kiyilgan qatlamlar — maketdagi ko'rsatkich */}
+          {/*
+            «Lookda» chiplari — sahnaning TEPASIDA, kategoriya nomi + × bilan.
+            Ilgari mayda nuqtalar edi va foydalanuvchi nima yig'ganini tushunmasdi.
+            Chip bosilsa — shu kategoriya tabiga o'tadi (mahsulotni almashtirish uchun);
+            × bosilsa — kiyim yechiladi.
+          */}
           {resolved.length > 0 ? (
-            <View style={styles.layerRail} pointerEvents="none">
-              {resolved.map((layer) => (
-                <View
-                  key={layer.category}
-                  style={[
-                    styles.layerDot,
-                    layer.render?.status === 'ready' && styles.layerDotReady,
-                    layer.category === tab && styles.layerDotActive,
-                  ]}
-                />
-              ))}
+            <View style={styles.lookChipRow} pointerEvents="box-none">
+              {resolved.map((layer) => {
+                const tabInfo = TABS.find((item) => item.category === layer.category);
+                const label = tabInfo?.label ?? layer.category;
+                const active = layer.category === tab;
+                return (
+                  <View key={layer.category} style={[styles.lookChip, active && styles.lookChipActive]}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`${label} tabiga o'tish`}
+                      onPress={() => setTab(layer.category)}
+                      hitSlop={6}
+                    >
+                      <Text style={styles.lookChipText}>{label}</Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`${label}ni yechish`}
+                      onPress={() => remove(layer.category)}
+                      hitSlop={8}
+                      style={styles.lookChipClose}
+                    >
+                      <Icon name="close" size={12} color={colors.textMuted} />
+                    </Pressable>
+                  </View>
+                );
+              })}
             </View>
           ) : null}
 
@@ -984,7 +1020,7 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
           ) : null}
         </View>
 
-        {/* Barcha turkumlar bitta gorizontal qatorda, qolganlari surib ko'riladi. */}
+        {/* Gorizontal qator — ixcham tab'lar, qolganlari surib ko'riladi. */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -1015,7 +1051,7 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
                 <View style={[styles.tabIcon, active && styles.tabIconActive]}>
                   <Icon
                     name={item.icon}
-                    size={17}
+                    size={14}
                     color={active ? colors.accent : colors.textMuted}
                   />
                 </View>
@@ -1634,21 +1670,38 @@ const styles = StyleSheet.create({
    * va ularni sanashdan ko'ra ko'rish tez: to'lgan nuqta — tayyor
    * qatlam, bo'shi — kelayotgani.
    */
-  layerRail: {
+  // «Lookda» chiplari — sahnaning tepasida, kategoriya nomi + × bilan
+  lookChipRow: {
     position: 'absolute',
-    right: spacing.sm,
-    top: '40%',
+    top: spacing.sm,
+    left: spacing.sm,
+    right: spacing.sm + 44 + spacing.sm, // o'ng tomondagi kamera tugmasiga joy
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.xs,
   },
-  layerDot: {
-    width: 8,
-    height: 8,
+  lookChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingLeft: spacing.sm,
+    paddingRight: 4,
+    paddingVertical: 4,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: colors.border,
+    backgroundColor: 'rgba(10,10,15,0.78)',
   },
-  layerDotReady: { backgroundColor: colors.accent, borderColor: colors.accent },
-  layerDotActive: { width: 8, height: 18 },
+  lookChipActive: { borderColor: colors.accent, backgroundColor: colors.primarySoft },
+  lookChipText: { ...text.tiny, color: colors.text, fontWeight: '600' },
+  lookChipClose: {
+    width: 20,
+    height: 20,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -1725,14 +1778,17 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     gap: 8,
   },
-  /* Maketdagi pilla: ikonka va yozuv YONMA-YON, dumaloq chegara */
+  /* Ixcham gorizontal tab: ikonka tepada, yozuv pastda — 5-6 tab bir
+     ekranga sig'adi, qolganlari surib ko'riladi. */
   tab: {
-    width: 142,
-    flexDirection: 'row',
+    width: 68,
+    flexDirection: 'column',
     alignItems: 'center',
-    gap: 8,
-    height: 50,
-    paddingHorizontal: 12,
+    justifyContent: 'center',
+    gap: 4,
+    height: 54,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: 'rgba(155,150,174,0.14)',
@@ -1750,15 +1806,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface2,
   },
   tabIcon: {
-    width: 28,
-    height: 28,
+    width: 22,
+    height: 22,
     borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.035)',
   },
   tabIconActive: { backgroundColor: 'rgba(192,132,252,0.14)' },
-  tabText: { ...text.tiny, color: colors.textMuted },
+  tabText: { ...text.tiny, color: colors.textMuted, fontSize: 10, textAlign: 'center' },
   tabTextActive: { color: colors.text, fontFamily: text.label.fontFamily },
   tabDressed: {
     position: 'absolute',

@@ -11,6 +11,11 @@ export const adminStoresQuerySchema = z.object({
   cursor: cursorSchema.optional(),
 });
 
+/** LIMITED kolleksiya belgisi — admin tasdiqlaydi, sotuvchi emas. */
+export const productLimitedSchema = z.object({
+  isLimited: z.boolean(),
+});
+
 export const rejectReasonSchema = z.object({
   reason: z.string().trim().min(3, 'Sabab kamida 3 belgi').max(500),
 });
@@ -140,6 +145,37 @@ export type CategoryUpdateInput = z.output<typeof categoryUpdateSchema>;
 
 export type BrandCreateInput = z.output<typeof brandCreateSchema>;
 export type BrandUpdateInput = z.output<typeof brandUpdateSchema>;
+
+const bannerTargetSchema = z
+  .string()
+  .trim()
+  .max(500)
+  .refine(
+    (value) =>
+      value.startsWith('/') ||
+      value.startsWith('https://') ||
+      value.startsWith('http://'),
+    'Havola / bilan yoki http(s) bilan boshlanishi kerak',
+  );
+
+export const bannerCreateSchema = z.object({
+  title: z.string().trim().min(2, 'Sarlavha kamida 2 belgi').max(100),
+  subtitle: z.string().trim().max(180).nullable().optional(),
+  imageUrl: z.string().url('Rasm havolasi noto`g`ri').max(500),
+  targetUrl: bannerTargetSchema.nullable().optional(),
+  audience: z.enum(['all', 'men', 'women', 'limited']).default('all'),
+  isActive: z.boolean().default(true),
+  sortOrder: z.coerce.number().int().min(0).max(9999).default(0),
+});
+
+export const bannerUpdateSchema = bannerCreateSchema
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "Hech qanday o'zgarish yuborilmadi",
+  });
+
+export type BannerCreateInput = z.output<typeof bannerCreateSchema>;
+export type BannerUpdateInput = z.output<typeof bannerUpdateSchema>;
 
 export type AdminStoresQuery = z.output<typeof adminStoresQuerySchema>;
 export type AdminProductsQuery = z.output<typeof adminProductsQuerySchema>;

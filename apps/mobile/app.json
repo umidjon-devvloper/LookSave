@@ -22,7 +22,7 @@
         "NSLocationWhenInUseUsageDescription": "Yaqin atrofdagi do'konlarni va ularning mahsulotlarini xaritada ko'rsatish uchun joylashuvingizdan foydalanamiz.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "31"
+      "buildNumber": "33"
     },
     "android": {
       "package": "com.looksave.looksave",

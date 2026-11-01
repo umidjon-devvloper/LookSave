@@ -9,8 +9,8 @@ import { OrdersPage } from './pages/Orders';
 import { OverviewPage } from './pages/Overview';
 import { ProductsPage } from './pages/Products';
 import { BrandsPage } from './pages/Brands';
-import { CategoriesPage } from './pages/Categories';
 import { StoresPage } from './pages/Stores';
+import { BannersPage } from './pages/Banners';
 
 export function App(): JSX.Element {
   const { user, loading } = useAuth();
@@ -40,7 +40,7 @@ export function App(): JSX.Element {
         <div className="max-w-sm space-y-3">
           <h1 className="text-lg font-semibold text-foreground">Bu panel administratorlar uchun</h1>
           <p className="text-sm text-dim">
-            Do'kon egalari uchun alohida kabinet bor: store.looksave.app
+            Do'kon egalari uchun alohida kabinet bor: store.looksave.uz
           </p>
         </div>
       </main>
@@ -54,7 +54,7 @@ export function App(): JSX.Element {
         <Route path="stores" element={<StoresPage />} />
         <Route path="products" element={<ProductsPage />} />
         <Route path="brands" element={<BrandsPage />} />
-        <Route path="categories" element={<CategoriesPage />} />
+        <Route path="banners" element={<BannersPage />} />
         <Route path="orders" element={<OrdersPage />} />
         <Route path="moderation" element={<ModerationPage />} />
       </Route>

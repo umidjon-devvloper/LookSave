@@ -115,13 +115,7 @@ export function DressBoard({
   );
 }
 
-function GarmentCard({
-  taskId,
-  garment,
-}: {
-  taskId: string;
-  garment: DressGarment;
-}): JSX.Element {
+function GarmentCard({ taskId, garment }: { taskId: string; garment: DressGarment }): JSX.Element {
   const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);

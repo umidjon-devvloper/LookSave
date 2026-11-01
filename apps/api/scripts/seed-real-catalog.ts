@@ -21,46 +21,12 @@
  *   npm run seed:real --workspace=apps/api -- --file=catalog.json --apply  # haqiqatan yozadi
  */
 
-import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 import type { CreateProductInput } from '@looksave/validation';
 
 import { pool } from '../src/db/pool';
-import { isOwnCdnUrl, uploadObject } from '../src/integrations/r2';
 import { createProduct } from '../src/store/products';
-
-/**
- * Tashqi rasm havolasini R2 ga ko'chiradi va CDN havolasini qaytaradi.
- *
- * ⚠️ NEGA KERAK: mahsulot rasmlari BIZNING CDN'dan bo'lishi shart
- * (`isOwnCdnUrl`). Tashqi sayt o'chsa katalogda bo'sh joy qoladi. Shuning
- * uchun stock/real rasmni avval R2 ga yuklaymiz.
- *
- * Allaqachon CDN havolasi bo'lsa — o'zini qaytaradi (qayta yuklamaydi).
- */
-const imageCache = new Map<string, string>();
-async function hostImage(srcUrl: string, prefix: 'product' | 'store'): Promise<string> {
-  if (isOwnCdnUrl(srcUrl)) return srcUrl;
-  const cached = imageCache.get(srcUrl);
-  if (cached) return cached;
-
-  const res = await fetch(srcUrl);
-  if (!res.ok) throw new Error(`rasm yuklab olinmadi (${res.status}): ${srcUrl}`);
-  const ct = (res.headers.get('content-type') ?? '').toLowerCase();
-  const ext = ct.includes('png')
-    ? '.png'
-    : ct.includes('webp')
-      ? '.webp'
-      : ct.includes('jpeg') || ct.includes('jpg')
-        ? '.jpg'
-        : (srcUrl.split('?')[0]?.match(/\.(png|webp|jpe?g)$/i)?.[0] ?? '.jpg').replace('.jpeg', '.jpg');
-  const contentType = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
-  const body = Buffer.from(await res.arrayBuffer());
-  const url = await uploadObject({ key: `${prefix}/${randomUUID()}${ext}`, body, contentType });
-  imageCache.set(srcUrl, url);
-  return url;
-}
 
 interface SeedProduct {
   title: string;
@@ -188,8 +154,7 @@ async function main(): Promise<void> {
           [newId, owner.id],
         );
         if (s.logoUrl) {
-          const logo = await hostImage(s.logoUrl, 'store');
-          await pool.query(`UPDATE stores SET logo_url = $2 WHERE id = $1`, [newId, logo]);
+          await pool.query(`UPDATE stores SET logo_url = $2 WHERE id = $1`, [newId, s.logoUrl]);
         }
         store = { id: newId, status: 'active' };
         storesCreated += 1;
@@ -259,11 +224,6 @@ async function main(): Promise<void> {
 
       console.log(`   ${APPLY ? '＋' : '·'} "${p.title}" [${p.categorySlug}] ${p.sizes.length} o'lcham`);
       if (APPLY) {
-        // Rasmlarni R2 ga ko'chirib, CDN havolalariga almashtiramiz
-        const hosted = [];
-        for (const img of p.images) hosted.push(await hostImage(img, 'product'));
-        input.images = hosted;
-        input.variants[0]!.images = hosted;
         await createProduct(store.id, input);
         productsAdded += 1;
       }

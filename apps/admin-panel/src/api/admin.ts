@@ -22,7 +22,7 @@ export interface AdminStore {
   coverUrl: string | null;
   location: { lat: number; lng: number };
   createdAt: string;
-  owner: { name: string | null; phone: string; username: string | null };
+  owner: { name: string | null; phone: string };
   rejectReason: string | null;
   productCount: number;
   orderCount: number;
@@ -45,6 +45,7 @@ export interface ModerationProduct {
   brandName: string | null;
   variantCount: number;
   totalStock: number;
+  isLimited: boolean;
 }
 
 export interface QaResult {
@@ -114,9 +115,8 @@ export const rejectStore = (id: string, reason: string): Promise<unknown> =>
 export const suspendStore = (id: string, reason: string): Promise<unknown> =>
   api(`/admin/stores/${id}/suspend`, { method: 'POST', body: { reason } });
 
-/** Do'kon egasining username'i — login va do'konning @handle'i */
 export const setStoreOwnerUsername = (id: string, username: string): Promise<unknown> =>
-  api(`/admin/stores/${id}/username`, { method: 'PATCH', body: { username } });
+  api(`/admin/stores/${id}/owner-username`, { method: 'POST', body: { username } });
 
 export const getModerationProducts = (
   status: 'pending' | 'rejected' | 'active',
@@ -128,6 +128,9 @@ export const approveProduct = (id: string): Promise<unknown> =>
 
 export const rejectProduct = (id: string, reason: string): Promise<unknown> =>
   api(`/admin/products/${id}/reject`, { method: 'POST', body: { reason } });
+
+export const setProductLimited = (id: string, isLimited: boolean): Promise<unknown> =>
+  api(`/admin/products/${id}/limited`, { method: 'POST', body: { isLimited } });
 
 export const getAssetQueue = (
   status: 'queued' | 'processing' | 'ready' | 'failed' | 'all',
@@ -287,43 +290,61 @@ export const updateBrand = (id: string, input: Partial<BrandInput>): Promise<Bra
 export const deleteBrand = (id: string): Promise<void> =>
   api<void>(`/admin/brands/${id}`, { method: 'DELETE' });
 
-// ── Kategoriyalar ──
+// ── Marketplace bannerlari ──
 
-export interface AdminCategory {
+export type BannerAudience = 'all' | 'men' | 'women' | 'limited';
+
+export interface MarketplaceBanner {
   id: string;
-  parentId: string | null;
-  slug: string;
-  name: Record<string, string>;
-  icon: string | null;
-  slot: string | null;
-  gender: string;
-  sizeType: string | null;
-  sortOrder: number;
+  title: string;
+  subtitle: string | null;
+  imageUrl: string;
+  targetUrl: string | null;
+  audience: BannerAudience;
   isActive: boolean;
-  productCount: number;
-  childCount: number;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface CategoryInput {
-  name: Record<string, string>;
-  slug?: string;
-  icon?: string | null;
-  slot?: string | null;
-  gender: string;
-  sizeType?: string | null;
-  parentId?: string | null;
-  sortOrder: number;
+export interface BannerInput {
+  title: string;
+  subtitle?: string | null;
+  imageUrl: string;
+  targetUrl?: string | null;
+  audience: BannerAudience;
   isActive: boolean;
+  sortOrder: number;
 }
 
-export const getCategories = (): Promise<AdminCategory[]> =>
-  api<AdminCategory[]>('/admin/categories');
+export async function uploadBannerImage(file: File): Promise<string> {
+  if (!LOGO_TYPES.includes(file.type)) throw new Error('Faqat PNG, WEBP yoki JPEG');
+  if (file.size > 5 * 1024 * 1024) throw new Error('Fayl 5 MB dan katta');
 
-export const createCategory = (input: CategoryInput): Promise<AdminCategory> =>
-  api<AdminCategory>('/admin/categories', { method: 'POST', body: input });
+  const presign = await api<Presign>('/admin/uploads/presign', {
+    method: 'POST',
+    body: { fileName: file.name, contentType: file.type, purpose: 'banner' },
+  });
+  const put = await fetch(presign.uploadUrl, {
+    method: 'PUT',
+    headers: presign.headers,
+    body: file,
+  });
+  if (!put.ok) throw new Error(`R2 yuklashni rad etdi (${put.status})`);
+  return presign.publicUrl;
+}
 
-export const updateCategory = (id: string, input: Partial<CategoryInput>): Promise<AdminCategory> =>
-  api<AdminCategory>(`/admin/categories/${id}`, { method: 'PATCH', body: input });
+export const getBanners = (): Promise<MarketplaceBanner[]> =>
+  api<MarketplaceBanner[]>('/admin/banners');
 
-export const deleteCategory = (id: string): Promise<void> =>
-  api<void>(`/admin/categories/${id}`, { method: 'DELETE' });
+export const createBanner = (input: BannerInput): Promise<MarketplaceBanner> =>
+  api<MarketplaceBanner>('/admin/banners', { method: 'POST', body: input });
+
+export const updateBanner = (
+  id: string,
+  input: Partial<BannerInput>,
+): Promise<MarketplaceBanner> =>
+  api<MarketplaceBanner>(`/admin/banners/${id}`, { method: 'PATCH', body: input });
+
+export const deleteBanner = (id: string): Promise<void> =>
+  api<void>(`/admin/banners/${id}`, { method: 'DELETE' });

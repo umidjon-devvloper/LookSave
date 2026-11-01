@@ -18,6 +18,7 @@ import { explainError } from '../src/api/explainError';
 import { createOrder, getCart, type CreateOrderInput } from '../src/api/endpoints';
 import { ErrorView, Field, Loading, Screen } from '../src/components/ui';
 import { Icon, type IconName } from '../src/components/Icon';
+import { LocationPicker } from '../src/components/LocationPicker';
 import { useAuthStore } from '../src/store/authStore';
 import { useI18n } from '../src/i18n';
 import { useLocationStore } from '../src/store/locationStore';
@@ -59,6 +60,12 @@ export default function Checkout(): JSX.Element {
   const [landmark, setLandmark] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
+  // Mijoz xaritada tanlagan nuqta — dastlab qurilma GPS'i, keyin tahrirlanadi.
+  // Pastda LocationPicker shuni ko'rsatadi va pin ko'chganida yangilanadi.
+  const [pickedCoords, setPickedCoords] = useState<{ lat: number; lng: number }>({
+    lat: coords.lat,
+    lng: coords.lng,
+  });
 
   /**
    * Idempotentlik kaliti CHECKOUT boshlanganda bir marta yaratiladi.
@@ -77,8 +84,8 @@ export default function Checkout(): JSX.Element {
     deliveryType === 'pickup' ||
     addressSchema.safeParse({
       text: addressText.trim(),
-      lat: coords.lat,
-      lng: coords.lng,
+      lat: pickedCoords.lat,
+      lng: pickedCoords.lng,
       ...(landmark.trim() ? { landmark: landmark.trim() } : {}),
     }).success;
 
@@ -110,8 +117,8 @@ export default function Checkout(): JSX.Element {
               ...(deliverySlot === 'scheduled' && deliveryDate ? { deliveryDate } : {}),
               address: {
                 text: addressText.trim(),
-                lat: coords.lat,
-                lng: coords.lng,
+                lat: pickedCoords.lat,
+                lng: pickedCoords.lng,
                 ...(landmark.trim() ? { landmark: landmark.trim() } : {}),
               },
             }
@@ -236,6 +243,15 @@ export default function Checkout(): JSX.Element {
                 onChangeText={setAddressText}
                 placeholder={t.checkout.addressPlaceholder}
               />
+
+              {/*
+                Mijoz xaritada aniq nuqtani belgilaydi — matn manzil
+                taxminiy bo'lsa ham, pin kuryerni to'g'ri eshikka olib
+                keladi. GPS'dan boshlaydi, keyin sudrab/bosib ko'chadi.
+              */}
+              <Text style={styles.label}>Xaritada joy</Text>
+              <LocationPicker coords={pickedCoords} onChange={setPickedCoords} />
+
               <Field
                 label={t.checkout.landmark}
                 value={landmark}

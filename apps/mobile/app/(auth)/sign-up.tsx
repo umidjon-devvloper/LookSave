@@ -412,14 +412,22 @@ export default function SignUp(): JSX.Element {
                 <>
                   <Pressable
                     style={[styles.card, styles.cardOn]}
-                    onPress={() => router.replace('/ai/avatar')}
+                    /*
+                     * ⚠️ TO'G'RIDAN-TO'G'RI KIYINTIRISHGA — asosiy mahsulot shu.
+                     * Avatar yo'q bo'lsa `FittingExperience` o'zi `/ai/avatar`
+                     * ga qaytaradi (`Redirect`). Ya'ni avatarsiz foydalanuvchi
+                     * baribir yuz skaneriga tushadi, lekin yakuniy manzil —
+                     * kiyintirish paneli, va u ro'yxatdan o'tgach darhol
+                     * nimaga keganini ko'radi.
+                     */
+                    onPress={() => router.replace('/ai/fitting')}
                   >
                     <View style={styles.cardIco}>
-                      <Icon name="profile" size={22} color={colors.accent} />
+                      <Icon name="tryon" size={22} color={colors.accent} />
                     </View>
                     <View style={styles.cardBody}>
-                      <Text style={styles.cardTitle}>{t.auth.gotoFaceScan}</Text>
-                      <Text style={styles.cardDesc}>{t.auth.gotoFaceScanDesc}</Text>
+                      <Text style={styles.cardTitle}>{t.auth.gotoFitting}</Text>
+                      <Text style={styles.cardDesc}>{t.auth.gotoFittingDesc}</Text>
                     </View>
                     <Icon name="next" size={20} color={colors.accent} />
                   </Pressable>

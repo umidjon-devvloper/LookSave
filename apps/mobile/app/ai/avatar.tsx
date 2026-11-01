@@ -874,26 +874,41 @@ function FaceStep({
         <Text style={styles.faceTitle}>{t.avatar.scannerTitle}</Text>
         <Text style={styles.faceSubtitle}>{t.avatar.faceSubtitle}</Text>
 
-        <View style={styles.scanRow}>
-          <View style={styles.guides}>
-            {FACE_GUIDES.map((guide) => (
-              <View key={guide.key} style={styles.guide}>
-                <View style={styles.guideIcon}>
-                  <Icon name={guide.icon} size={16} color={colors.accent} />
-                </View>
-                <Text style={styles.guideText}>{t.avatar[guide.key]}</Text>
+        {/*
+          ⚠️ YO'RIQLAR TEPADA, OVAL MARKAZDA.
+          Ilgari ular yonma-yon turardi: oval o'ng tomonda, foydalanuvchi
+          yuzini unga tiqishga harakat qilib telefonini qiyshaytirardi va
+          natijada selfi yonga og'ib tushardi. Markazda — tabiiy pozitsiya.
+        */}
+        <View style={styles.guidesRow}>
+          {FACE_GUIDES.map((guide) => (
+            <View key={guide.key} style={styles.guide}>
+              <View style={styles.guideIcon}>
+                <Icon name={guide.icon} size={16} color={colors.accent} />
               </View>
-            ))}
-          </View>
-
-          <View style={styles.ovalWrap}>
-            <View style={styles.oval}>
-              <CameraView ref={camera} facing="front" style={StyleSheet.absoluteFill} />
+              <Text style={styles.guideText}>{t.avatar[guide.key]}</Text>
             </View>
-            {/* Ikki halqa: tashqisi uzluksiz, ichkisi punktir — rasmdagidek */}
-            <View pointerEvents="none" style={styles.ovalRing} />
-            <View pointerEvents="none" style={styles.ovalRingInner} />
+          ))}
+        </View>
+
+        <View style={styles.ovalWrap}>
+          <View style={styles.oval}>
+            <CameraView
+              ref={camera}
+              facing="front"
+              // ⚠️ Portret qulfi: telefon biroz qiyshaygan bo'lsa ham surat
+              // vertikal yo'nalishda saqlansin — EXIF `manipulateAsync` da
+              // baribir pikselga singdiriladi, lekin bu yerda kadrning
+              // o'zi ham qiyshaymasligini kafolatlaymiz.
+              responsiveOrientationWhenOrientationLocked
+              style={StyleSheet.absoluteFill}
+            />
+            {/* Vertikal markaz chizig'i — yuzni to'g'ri joylashtirish uchun */}
+            <View pointerEvents="none" style={styles.ovalCenterLine} />
           </View>
+          {/* Ikki halqa: tashqisi uzluksiz, ichkisi punktir — rasmdagidek */}
+          <View pointerEvents="none" style={styles.ovalRing} />
+          <View pointerEvents="none" style={styles.ovalRingInner} />
         </View>
 
         <View style={styles.facePill}>
@@ -1346,7 +1361,12 @@ function DoneStep({
   return (
     <View style={styles.card}>
       {imageUrl ? (
-        <Image source={{ uri: imageUrl }} style={styles.avatarPreview} resizeMode="cover" />
+        /*
+         * ⚠️ `contain` SHART, `cover` EMAS. Avatar — to'liq bo'yli maneken.
+         * `cover` uning oyoqlari yoki boshini kesib tashlaydi — foydalanuvchi
+         * «faqat gavda» ni ko'radi va o'z o'lchoviga mosligini bilolmaydi.
+         */
+        <Image source={{ uri: imageUrl }} style={styles.avatarPreview} resizeMode="contain" />
       ) : null}
 
       <Text style={styles.cardTitle}>{t.avatar.avatarReady}</Text>
@@ -1403,6 +1423,8 @@ const styles = StyleSheet.create({
 
   avatarPreview: {
     width: '100%',
+    // Maneken 2:3 nisbatida yasaladi (OpenAI chiqishi); 3:4 kadr unga yaqin,
+    // `contain` esa qolgan joyni fon bilan to'ldiradi va rasm KESILMAYDI.
     aspectRatio: 3 / 4,
     borderRadius: radius.lg,
     backgroundColor: colors.surface2,
@@ -1606,14 +1628,15 @@ const styles = StyleSheet.create({
   faceTitle: { ...text.h2, color: colors.text },
   faceSubtitle: { ...text.small, color: colors.textDim, textAlign: 'center' },
 
-  scanRow: {
+  // Yo'riqlar endi oval ustida, gorizontal (uch chip)
+  guidesRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    gap: spacing.lg,
     marginTop: spacing.sm,
   },
-  guides: { gap: spacing.lg, width: 62 },
-  guide: { alignItems: 'center', gap: spacing.xs },
+  guide: { alignItems: 'center', gap: spacing.xs, width: 72 },
   guideIcon: {
     width: 38,
     height: 38,
@@ -1626,7 +1649,7 @@ const styles = StyleSheet.create({
   },
   guideText: { ...text.tiny, color: colors.textDim, textAlign: 'center', fontSize: 9 },
 
-  ovalWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  ovalWrap: { alignSelf: 'center', alignItems: 'center', justifyContent: 'center', marginTop: spacing.md },
   /*
    * ⚠️ RAMKA YUZ EMAS, YUZ + YELKA UCHUN.
    *
@@ -1664,6 +1687,18 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderColor: colors.accent,
     opacity: 0.4,
+  },
+  // Vertikal yo'naltirgich chiziq: foydalanuvchi yuzini unga tenglashtiradi,
+  // bosh qiyshaymaydi. Juda yupqa va shaffof — kadrni to'smaydi.
+  ovalCenterLine: {
+    position: 'absolute',
+    left: '50%',
+    top: 12,
+    bottom: 12,
+    width: 1,
+    marginLeft: -0.5,
+    backgroundColor: colors.accent,
+    opacity: 0.25,
   },
 
   facePill: {

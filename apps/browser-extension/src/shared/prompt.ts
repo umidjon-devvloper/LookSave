@@ -106,18 +106,33 @@ const SCENE =
  */
 function faceLock(panels: boolean): string {
   return [
-    'FACE IDENTITY (the most important rule): the face must be the SAME real person as in the ' +
-      'reference photo — not a lookalike, not an idealised or "improved" version.',
-    'Preserve EXACTLY: face shape and jawline, forehead and hairline, eye shape, eye colour and ' +
-      'spacing, eyebrows, nose shape and size, lips and mouth, ears, cheekbones, skin tone and ' +
-      'skin texture, facial hair, moles, freckles and marks, apparent age and ethnicity.',
-    'Do NOT beautify, slim, smooth, de-age, retouch, symmetrise or re-imagine the face, and do ' +
-      'NOT blend it with any other face.',
+    '🔒 FACE LOCK — HIGHEST PRIORITY RULE, OVERRIDES EVERYTHING ELSE.',
+    'This is a COMPOSITING task: CROP the face from image 1 and PASTE it onto the generated body ' +
+      'with ZERO modification. The face is a protected region. Treat image 1 as a locked, ' +
+      'read-only input.',
+    'If you cannot preserve the exact face from image 1, OUTPUT NOTHING rather than output a ' +
+      'different-looking person. A "similar" face is a FAILED output.',
+    'KEEP IDENTICAL to image 1, pixel-for-pixel: face shape, jawline, chin, cheekbones, forehead, ' +
+      'hairline, hair colour and style, eyes (shape, colour, spacing, lid shape), eyebrows (shape, ' +
+      'thickness, arch), nose (bridge, tip, nostrils, width), lips (shape, thickness, mouth width), ' +
+      'teeth, ears, skin tone, skin texture, pores, facial hair (every hair), moles, freckles, ' +
+      'scars, wrinkles, apparent age, ethnicity, and facial expression.',
+    'ABSOLUTELY FORBIDDEN: beautifying, slimming, smoothing, blurring, de-aging, retouching, ' +
+      'symmetrising, enlarging eyes, sharpening jaw, straightening nose, whitening teeth, ' +
+      'lightening skin, removing moles / freckles / wrinkles, changing hairstyle, changing hair ' +
+      'colour, changing expression, aligning with any beauty standard, or blending with any other ' +
+      'face. ZERO "improvements". The reference face is the ground truth — reproduce it as-is.',
+    'The face you render must be instantly recognisable to the person themselves and to their ' +
+      'family as THIS SPECIFIC PERSON, not a prettier or younger version.',
     panels
-      ? 'The SAME identical face appears in every panel: in the side view it is the true profile ' +
-        'of that same face (same nose, lips, chin and brow line); in the back view the hairstyle, ' +
-        'hair colour, head shape and ears match exactly.'
-      : 'Hairstyle and hair colour stay exactly as in the reference.',
+      ? 'ALL THREE PANELS show the IDENTICAL face from image 1. Front view: the face from image 1 ' +
+        'facing camera. Side view: the TRUE profile of that same face (same nose silhouette, same ' +
+        'lip shape, same chin, same brow line, same ear). Back view: hairstyle, hair colour, head ' +
+        'shape, ears and neckline match image 1 exactly.'
+      : 'Hairstyle, hair colour, hair parting and hair volume stay exactly as in image 1.',
+    '🔒 FINAL CHECK before output: compare your rendered face side-by-side with image 1. If any ' +
+      'feature differs, REDRAW using image 1 as the exact template. Only output when the two faces ' +
+      'are the same person.',
   ].join(' ');
 }
 
@@ -241,15 +256,18 @@ export function buildAvatarRequestPrompt(
   if (isSheetPrompt(bodyPrompt)) return buildSheetRequestPrompt(bodyPrompt, garment);
 
   const lines = [
-    'Full-body photorealistic portrait of the person in the first reference image.',
+    '🔒 YOU ARE EDITING A PHOTO OF A REAL PERSON. The first three images are the SAME face of ' +
+      'that real person — attached three times because this is the single most important input. ' +
+      'If the output face does not match these references, you have FAILED the task.',
+    'Full-body photorealistic portrait of the person in the first three reference images (same face).',
     faceLock(false),
-    'The reference shows the head and shoulders — carry the neck, shoulder line and build over to the full body.',
+    'The references show the head and shoulders — carry the neck, shoulder line and build over to the full body.',
     garment ? stripBaseLayer(bodyPrompt) : bodyPrompt,
   ];
 
   if (garment) {
     lines.push(
-      `Dress the person in the garment from the SECOND image, ${PLACEMENT[garment]}.`,
+      `Dress the person in the garment from the FOURTH image, ${PLACEMENT[garment]}.`,
       'Reproduce that garment EXACTLY: same colour, same pattern, same cut, same details and any printed artwork — it is a real product being sold.',
       REST_OF_OUTFIT[garment],
     );
@@ -310,20 +328,21 @@ export function isSheetPrompt(bodyPrompt: string): boolean {
  */
 function buildSheetRequestPrompt(bodyPrompt: string, garment?: GarmentKind | null): string {
   const lines = [
-    'The FIRST reference image is the face of the person — it is the only source for the face. ' +
-      'The reference shows the head and shoulders — carry the neck, shoulder line and build over ' +
-      'to the full body.',
+    '🔒 YOU ARE EDITING A PHOTO OF A REAL PERSON. The FIRST, SECOND and THIRD images are the ' +
+      'SAME face — three copies of the one and only identity reference. CROP the face from these ' +
+      'images and PASTE it unchanged into every panel. The reference shows the head and ' +
+      'shoulders — carry the neck, shoulder line and build the full body around it.',
     /*
      * Yangi server matnida yuz qulfi bor; eski server uni yubormasa bu
      * yerda qo'shiladi — ikki marta takrorlanmasin.
      */
-    ...(/FACE IDENTITY/.test(bodyPrompt) ? [] : [faceLock(true)]),
+    ...(/FACE IDENTITY|FACE LOCK/.test(bodyPrompt) ? [] : [faceLock(true)]),
     garment ? stripBaseLayer(bodyPrompt) : bodyPrompt,
   ];
 
   if (garment) {
     lines.push(
-      `CLOTHING: dress the person in ALL THREE panels in the garment from the SECOND image, ` +
+      `CLOTHING: dress the person in ALL THREE panels in the garment from the FOURTH image, ` +
         `${PLACEMENT[garment]} — the same real product seen from the front, the side and the ` +
         'back. Reproduce it EXACTLY: same colour, same pattern, same cut, same details and any ' +
         'printed artwork; on the back view show the back of that garment. ' +
@@ -406,17 +425,22 @@ export function buildTryonSheetPrompt(input: {
   const person = input.gender === 'female' ? 'woman' : input.gender === 'male' ? 'man' : 'person';
 
   return [
+    '🔒 YOU ARE EDITING A PHOTO OF A REAL PERSON. The first three images are the SAME face of ' +
+      'that real person — I attached it three times because this is the single most important ' +
+      'input. If the output face does not match these reference images, you have FAILED the task.',
+
     'Create ONE single image: a photorealistic fashion turnaround sheet of ONE real person, ' +
       'shown three times side by side.',
 
-    'IMAGES: the FIRST image is the face of the person — it is the ONLY source for the face and ' +
-      'identity. The SECOND image is the garment being sold.',
+    'IMAGES: the FIRST, SECOND and THIRD images are the SAME face of the person — three copies of ' +
+      'the one and only reference you may use for identity. CROP the face from these images and ' +
+      'PASTE it unchanged into every panel. The FOURTH image is the garment being sold.',
 
     faceLock(true),
 
     bodyLine(person, input.measurements),
 
-    `CLOTHING: dress the person in ALL THREE panels in the garment from the SECOND image, ` +
+    `CLOTHING: dress the person in ALL THREE panels in the garment from the FOURTH image, ` +
       `${PLACEMENT[input.kind]}. Reproduce it EXACTLY: same colour, same pattern, same cut, ` +
       'same details and any printed artwork — it is a real product being sold; on the back view ' +
       `show the back of that same garment. ${REST_OF_OUTFIT[input.kind]}`,
@@ -444,5 +468,13 @@ export function buildTryonSheetPrompt(input: {
     /* ⚠️ FAQAT BRAUZER VERSIYASIDA — chat interfeysi matn bilan javob bermasin. */
     'Output exactly ONE image — the three-panel sheet — landscape 3:2 PNG with transparency. ' +
       'Do not ask questions, do not explain, do not offer alternatives.',
+
+    /*
+     * ⚠️ RECENCY — eng oxirgi gap modelga eng kuchli ta'sir qiladi.
+     * Yuz qulfini oxirida qisqa va keskin takrorlaymiz.
+     */
+    '🔒 REMEMBER: the face in all three panels MUST be the exact face from image 1. If the final ' +
+      'face differs in ANY feature, the output is wrong. Do not idealise, do not beautify, do not ' +
+      '"improve" — copy image 1 as-is.',
   ].join('\n\n');
 }

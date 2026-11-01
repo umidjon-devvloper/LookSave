@@ -4,3 +4,12 @@
 
 expo-env.d.ts
 # @end expo-cli
+
+# App imzolash sirlari — HECH QACHON commit qilinmasin
+credentials.json
+credentials/
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision

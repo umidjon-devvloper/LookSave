@@ -104,3 +104,6 @@ bench-data/
 .dev-*.pid
 # Kuryer ilovasi vaqtincha chetga olingan (Metro uni package.json siz ko'rib yiqilardi)
 .courier-parked/
+
+# Browser extension build artifact
+apps/browser-extension/dist.zip

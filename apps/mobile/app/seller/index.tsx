@@ -90,42 +90,64 @@ export default function SellerDashboard(): JSX.Element {
   };
 
   return (
-    <ScrollView
-      style={styles.flex}
-      contentContainerStyle={[
-        styles.content,
-        { paddingTop: insets.top + spacing.md, paddingBottom: spacing.xl * 2 },
-      ]}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Salom + do'kon */}
+    <View style={styles.flex}>
+      {/* Status bar ustidan to'liq fon — scroll ortga chiqmasin */}
+      <View style={[styles.topSafe, { height: insets.top }]} />
+
+      {/* Qotirilgan sarlavha */}
       <View style={styles.header}>
-        <StoreLogo logoUrl={store?.logoUrl ?? null} name={store?.name ?? ''} size={56} />
+        <Pressable
+          onPress={() => router.replace('/(tabs)/profile')}
+          hitSlop={10}
+          style={styles.backBtn}
+          accessibilityRole="button"
+        >
+          <Icon name="back" size={20} color={colors.text} />
+        </Pressable>
+        <StoreLogo logoUrl={store?.logoUrl ?? null} name={store?.name ?? ''} size={48} />
         <View style={styles.headerText}>
           <Text style={styles.hello}>{t.sellerDashboard.hello}</Text>
           <Text style={styles.storeName} numberOfLines={1}>
             {store?.name ?? ''}
           </Text>
         </View>
-        <View style={[styles.statusDot, { backgroundColor: store?.isOpen ? colors.success : colors.textMuted }]} />
+        <View
+          style={[
+            styles.statusDot,
+            { backgroundColor: store?.isOpen ? colors.success : colors.textMuted },
+          ]}
+        />
       </View>
 
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={[styles.content, { paddingBottom: spacing.xl * 2 }]}
+        showsVerticalScrollIndicator={false}
+      >
       {/* Oylik tushum — asosiy karta */}
       <View style={styles.revenueCard}>
         <LinearGradient
-          colors={[colors.primary, colors.primaryDim]}
+          colors={['#7C3AED', '#4C2A9E', '#2E1A6B']}
+          locations={[0, 0.6, 1]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
+        {/* Dekorativ nurli halqalar — kartaga tiniq chuqurlik beradi,
+            toza binafsha blokdan uzoqlashtiradi. */}
+        <View style={styles.revenueOrb1} pointerEvents="none" />
+        <View style={styles.revenueOrb2} pointerEvents="none" />
         <View style={styles.revenueTextWrap}>
           <Text style={styles.revenueLabel}>{t.sellerDashboard.revenueThisMonth}</Text>
           <Text style={styles.revenueValue}>
             {money(data.revenueMonth, data.currency)}
           </Text>
-          <Text style={styles.revenueHint}>
-            {t.sellerDashboard.ordersThisMonth.replace('{n}', String(data.completedMonth))}
-          </Text>
+          <View style={styles.revenueChip}>
+            <Icon name="orders" size={12} color={colors.text} />
+            <Text style={styles.revenueChipText}>
+              {t.sellerDashboard.ordersThisMonth.replace('{n}', String(data.completedMonth))}
+            </Text>
+          </View>
         </View>
         <View style={styles.revenueIco}>
           <Icon name="premium" size={32} color={colors.text} />
@@ -135,11 +157,13 @@ export default function SellerDashboard(): JSX.Element {
       {/* 4 ta ko'rsatkich */}
       <View style={styles.tiles}>
         {TILES.map((tile) => (
-          <View key={tile.key} style={styles.tile}>
-            <View style={[styles.tileIco, { backgroundColor: `${tile.tint}22` }]}>
-              <Icon name={tile.icon} size={18} color={tile.tint} />
+          <View key={tile.key} style={[styles.tile, { borderColor: `${tile.tint}33` }]}>
+            <View style={styles.tileTop}>
+              <View style={[styles.tileIco, { backgroundColor: `${tile.tint}22` }]}>
+                <Icon name={tile.icon} size={18} color={tile.tint} />
+              </View>
+              <Text style={styles.tileValue}>{metrics[tile.key]}</Text>
             </View>
-            <Text style={styles.tileValue}>{metrics[tile.key]}</Text>
             <Text style={styles.tileLabel}>{t.sellerDashboard[tile.key]}</Text>
           </View>
         ))}
@@ -152,6 +176,7 @@ export default function SellerDashboard(): JSX.Element {
         title={t.sellerDashboard.addProduct}
         desc={t.sellerDashboard.addProductDesc}
         onPress={() => router.push('/seller/product-new')}
+        primary
       />
       <QuickAction
         icon="orders"
@@ -170,7 +195,8 @@ export default function SellerDashboard(): JSX.Element {
         desc={t.sellerDashboard.editStoreDesc}
         onPress={() => router.push('/seller/settings')}
       />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -180,25 +206,34 @@ function QuickAction({
   desc,
   onPress,
   badge,
+  primary,
 }: {
   icon: IconName;
   title: string;
   desc: string;
   onPress: () => void;
   badge?: number;
+  primary?: boolean;
 }): JSX.Element {
   return (
     <Pressable
-      style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
+      style={({ pressed }) => [
+        styles.action,
+        primary && styles.actionPrimary,
+        pressed && styles.actionPressed,
+      ]}
       onPress={onPress}
       accessibilityRole="button"
     >
-      <View style={styles.actionIco}>
-        <Icon name={icon} size={20} color={colors.accent} />
+      <View style={[styles.actionIco, primary && styles.actionIcoPrimary]}>
+        <Icon name={icon} size={20} color={primary ? colors.text : colors.accent} />
       </View>
       <View style={styles.actionBody}>
         <Text style={styles.actionTitle}>{title}</Text>
-        <Text style={styles.actionDesc} numberOfLines={1}>
+        <Text
+          style={[styles.actionDesc, primary && styles.actionDescPrimary]}
+          numberOfLines={1}
+        >
           {desc}
         </Text>
       </View>
@@ -207,7 +242,7 @@ function QuickAction({
           <Text style={styles.badgeText}>{badge}</Text>
         </View>
       ) : (
-        <Icon name="next" size={18} color={colors.textMuted} />
+        <Icon name="next" size={18} color={primary ? colors.text : colors.textMuted} />
       )}
     </Pressable>
   );
@@ -215,13 +250,27 @@ function QuickAction({
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.bg },
-  content: { paddingHorizontal: spacing.md },
+  content: { paddingHorizontal: spacing.md, paddingTop: spacing.md },
+
+  topSafe: { backgroundColor: colors.surface },
 
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginBottom: spacing.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: colors.surface2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerText: { flex: 1, minWidth: 0 },
   hello: { ...text.tiny, color: colors.textMuted, letterSpacing: 1 },
@@ -235,28 +284,66 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: spacing.md,
-    minHeight: 120,
+    minHeight: 128,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  // Yarim shaffof nurli halqalar — kartaning yorqin burchagini ta'kidlaydi.
+  revenueOrb1: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    top: -80,
+    right: -60,
+  },
+  revenueOrb2: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    bottom: -60,
+    left: -20,
   },
   revenueTextWrap: { flex: 1 },
   revenueLabel: {
     ...text.tiny,
-    color: 'rgba(255,255,255,0.75)',
-    letterSpacing: 1.2,
+    color: 'rgba(255,255,255,0.78)',
+    letterSpacing: 1.4,
     textTransform: 'uppercase',
+    fontWeight: '700',
   },
   revenueValue: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '800',
     color: colors.text,
-    marginTop: 6,
-    marginBottom: 4,
+    marginTop: 8,
+    marginBottom: 10,
+    letterSpacing: -0.5,
   },
-  revenueHint: { ...text.small, color: 'rgba(255,255,255,0.85)' },
+  revenueChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    alignSelf: 'flex-start',
+  },
+  revenueChipText: { ...text.tiny, color: colors.text, fontWeight: '600' },
   revenueIco: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -275,18 +362,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.md,
-    gap: 4,
+    gap: 10,
+  },
+  // Yuqori qator — ikonka chapda, qiymat o'ngda, bir chiziqda.
+  tileTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   tileIco: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
   },
-  tileValue: { fontSize: 22, fontWeight: '800', color: colors.text },
-  tileLabel: { ...text.tiny, color: colors.textMuted },
+  tileValue: { fontSize: 26, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
+  tileLabel: { ...text.tiny, color: colors.textMuted, letterSpacing: 0.3 },
 
   section: {
     ...text.tiny,
@@ -309,18 +401,30 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.sm,
   },
+  // Birlamchi harakat (yangi mahsulot) — binafsha fon, ko'proq urg'u.
+  actionPrimary: {
+    backgroundColor: colors.primaryDark,
+    borderColor: 'rgba(139,92,246,0.45)',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 5,
+  },
   actionPressed: { opacity: 0.7 },
   actionIco: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     borderRadius: 12,
     backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  actionIcoPrimary: { backgroundColor: 'rgba(255,255,255,0.2)' },
   actionBody: { flex: 1, minWidth: 0 },
   actionTitle: { ...text.bodyMed, color: colors.text },
   actionDesc: { ...text.tiny, color: colors.textMuted, marginTop: 2 },
+  actionDescPrimary: { color: 'rgba(255,255,255,0.78)' },
 
   badge: {
     minWidth: 26,

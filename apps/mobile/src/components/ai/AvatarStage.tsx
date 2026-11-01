@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useRef, type ReactNode } from 'react';
-import { Animated, Easing, Image, StyleSheet, Text, View } from 'react-native';
+import { type ReactNode } from 'react';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 import { colors, radius, spacing, text } from '../../theme/tokens';
 
@@ -69,37 +69,6 @@ export function AvatarStage({
    */
   children?: ReactNode;
 }): JSX.Element {
-  const pulse = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    /*
-     * Halqalar sekin "nafas oladi". Aylanish emas, kattalashib-kichrayish:
-     * aylanish e'tiborni tortadi va kiyimga qarashga xalaqit qiladi,
-     * sekin puls esa sahnani tirik qiladi, lekin ko'zni charchatmaydi.
-     */
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1,
-          duration: 2600,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          toValue: 0,
-          duration: 2600,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [pulse]);
-
-  // Pastdagi nur sekin "nafas oladi" (halqalar olib tashlangach faqat shu qoldi)
-  const opacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0.95] });
-
   // Kesim bor bo'lsa u ustun: faqat u qorong'i fonda to'g'ri ko'rinadi
   const source = cutoutUrl ?? imageUrl;
 
@@ -113,13 +82,11 @@ export function AvatarStage({
         pointerEvents="none"
       />
 
-      {/* Pastdagi nur — odam "platforma" ustida turgandek */}
-      <Animated.View style={[styles.floorGlow, { opacity }]} pointerEvents="none">
-        <LinearGradient
-          colors={['rgba(139,92,246,0.28)', 'rgba(139,92,246,0)']}
-          style={StyleSheet.absoluteFill}
-        />
-      </Animated.View>
+      {/*
+        ⚠️ FLOOR GLOW OLIB TASHLANDI (2026-11-01). Ilgari oyoq ostida sekin
+        "nafas oladigan" binafsha nurlanish bor edi — foydalanuvchi uni
+        chalg'ituvchi deb topdi. Studio foni va pastki fade yetarli.
+      */}
 
       {children ? (
         <View
@@ -216,15 +183,6 @@ const styles = StyleSheet.create({
   },
 
   studioBackground: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
-  floorGlow: {
-    position: 'absolute',
-    left: '30%',
-    right: '30%',
-    bottom: 0,
-    height: '10%',
-    borderRadius: 999,
-    overflow: 'hidden',
-  },
 
   /*
    * ⚠️ PASTDA JOY QOLDIRILADI. Boshqaruv tugmalari sahna ostida yotiq qator

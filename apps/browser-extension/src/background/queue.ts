@@ -339,9 +339,17 @@ async function runRenderTask(task: Task, tabId: number, adapter: AdapterId): Pro
    * ⚠️ FAQAT YUZ + KIYIM (2026-09-25). Gavda surati berilmaydi — gavda
    * o'lchamlardan quriladi, natija esa uch panelli varaq (server uni
    * old/yon/orqa qilib bo'ladi).
+   *
+   * ⚠️ YUZ UCH MARTA BIRIKTIRILADI (2026-10-30). Modellar ko'p marta
+   * ko'rilgan rasmga ko'proq e'tibor beradi — bitta yuz surati bilan model
+   * uni «bir chekka tafsilot» deb hisoblab, qayta chizib yuborardi. Uch
+   * nusxa bilan u «ASOSIY mavzu» bo'ladi.
    */
+  const faceImage = await fetchImage(identity);
   const images = [
-    { name: 'face.jpg', ...(await fetchImage(identity)) },
+    { name: 'face-1.jpg', ...faceImage },
+    { name: 'face-2.jpg', ...faceImage },
+    { name: 'face-3.jpg', ...faceImage },
     { name: 'garment.jpg', ...(await fetchImage(garment)) },
   ];
 
@@ -399,8 +407,12 @@ async function makeAvatar(task: Task, tabId: number, adapter: AdapterId): Promis
   status = { ...status, total: 1, current: { title: 'Avatar yasash' } };
   if (first) note(`Avatar ${first.title} bilan yasaladi`);
 
+  // Yuz uch marta — "Yuz UCH MARTA BIRIKTIRILADI" tushuntirishi runRenderTask'da
+  const faceImage = await fetchImage(faceUrl);
   const images = [
-    { name: 'face.jpg', ...(await fetchImage(faceUrl)) },
+    { name: 'face-1.jpg', ...faceImage },
+    { name: 'face-2.jpg', ...faceImage },
+    { name: 'face-3.jpg', ...faceImage },
     ...(first
       ? [{ name: 'garment.jpg', ...(await fetchImage(first.garmentImage as string)) }]
       : []),

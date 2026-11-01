@@ -245,6 +245,7 @@ interface ModerationRow {
   brand_name: string | null;
   variant_count: string;
   total_stock: string;
+  is_limited: boolean;
 }
 
 export async function findProductsForModeration(
@@ -270,7 +271,7 @@ export async function findProductsForModeration(
 
   const { rows } = await pool.query<ModerationRow>(
     `SELECT p.id, p.title, p.description, p.status, p.base_price, p.currency, p.images,
-            p.gender, p.created_at,
+            p.gender, p.is_limited, p.created_at,
             to_char(p.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.US') || '+00'
               AS created_at_key,
             s.id AS store_id, s.name AS store_name,
@@ -310,7 +311,28 @@ export function toModerationDto(row: ModerationRow) {
     brandName: row.brand_name,
     variantCount: Number(row.variant_count),
     totalStock: Number(row.total_stock),
+    isLimited: row.is_limited,
   };
+}
+
+/**
+ * LIMITED kolleksiyasiga qo'shish / olib tashlash.
+ *
+ * ⚠️ FAQAT ADMIN. Sotuvchi forma orqali o'zini "limited" qila olmaydi —
+ * aks holda bu belgi "exclusive, rare" ma'nosini yo'qotardi. Admin
+ * ko'rganda ma'qul topgan premium mahsulotlargagina qo'yiladi.
+ */
+export async function setProductLimited(
+  productId: string,
+  isLimited: boolean,
+): Promise<{ id: string; isLimited: boolean }> {
+  const { rows } = await pool.query<{ id: string; is_limited: boolean }>(
+    `UPDATE products SET is_limited = $2 WHERE id = $1 RETURNING id, is_limited`,
+    [productId, isLimited],
+  );
+  const product = rows[0];
+  if (!product) throw ApiError.notFound('Mahsulot topilmadi');
+  return { id: product.id, isLimited: product.is_limited };
 }
 
 export async function setProductStatus(

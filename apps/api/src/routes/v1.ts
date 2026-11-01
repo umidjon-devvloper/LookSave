@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { pool } from '../db/pool';
 import { sendData } from '../http/respond';
 import { route } from '../http/validate';
+import { findActiveBanners } from '../admin/banners';
 
 export const v1Router: Router = Router();
 
@@ -121,3 +122,15 @@ v1Router.get('/brands', async (_req, res) => {
     })),
   );
 });
+
+/** GET /v1/marketplace/banners?audience=men — faqat aktiv bannerlar. */
+v1Router.get(
+  '/marketplace/banners',
+  route(
+    { query: z.object({ audience: z.enum(['all', 'men', 'women', 'limited']).default('all') }) },
+    async (input, _req, res) => {
+      res.setHeader('Cache-Control', 'public, max-age=60');
+      sendData(res, await findActiveBanners(input.query.audience));
+    },
+  ),
+);

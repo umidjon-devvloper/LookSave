@@ -72,6 +72,7 @@ const CACHE_CONTROL: Record<PresignInput['purpose'], string> = {
    * zarar qilmaydi.
    */
   brand: 'public, max-age=86400',
+  banner: 'public, max-age=86400',
   face: 'private, max-age=3600',
   // Profil surati almashtirilganda yangi UUID beriladi — eskisi keshda qolsa ham zarari yo'q
   avatar: 'public, max-age=31536000, immutable',

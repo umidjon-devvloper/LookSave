@@ -12,6 +12,7 @@ import {
   type TaskFilter,
 } from '../api/tasks';
 import { ApiClientError } from '../api/client';
+import { AutoDress } from '../components/AutoDress';
 import { DressBoard } from '../components/DressBoard';
 import { EmptyState, Spinner } from '../components/Spinner';
 import { useAuth } from '../hooks/useAuth';
@@ -33,64 +34,6 @@ import { Textarea } from '@/components/ui/textarea';
  * qoldiradi — yangi ish kelganini sarlavhadagi sondan ko'radi.
  */
 
-/**
- * Natija surati. Avatar ishida uch panelli varaq kutiladi (old · yon ·
- * orqa) — u TO'LIQ ko'rsatiladi (`contain`) va ustiga server kesadigan
- * chiziqlar (33% / 66%) chiziladi. Operator yuborishdan oldin har figura
- * o'z bo'lagiga sig'ganini ko'radi: qo'l yoki oyoq chiziqdan o'tsa, o'sha
- * bo'lakda kesilib qoladi.
- *
- * ⚠️ Chiziqlar RASMNING o'zida, konteynerda emas — `contain` rasmni
- * markazlab chetida bo'sh joy qoldiradi, konteynerga chizilgan chiziq
- * esa noto'g'ri joyni ko'rsatardi.
- */
-function SheetPreview({
-  src,
-  alt,
-  guides,
-  className,
-}: {
-  src: string;
-  alt: string;
-  guides: boolean;
-  className: string;
-}): JSX.Element {
-  const [sheet, setSheet] = useState(false);
-
-  if (!guides) return <img src={src} alt={alt} className={`${className} object-cover`} />;
-
-  return (
-    <div className={`${className} flex items-center justify-center`}>
-      <div className="relative max-h-full max-w-full">
-        <img
-          src={src}
-          alt={alt}
-          className="block max-h-[460px] max-w-full object-contain"
-          onLoad={(event) => {
-            const img = event.currentTarget;
-            // Server bilan bir xil qoida (`isAvatarSheet`): landshaft — varaq
-            setSheet(img.naturalWidth >= img.naturalHeight * 1.2);
-          }}
-        />
-        {sheet ? (
-          <div aria-hidden className="pointer-events-none absolute inset-0 grid grid-cols-3">
-            {['Old', 'Yon', 'Orqa'].map((label, index) => (
-              <div
-                key={label}
-                className={`relative ${index > 0 ? 'border-l-2 border-dashed border-brand/80' : ''}`}
-              >
-                <span className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[11px] font-medium text-white">
-                  {label}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
 const TABS: Array<{ value: TaskFilter; label: string }> = [
   { value: 'open', label: 'Navbat' },
   { value: 'done', label: 'Tayyor' },
@@ -110,10 +53,7 @@ const MEASURE_LABEL: Record<string, string> = {
   weight: 'Vazn, kg',
   chest: 'Ko`krak, sm',
   waist: 'Bel, sm',
-  // ⚠️ `hips` — bazadagi kalit. Ilgari `hip` edi va son hech qachon ko'rinmasdi
-  hips: 'Son, sm',
-  topSize: 'Ustki kiyim razmeri',
-  bottomSize: 'Shim razmeri',
+  hip: 'Son, sm',
   shoeSize: 'Oyoq (EU)',
 };
 
@@ -560,19 +500,30 @@ function TaskDetail({
             </dl>
           ) : null}
 
-          {/*
-            Kiyintirish (render) ishi — FAQAT KIYIM (2026-09-25). Yuz yuqorida
-            «Yuz surati» da; AI'ga faqat yuz + kiyim boradi, gavda emas.
-          */}
-          {task.kind === 'render' && task.previews.garmentImageUrl ? (
-            <figure className="space-y-1">
-              <figcaption className="label text-xs">Kiyim</figcaption>
-              <img
-                src={task.previews.garmentImageUrl}
-                alt="Kiyiladigan kiyim"
-                className="aspect-[3/4] max-h-64 w-full rounded-md bg-surface2 object-contain"
-              />
-            </figure>
+          {/* Kiyintirish (render) ishi — gavda + KIYIM rasmi */}
+          {task.kind === 'render' && (task.previews.bodyUrl || task.previews.garmentImageUrl) ? (
+            <div className="grid grid-cols-2 gap-3">
+              {task.previews.bodyUrl ? (
+                <figure className="space-y-1">
+                  <figcaption className="label text-xs">Gavda (avatar)</figcaption>
+                  <img
+                    src={task.previews.bodyUrl}
+                    alt="Kiyintiriladigan gavda"
+                    className="aspect-[3/4] w-full rounded-md bg-surface2 object-cover"
+                  />
+                </figure>
+              ) : null}
+              {task.previews.garmentImageUrl ? (
+                <figure className="space-y-1">
+                  <figcaption className="label text-xs">Kiyim</figcaption>
+                  <img
+                    src={task.previews.garmentImageUrl}
+                    alt="Kiyiladigan kiyim"
+                    className="aspect-[3/4] w-full rounded-md bg-surface2 object-contain"
+                  />
+                </figure>
+              ) : null}
+            </div>
           ) : null}
         </section>
 
@@ -587,11 +538,10 @@ function TaskDetail({
           </h2>
 
           {task.status === 'done' && task.resultUrl ? (
-            <SheetPreview
+            <img
               src={task.resultUrl}
               alt="Tayyor avatar"
-              guides
-              className="aspect-[3/4] max-h-[460px] w-full rounded-md bg-surface2"
+              className="aspect-[3/4] max-h-[460px] w-full rounded-md bg-surface2 object-cover"
             />
           ) : task.status === 'failed' ? (
             <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{task.error}</p>
@@ -604,18 +554,15 @@ function TaskDetail({
               }`}
             >
               {preview ? (
-                <SheetPreview
+                <img
                   src={preview}
                   alt="Yuklanadigan natija"
-                  guides
-                  className="h-full w-full"
+                  className="h-full w-full object-cover"
                 />
               ) : (
                 <>
                   <p className="px-6 text-sm text-dim">
-                    {mine
-                      ? 'Tayyor 3 panelli suratni (old · yon · orqa) shu yerga tashlang — server uni o`zi 3 ga bo`ladi'
-                      : 'Avval ishni band qiling'}
+                    {mine ? 'Tayyor suratni shu yerga tashlang' : 'Avval ishni band qiling'}
                   </p>
                   {mine ? (
                     <Button variant="outline" size="sm" onClick={() => inputRef.current?.click()}>
@@ -650,6 +597,8 @@ function TaskDetail({
           ) : null}
         </section>
       </div>
+
+      <AutoDress taskId={task.id} />
 
       {task.kind === 'avatar' ? (
         <DressBoard taskId={task.id} avatarReady={task.status === 'done'} />

@@ -26,7 +26,7 @@ import { route } from '../http/validate';
 import { isOwnCdnUrl } from '../integrations/r2';
 import { logger } from '../logger';
 import { setBodyPhoto } from '../profile/profile';
-import { getAvatar, requestAngle, requestAvatar } from '../tryon/avatar';
+import { ensureAvatarCutout, getAvatar, requestAngle, requestAvatar } from '../tryon/avatar';
 import {
   listGarments,
   listRenders,
@@ -174,6 +174,11 @@ tryonRouter.post(
     },
   ),
 );
+
+/** POST /v1/tryon/avatar/cutout — eski avatar fonini qayta ajratish. */
+tryonRouter.post('/tryon/avatar/cutout', requireAuth, async (_req, res) => {
+  sendData(res, await ensureAvatarCutout(getAuth(res).sub));
+});
 
 /** GET /v1/tryon/avatar — holat. Ilova tayyor bo'lguncha takrorlaydi. */
 tryonRouter.get('/tryon/avatar', requireAuth, async (_req, res) => {

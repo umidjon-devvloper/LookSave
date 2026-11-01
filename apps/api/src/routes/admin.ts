@@ -8,11 +8,11 @@ import {
   assetUpdateSchema,
   brandCreateSchema,
   brandUpdateSchema,
-  categoryCreateSchema,
-  categoryUpdateSchema,
+  bannerCreateSchema,
+  bannerUpdateSchema,
   idParamSchema,
+  productLimitedSchema,
   rejectReasonSchema,
-  setUsernameSchema,
 } from '@looksave/validation';
 import { Router } from 'express';
 
@@ -28,7 +28,7 @@ import {
   getOverview,
   removeBlock,
   setProductStatus,
-  setStoreOwnerUsername,
+  setProductLimited,
   setStoreStatus,
   toAdminStoreDto,
   toAssetDto,
@@ -38,12 +38,11 @@ import {
 } from '../admin/admin';
 import { createBrand, deleteBrand, findBrands, toBrandDto, updateBrand } from '../admin/brands';
 import {
-  createCategory,
-  deleteCategory,
-  findCategories,
-  toCategoryDto,
-  updateCategory,
-} from '../admin/categories';
+  createBanner,
+  deleteBanner,
+  findBanners,
+  updateBanner,
+} from '../admin/banners';
 import { presignUpload } from '../integrations/r2';
 import { decodeCursor, paginate } from '../catalog/cursor';
 import { requireAuth, requireRole } from '../http/auth-middleware';
@@ -97,14 +96,6 @@ adminRouter.post(
   }),
 );
 
-/** PATCH /v1/admin/stores/:id/username — do'kon egasining username'i */
-adminRouter.patch(
-  '/admin/stores/:id/username',
-  route({ params: idParamSchema, body: setUsernameSchema }, async (input, _req, res) => {
-    sendData(res, await setStoreOwnerUsername(input.params.id, input.body.username));
-  }),
-);
-
 /** GET /v1/admin/products/moderation */
 adminRouter.get(
   '/admin/products/moderation',
@@ -136,6 +127,14 @@ adminRouter.post(
   '/admin/products/:id/reject',
   route({ params: idParamSchema, body: rejectReasonSchema }, async (input, _req, res) => {
     sendData(res, await setProductStatus(input.params.id, 'rejected'));
+  }),
+);
+
+/** POST /v1/admin/products/:id/limited {isLimited: boolean} — LIMITED belgi. */
+adminRouter.post(
+  '/admin/products/:id/limited',
+  route({ params: idParamSchema, body: productLimitedSchema }, async (input, _req, res) => {
+    sendData(res, await setProductLimited(input.params.id, input.body.isLimited));
   }),
 );
 
@@ -196,6 +195,33 @@ adminRouter.delete(
   }),
 );
 
+/** Marketplace reklama bannerlari — faqat admin boshqaradi. */
+adminRouter.get('/admin/banners', async (_req, res) => {
+  sendData(res, await findBanners());
+});
+
+adminRouter.post(
+  '/admin/banners',
+  route({ body: bannerCreateSchema }, async (input, _req, res) => {
+    sendData(res, await createBanner(input.body), 201);
+  }),
+);
+
+adminRouter.patch(
+  '/admin/banners/:id',
+  route({ params: idParamSchema, body: bannerUpdateSchema }, async (input, _req, res) => {
+    sendData(res, await updateBanner(input.params.id, input.body));
+  }),
+);
+
+adminRouter.delete(
+  '/admin/banners/:id',
+  route({ params: idParamSchema }, async (input, _req, res) => {
+    await deleteBanner(input.params.id);
+    sendNoContent(res);
+  }),
+);
+
 /** GET /v1/admin/users?restricted=true */
 adminRouter.get(
   '/admin/users',
@@ -220,7 +246,7 @@ adminRouter.post(
 /**
  * POST /v1/admin/uploads/presign
  *
- * Brend logotipi to'g'ridan-to'g'ri R2 ga yuklanadi — fayl server orqali
+ * Brend logotipi va reklama banneri to'g'ridan-to'g'ri R2 ga yuklanadi — fayl server orqali
  * o'tmaydi (09-integrations §4.2), do'kon va profil marshrutlari bilan bir xil.
  *
  * ⚠️ ILGARI ADMIN PANELDA FAQAT URL MAYDONI BOR EDI va logotiplar begona
@@ -264,37 +290,6 @@ adminRouter.delete(
   '/admin/brands/:id',
   route({ params: idParamSchema }, async (input, _req, res) => {
     await deleteBrand(input.params.id);
-    sendNoContent(res);
-  }),
-);
-
-/** GET /v1/admin/categories — hammasi (nofaollar ham) */
-adminRouter.get('/admin/categories', async (_req, res) => {
-  const rows = await findCategories();
-  sendData(res, rows.map(toCategoryDto));
-});
-
-/** POST /v1/admin/categories */
-adminRouter.post(
-  '/admin/categories',
-  route({ body: categoryCreateSchema }, async (input, _req, res) => {
-    sendData(res, await createCategory(input.body), 201);
-  }),
-);
-
-/** PATCH /v1/admin/categories/:id */
-adminRouter.patch(
-  '/admin/categories/:id',
-  route({ params: idParamSchema, body: categoryUpdateSchema }, async (input, _req, res) => {
-    sendData(res, await updateCategory(input.params.id, input.body));
-  }),
-);
-
-/** DELETE /v1/admin/categories/:id — bolasi/mahsuloti bor bo'lsa o'chmaydi */
-adminRouter.delete(
-  '/admin/categories/:id',
-  route({ params: idParamSchema }, async (input, _req, res) => {
-    await deleteCategory(input.params.id);
     sendNoContent(res);
   }),
 );

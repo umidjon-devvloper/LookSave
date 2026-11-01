@@ -84,11 +84,19 @@ export interface OutfitLayer {
  * emas — futbolka, xudi va ko'ylak uchalasi ham `top` slotida.
  */
 const CATEGORY_SLOT: Record<string, string> = {
+  // Pastki — bel o'lchamidan hisoblanadi
   trousers: 'bottom',
+  jeans: 'bottom',
+  shorts: 'bottom',
+  skirt: 'bottom',
+  // Ustki — ko'krak o'lchamidan hisoblanadi
   tshirt: 'top',
   shirt: 'top',
   hoodie: 'top',
+  sweater: 'top',
+  // Tashqi — ustki qatlam, komplektning tepasida
   jacket: 'outer',
+  coat: 'outer',
 };
 
 /**

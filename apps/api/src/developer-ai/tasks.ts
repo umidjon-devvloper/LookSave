@@ -286,7 +286,10 @@ export async function listTasks(
  * o'tgan bo'lishi mumkin va bu ishlayotgan tomonni to'xtatishi shart
  * emas — u keyingi qadamda haqiqiy xatoni ko'radi.
  */
-export async function heartbeatTask(taskId: string, operatorId: string): Promise<{ alive: boolean }> {
+export async function heartbeatTask(
+  taskId: string,
+  operatorId: string,
+): Promise<{ alive: boolean }> {
   const { rowCount } = await pool.query(
     `UPDATE developer_ai_tasks
         SET heartbeat_at = now()
@@ -318,7 +321,8 @@ export async function sweepStaleTasks(): Promise<number> {
         AND COALESCE(heartbeat_at, claimed_at) < now() - interval '15 minutes'`,
   );
 
-  if (rowCount) logger.info({ count: rowCount }, 'developer_ai: tashlab ketilgan ishlar navbatga qaytdi');
+  if (rowCount)
+    logger.info({ count: rowCount }, 'developer_ai: tashlab ketilgan ishlar navbatga qaytdi');
 
   return rowCount ?? 0;
 }

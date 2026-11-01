@@ -13,13 +13,15 @@ import {
 import type { FlatList } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { getBrands, getProducts, type ProductCard } from '../../src/api/endpoints';
+import { getBrands, getLooks, getProducts, type ProductCard } from '../../src/api/endpoints';
 import { Icon } from '../../src/components/Icon';
 import { Hero } from '../../src/components/home/Hero';
 import { ScrollFade } from '../../src/components/ScrollFade';
 import { BrandRow, SectionHeader } from '../../src/components/home/Sections';
 import { Empty, ErrorView, Screen } from '../../src/components/ui';
 import { rtlStyles, useI18n } from '../../src/i18n';
+import { useAiFlowStore } from '../../src/store/aiFlowStore';
+import { useAuthStore } from '../../src/store/authStore';
 import { useLocationStore } from '../../src/store/locationStore';
 import { useSplashLanding } from '../../src/store/splashTargetStore';
 import { CARD_PADDING, CARD_TEXT_INSET } from '../../src/components/Skeleton';
@@ -35,10 +37,14 @@ import { colors, radius, spacing, text } from '../../src/theme/tokens';
 function TrendingCard({
   product,
   onPress,
+  onLookPress,
+  inLook,
   isRTL,
 }: {
   product: ProductCard;
   onPress: () => void;
+  onLookPress: () => void;
+  inLook: boolean;
   isRTL: boolean;
 }): JSX.Element {
   return (
@@ -61,10 +67,45 @@ function TrendingCard({
           keladiganlar. Eski belgi yolg'on va'da berardi.
         */}
         {product.canTryOn ? (
-          <View style={styles.badgeTryon}>
+          <View
+            style={[
+              styles.badgeTryon,
+              // RTL'da yurak chapga o'tadi — AI belgisini o'ngga ko'chiramiz,
+              // aks holda ikkalasi ham chap burchakda ustma-ust tushadi
+              isRTL ? { right: spacing.sm, left: undefined } : null,
+            ]}
+          >
             <Text style={styles.badgeTryonText}>AI</Text>
           </View>
         ) : null}
+
+        {/*
+          «Lookga qo'sh» tugmasi — rasm pastki chekkasida yotgan pil.
+          Yurak yuqoridagi burchakda, bu esa pastki qarshi burchakda:
+          foydalanuvchi ikkisini chalkashtirmaydi. Mahsulot sahifasi
+          ichida kiyintirish tajribasi bor, shu yerga olib boradi.
+        */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={inLook ? 'Lookda bor' : "Lookga qo'shish"}
+          onPress={(e) => {
+            e.stopPropagation();
+            onLookPress();
+          }}
+          hitSlop={6}
+          style={[
+            styles.lookBtn,
+            inLook && styles.lookBtnOn,
+            isRTL ? { right: spacing.sm, left: undefined } : null,
+          ]}
+        >
+          <Icon
+            name={inLook ? 'check' : 'looks'}
+            size={13}
+            color={inLook ? colors.text : colors.accent}
+          />
+          <Text style={styles.lookBtnText}>{inLook ? 'Lookda' : 'Look'}</Text>
+        </Pressable>
       </View>
 
       <Text style={[styles.cardTitle, rtlStyles.text(isRTL)]} numberOfLines={1}>
@@ -100,6 +141,9 @@ export default function Home(): JSX.Element {
   const t = useI18n((state) => state.t);
   const isRTL = useI18n((state) => state.isRTL);
   const { coords, permission, request } = useLocationStore();
+  // Lookga qo'shish — aiFlowStore outfit layer bilan ishlaydi
+  const outfit = useAiFlowStore((state) => state.outfit);
+  const wear = useAiFlowStore((state) => state.wear);
   // Bu ekranda tepa sarlavha yo'q (logotip uning o'rnini bosadi), shuning uchun
   // status bar ostiga kirib ketmaslik uchun bo'shliq qo'lda qo'shiladi.
   const insets = useSafeAreaInsets();
@@ -124,6 +168,15 @@ export default function Home(): JSX.Element {
   }, [permission, request]);
 
   const brands = useQuery({ queryKey: ['brands'], queryFn: getBrands });
+
+  // Saqlangan looklar — AI ikonkadagi badge va bosilganda yo'nalish shu
+  // ro'yxatga. Faqat kirgan foydalanuvchi uchun — bo'lmasa 401 xatosi.
+  const authStatusForLooks = useAuthStore((state) => state.status);
+  const savedLooks = useQuery({
+    queryKey: ['looks'],
+    queryFn: getLooks,
+    enabled: authStatusForLooks === 'signedIn',
+  });
 
   /* Sahifalash — katalogdagidek. Ilgari faqat birinchi 20 ta kelardi. */
   const products = useInfiniteQuery({
@@ -236,6 +289,21 @@ export default function Home(): JSX.Element {
             product={item}
             isRTL={isRTL}
             onPress={() => router.push(`/product/${item.id}`)}
+            onLookPress={() => {
+              if (!item.canTryOn) {
+                // Kiyib ko'rib bo'lmaydigan buyum (masalan aksessuar) —
+                // mahsulot sahifasida foydalanuvchi batafsil ko'radi
+                router.push(`/product/${item.id}`);
+                return;
+              }
+              /*
+               * Slot `null` bo'lishi mumkin — eski API javobida bu maydon
+               * yo'q edi, deploy'dan oldin backward-compat uchun `top`
+               * standart qiymat. Yangi javobda to'g'ri slot keladi.
+               */
+              wear(item.slot ?? 'top', item.id);
+            }}
+            inLook={outfit.some((layer) => layer.variantId === item.id)}
           />
         )}
         ListEmptyComponent={
@@ -272,6 +340,44 @@ export default function Home(): JSX.Element {
             <Text style={styles.wordmark}>Look Save</Text>
           </View>
           <View style={[styles.topActions, rtlStyles.row(isRTL)]}>
+            {/*
+              AI tugmasi — qidiruvdan oldin, chunki marketplace ichidagi eng
+              farqlanadigan tajriba shu. Accent (binafsha) rang bilan ko'zga
+              tashlanadi, qolgan ikonkalar neytral oq rangda qoladi.
+            */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                outfit.length > 0
+                  ? `AI — ${outfit.length} ta buyum yig'ilgan`
+                  : (savedLooks.data?.length ?? 0) > 0
+                    ? `Looklar — ${savedLooks.data?.length} ta saqlangan`
+                    : 'AI Designer'
+              }
+              /*
+                Ikki holat, bitta ikonka:
+                  — foydalanuvchi mahsulotlardan "Look" bosib buyumlar yig'yapti
+                    (`outfit.length > 0`) → kiyintirish ekraniga, u yerda ko'radi;
+                  — hali hech narsa yig'ilmagan → saqlangan looklariga.
+                Badge esa qaysi oqimda bo'lsa — o'shaning sonini chiqaradi.
+              */
+              onPress={() =>
+                router.push(outfit.length > 0 ? '/ai/fitting' : '/looks')
+              }
+              hitSlop={8}
+              style={styles.aiBtn}
+            >
+              <Icon name="tryon" size={22} color={colors.accent} />
+              {outfit.length > 0 ? (
+                <View style={styles.aiBadge}>
+                  <Text style={styles.aiBadgeText}>{outfit.length}</Text>
+                </View>
+              ) : (savedLooks.data?.length ?? 0) > 0 ? (
+                <View style={styles.aiBadge}>
+                  <Text style={styles.aiBadgeText}>{savedLooks.data!.length}</Text>
+                </View>
+              ) : null}
+            </Pressable>
             <Pressable onPress={() => router.push('/catalog')} hitSlop={8}>
               <Icon name="search" size={22} color={colors.text} />
             </Pressable>
@@ -297,6 +403,7 @@ export default function Home(): JSX.Element {
           <ActivityIndicator color={colors.accent} size="small" />
         </View>
       ) : null}
+
     </Screen>
   );
 }
@@ -371,6 +478,49 @@ const styles = StyleSheet.create({
     borderColor: colors.borderAccent,
   },
   badgeTryonText: { ...text.tiny, color: colors.accent },
+  lookBtn: {
+    position: 'absolute',
+    bottom: spacing.sm,
+    left: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(10,10,15,0.72)',
+    borderWidth: 1,
+    borderColor: colors.borderAccent,
+  },
+  lookBtnOn: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  lookBtnText: { ...text.tiny, color: colors.text, letterSpacing: 0.3 },
+
+  // AI tugmasidagi hisoblagich — binafsha pill, 1-9 va «9+»
+  aiBtn: { position: 'relative' },
+  aiBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -8,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 4,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+    borderWidth: 1.5,
+    borderColor: colors.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aiBadgeText: {
+    ...text.tiny,
+    color: colors.text,
+    fontSize: 10,
+    lineHeight: 12,
+    letterSpacing: 0,
+  },
   cardTitle: {
     ...text.small,
     color: colors.text,

@@ -4,6 +4,7 @@ import { redis } from '../db/redis';
 import { notifyStatusChange } from '../integrations/notify';
 import { sendMessage } from '../integrations/telegram';
 import { logger } from '../logger';
+import { sweepStaleTasks } from '../developer-ai/tasks';
 import { sweepStaleAvatars } from '../tryon/avatar';
 import { cleanupSupersededRenders, sweepStaleRenders } from '../tryon/render';
 
@@ -279,6 +280,14 @@ async function tick(): Promise<void> {
   if (await acquire('tryon-sweep', 50)) {
     await run('tryon-sweep', sweepStaleRenders);
     await run('avatar-sweep', sweepStaleAvatars);
+    /*
+     * Tashlab ketilgan operator ishlari.
+     *
+     * ⚠️ BIR NECHTA KENGAYTMA BITTA NAVBATDAN ISHLAYDI. Biri qotib
+     * qolsa yoki brauzeri yopilsa, ish uning nomida qolardi va navbat
+     * tiqilardi — ikkinchisi esa bo'sh turaverardi.
+     */
+    await run('task-sweep', sweepStaleTasks);
     // Do'kon arizalari — 5 daqiqalik oynadan keyin
     await run('store-approve', autoApproveStores);
   }

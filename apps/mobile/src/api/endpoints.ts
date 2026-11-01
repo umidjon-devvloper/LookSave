@@ -152,6 +152,8 @@ export interface ProductCard {
   canTryOn: boolean;
   isLimited: boolean;
   availableSizes: string[];
+  /** Kiyintirish sloti — "top", "bottom", "outer", "feet", "wrist" (nullable) */
+  slot: string | null;
 }
 
 export type ProductSort = 'newest' | 'popular' | 'priceAsc' | 'priceDesc' | 'nearest';
@@ -1053,7 +1055,8 @@ export interface StoreOrder {
   customer: { name: string; phone: string };
   deliveryType: string;
   deliveryWhen: string | null;
-  address: string | null;
+  /** JSONB {text,lat,lng,landmark} — xaritada ochish uchun lat/lng kerak. */
+  address: { text?: string; lat?: number; lng?: number; landmark?: string } | null;
   note: string | null;
   items: StoreOrderItem[];
   subtotal: string;
