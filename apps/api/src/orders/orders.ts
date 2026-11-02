@@ -180,11 +180,16 @@ export async function createOrder(
       if (!store.delivery_enabled) {
         throw new ApiError('INVALID_STATE', 'Bu do`kon yetkazib bermaydi');
       }
-      if (store.in_radius !== true) {
-        throw new ApiError('OUT_OF_RANGE', 'Manzil yetkazib berish hududidan tashqarida', {
-          radiusM: store.delivery_radius_m,
-        });
-      }
+      /*
+       * ⚠️ RADIUS TEKSHIRUVI O'CHIRILDI (2026-11-01).
+       *
+       * Mijoz uzoq do'kondan ham buyurtma qila olsin: sotuvchi o'zi qaror
+       * qiladi, kerak bo'lsa qo'shimcha haq oladi. Avval `delivery_radius_m`
+       * dan tashqarida bo'lgan har bir urinish `OUT_OF_RANGE` bilan qaytardi
+       * va mijoz sabab ko'rsatilmasdan nega olmayotganini tushunmasdi. Hozir
+       * `store.in_radius` baribir hisoblanadi (log/analitika uchun qoldirilgan),
+       * lekin yetkazishni to'xtatmaydi.
+       */
     } else if (!store.pickup_enabled) {
       throw new ApiError('INVALID_STATE', 'Bu do`konda olib ketish mumkin emas');
     }
