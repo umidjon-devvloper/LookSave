@@ -209,6 +209,24 @@ export const garmentQuerySchema = z.object({
   storeId: uuidSchema.optional(),
   /** Faqat shu o'lcham omborda bo'lganlari (`S`, `M`, `42` …) */
   size: z.string().trim().min(1).max(16).optional(),
+  /*
+   * ⚠️ AYNAN SHU VARIANTLARNI QAYTARADI (2026-11-04).
+   *
+   * Mijoz turli do'konlardan "Look" bosib yig'adi — natija bir necha
+   * do'kondagi variant ID'laridan iborat bo'ladi. Primerka ekraniga
+   * ularni bitta so'rov bilan tortib olish kerak, aks holda do'kon
+   * filtri (`storeId`) bilan har biri alohida so'rov ketardi va
+   * boshqa do'kondagi kiyim umuman ko'rinmasdi.
+   *
+   * Berilganda boshqa filtrlar e'tiborga olinmaydi — ID ro'yxati
+   * eng aniq filtr: aynan shu variantlar qaytadi.
+   */
+  variantIds: z
+    .string()
+    .trim()
+    .transform((value) => value.split(',').filter(Boolean))
+    .pipe(z.array(z.string().uuid()).min(1).max(20))
+    .optional(),
   limit: z.coerce.number().int().min(1).max(50).default(30),
 });
 

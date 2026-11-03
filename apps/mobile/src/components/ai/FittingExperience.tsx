@@ -395,6 +395,36 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
   }, [items]);
 
   /*
+   * ⚠️ CROSS-STORE LOOK — YIG'ILGAN KIYIM DO'KONIDAN QAT'I NAZAR KO'RINSIN
+   * (2026-11-04).
+   *
+   * Ilgari `seen` faqat joriy do'konning ro'yxatidan to'ldirilardi: boshqa
+   * do'kondan "Look" bosilgan kiyim komplekt qatoriga umuman tushmasdi va
+   * foydalanuvchi uni yecha olmasdi.
+   *
+   * Endi outfit ichidagi `seen` da bo'lmagan ID'lar bitta so'rov bilan
+   * tortiladi — natijada chip qatorida turli do'kon kiyimlari ham chiqadi.
+   */
+  const missingOutfitIds = useMemo(
+    () => outfit.map((layer) => layer.variantId).filter((id) => !seen[id]),
+    [outfit, seen],
+  );
+  const missingGarments = useQuery({
+    queryKey: ['garments', 'outfit', missingOutfitIds.join(',')],
+    queryFn: () => getGarments({ variantIds: missingOutfitIds }),
+    enabled: missingOutfitIds.length > 0,
+  });
+  useEffect(() => {
+    const extras = missingGarments.data;
+    if (!extras || extras.length === 0) return;
+    setSeen((current) => {
+      const next = { ...current };
+      for (const item of extras) next[item.variantId] = item;
+      return next;
+    });
+  }, [missingGarments.data]);
+
+  /*
    * ── Komplekt zanjiri ──
    *
    * `scope: 'all'` — HAR asos ustidagi natija keladi. Aynan shu bilan
@@ -702,7 +732,16 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
   }
 
   const angles = avatar.data?.angles ?? {};
-  const baseImage = angles[angle] ?? avatar.data?.imageUrl ?? profile.data?.bodyPhotoUrl ?? null;
+  /*
+   * ⚠️ TAYYOR BO'LGANDAGINA ASL AVATAR, aks holda `null`.
+   *
+   * Avatar hali yasalmagan bo'lsa (yangi foydalanuvchi, generatsiya kutilyapti,
+   * yoki xato bo'lgan) ilgari zaxiraga foydalanuvchining o'z yuz selfie'si
+   * ko'rsatilardi — bu "AI avatar"ga umuman o'xshamasdi va ekran qo'pol
+   * ko'rinardi. `null` qaytarsak, AvatarStage neytral manikenni ko'rsatadi.
+   */
+  const baseImage =
+    angles[angle] ?? (avatar.data?.status === 'ready' ? (avatar.data?.imageUrl ?? null) : null);
   const baseCutout = angle === 'front' ? (avatar.data?.cutoutUrl ?? null) : null;
   const preparingCutout =
     angle === 'front' &&

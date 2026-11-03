@@ -696,6 +696,13 @@ export interface GarmentFilters {
   storeId?: string | null;
   /** Faqat OMBORDA shu o'lchami borlari */
   size?: string | null;
+  /**
+   * Aynan shu variantlarni qaytarish.
+   *
+   * ⚠️ Turli do'konlardan yig'ilgan "Look" primerkada ko'rsatilsin uchun —
+   * `storeId` filtri cross-store yig'ilgan kiyimlarni yuqotardi.
+   */
+  variantIds?: string[];
   limit?: number;
 }
 
@@ -707,6 +714,9 @@ export const getGarments = (filters: GarmentFilters = {}): Promise<Garment[]> =>
   if (filters.storeId) params.set('storeId', filters.storeId);
   if (filters.size) params.set('size', filters.size);
   if (filters.style) params.set('style', filters.style);
+  if (filters.variantIds && filters.variantIds.length > 0) {
+    params.set('variantIds', filters.variantIds.join(','));
+  }
   return api<Garment[]>(`/tryon/garments?${params.toString()}`);
 };
 
@@ -1163,8 +1173,16 @@ export interface StoreProductDetail {
   description: string | null;
   status: string;
   price: string;
+  /** Chegirma uchun eski narx; `null` — yo'q. Edit sahifasida qayta tahrirlanadi. */
+  oldPrice: string | null;
   currency: string;
   images: string[];
+  tags: string[];
+  isLimited: boolean;
+  gender: 'male' | 'female' | 'unisex';
+  categoryId: string;
+  categorySlug: string | null;
+  brandId: string | null;
   variants: Array<{
     id: string;
     colorName: string;
@@ -1202,6 +1220,22 @@ export interface CreateProductInput {
 
 export const createStoreProduct = (input: CreateProductInput): Promise<{ id: string }> =>
   api<{ id: string }>('/store/products', { method: 'POST', body: input });
+
+/**
+ * Mahsulot asosiy maydonlarini tahrirlash — faqat yuborilgan maydonlar
+ * yangilanadi (partial). Narx, nom, tavsif, rasmlar, uslub (tags), status
+ * — hammasi shu endpoint orqali o'zgaradi. Variantlar va o'lchamlar
+ * alohida (`updateVariantStock`).
+ */
+export type UpdateProductInput = Partial<
+  Pick<
+    CreateProductInput,
+    'title' | 'description' | 'categoryId' | 'gender' | 'basePrice' | 'images' | 'tags' | 'status'
+  >
+> & { oldPrice?: string | null };
+
+export const updateStoreProduct = (id: string, input: UpdateProductInput): Promise<unknown> =>
+  api(`/store/products/${id}`, { method: 'PATCH', body: input });
 
 export const deleteStoreProduct = (id: string): Promise<void> =>
   api<void>(`/store/products/${id}`, { method: 'DELETE' });

@@ -215,6 +215,7 @@ tryonRouter.get(
         style: query.style ?? null,
         storeId: query.storeId ?? null,
         size: query.size ?? null,
+        variantIds: query.variantIds ?? null,
         limit: query.limit,
       }),
     );

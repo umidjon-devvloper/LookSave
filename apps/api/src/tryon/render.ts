@@ -331,6 +331,13 @@ export interface GarmentFilters {
    * unda mos kelmaydigan kiyimlar ham turardi.
    */
   size?: string | null;
+  /**
+   * Aynan shu variantlarni qaytarish (boshqa filtrlar e'tiborga olinmaydi).
+   *
+   * ⚠️ Turli do'konlardan yig'ilgan "Look" primerkada ko'rsatilsin uchun —
+   * `storeId` filtri bilan boshqa do'kondagi kiyim tushib qolardi.
+   */
+  variantIds?: string[] | null;
   limit: number;
 }
 
@@ -342,8 +349,19 @@ export async function listGarments(filters: GarmentFilters) {
     storeId = null,
     size = null,
     style = null,
+    variantIds = null,
     limit,
   } = filters;
+
+  /*
+   * ⚠️ `variantIds` BERILGANDA FAQAT SHU VARIANTLAR QAYTADI.
+   *
+   * Mijoz turli do'konlardan Look yig'adi — natija qanday do'kondan
+   * kelganiga qarab filtrlab bo'lmaydi. Shu sababli ro'yxat berilsa,
+   * kategoriya/do'kon/slot/o'lcham chegirilmaydi: aynan o'sha ID'lar
+   * qaytariladi (variant faol va mahsulot ham faol bo'lishi shart).
+   */
+  const byIds = variantIds && variantIds.length > 0;
 
   const { rows } = await pool.query<{
     variant_id: string;
@@ -423,7 +441,10 @@ export async function listGarments(filters: GarmentFilters) {
        JOIN stores s ON s.id = p.store_id AND s.status = 'active'
        LEFT JOIN categories c ON c.id = p.category_id
       WHERE p.status = 'active'
-        AND p.slot = ANY($1::text[])
+        -- variantIds bergan bo'lsa, SLOT filtri qo'llanmaydi:
+        -- Look turli do'kondan, turli slotdan bo'lishi mumkin.
+        AND ($8::uuid[] IS NOT NULL OR p.slot = ANY($1::text[]))
+        AND ($8::uuid[] IS NULL OR v.id = ANY($8::uuid[]))
         -- Kategoriya berilsa u ustun: slotdan aniqroq
         AND ($4::text IS NULL OR c.slug = $4)
         AND COALESCE(NULLIF(v.images->>0, ''), NULLIF(p.images->>0, '')) IS NOT NULL
@@ -443,7 +464,16 @@ export async function listGarments(filters: GarmentFilters) {
         AND ($7::text IS NULL OR p.tags @> ARRAY[$7]::text[])
       ORDER BY p.id, (v.images->>0) IS NOT NULL DESC, v.id
       LIMIT $3`,
-    [slots, gender, limit, category, storeId, size ? normalizeSize(size) : null, style],
+    [
+      slots,
+      gender,
+      byIds ? variantIds.length : limit,
+      category,
+      storeId,
+      size ? normalizeSize(size) : null,
+      style,
+      byIds ? variantIds : null,
+    ],
   );
 
   return rows.map((row) => ({
