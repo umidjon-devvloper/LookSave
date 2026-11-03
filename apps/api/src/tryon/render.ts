@@ -217,6 +217,23 @@ async function loadSources(
   }
 
   /*
+   * ⚠️ YUZ MAJBURIY — AKS HOLDA NATIJA BOSHQA ODAM BO'LADI (2026-11-03).
+   *
+   * `face_texture_url` yo'q bo'lsa, kiyintirish faqat gavda+kiyimdan ketardi
+   * va GPT yuzni gavda suratidan (mannequin ko'rinishdagi `avatar_image_url`
+   * dan) olardi. Natija har doim MANIKEN yuzli chiqib, mijoz o'zini
+   * tanimasdi. Yuz skaneri endi ro'yxatdan o'tishda majburiy — lekin eski
+   * akkauntlarda yuz hali ham yo'q bo'lishi mumkin; ularga aniq xato
+   * ko'rsatamiz va /ai/avatar ga qaytaramiz.
+   */
+  if (!row.face_texture_url) {
+    throw new ApiError(
+      'VALIDATION_ERROR',
+      'Avval yuzingizni skaner qiling — ularsiz kiyintirilgan rasm boshqa odamga o`xshab chiqadi',
+    );
+  }
+
+  /*
    * Variant surati ustun: rang variantlari har xil ko'rinadi va mahsulotning
    * umumiy surati boshqa rangda bo'lishi mumkin.
    */

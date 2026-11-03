@@ -325,11 +325,25 @@ async function assertSheet(image: { mime: string; base64: string }): Promise<voi
 
 async function runRenderTask(task: Task, tabId: number, adapter: AdapterId): Promise<void> {
   const garment = task.previews['garmentImageUrl'];
+  /*
+   * ⚠️ YUZ MAJBURIY — ZAHIRA YO'Q (2026-11-03).
+   *
+   * Ilgari yuz surati bo'lmasa `bodyUrl` zahira sifatida GPT'ga ketardi.
+   * Lekin `bodyUrl` — bu avatar surati (`avatar_image_url`), ya'ni AI
+   * yasagan maniken ko'rinishdagi odam. Natijada GPT uning yuzini "haqiqat"
+   * deb olib, kiyintirilgan rasm MANIKEN yuzi bilan chiqardi va mijoz
+   * o'zini tanimasdi (foydalanuvchi shikoyati, 2026-11-03).
+   *
+   * Yuzsiz ish AI'ga umuman ketmasin: haqiqiy yuz bo'lmasa, operator
+   * foydalanuvchidan selfie qayta so'rab tursin, aksi holda natija har doim
+   * boshqa odam bo'ladi.
+   */
   const face = task.previews['faceUrl'] ?? null;
-  // Yuz surati bo'lmasa gavda suratidan yuz olinadi — boshqa manba yo'q
-  const identity = face ?? task.previews['bodyUrl'] ?? null;
 
-  if (!identity || !garment) throw new Error('Ishda yuz yoki kiyim surati yo`q');
+  if (!face) throw new Error('Ishda yuz surati yo`q — mijoz selfie bermagan');
+  if (!garment) throw new Error('Ishda kiyim surati yo`q');
+
+  const identity = face;
 
   status = { ...status, total: 1, current: { title: 'Kiyintirish' } };
 
