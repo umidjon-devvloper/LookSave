@@ -27,9 +27,21 @@ export const useAuthStore = create<AuthState>((set) => ({
   /**
    * Ilova ochilganda chaqiriladi. Refresh token bo'lsa profil olinadi —
    * `api()` o'zi access token'ni yangilaydi.
+   *
+   * ⚠️ HAR XATO USHLANADI — ILOVA "ochilmayapti" BO'LMASIN
+   * (Google Play 2026-11-03 policy xati). SecureStore ba'zi OEM
+   * qurilmalarda (eski Xiaomi/Huawei) va emulyatorda xato tashlaydi:
+   * ushlanmasa, `restore` yiqilib, status 'loading' da qotib qolardi va
+   * splash to'xtab qolardi. Endi har holatda statusga qiymat yoziladi.
    */
   restore: async () => {
-    const refreshToken = await getRefreshToken();
+    let refreshToken: string | null = null;
+    try {
+      refreshToken = await getRefreshToken();
+    } catch (err) {
+      console.warn('[auth] refresh token o`qilmadi', err);
+    }
+
     if (!refreshToken) {
       set({ status: 'signedOut', user: null });
       return;
@@ -41,8 +53,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch {
       // Tarmoq yo'q bo'lsa ham chiqarib yubormaymiz — foydalanuvchi
       // qayta urinishi mumkin. Token yaroqsiz bo'lsa client o'zi tozalagan.
-      const stillHasToken = await getRefreshToken();
-      set({ status: stillHasToken ? 'signedOut' : 'signedOut', user: null });
+      set({ status: 'signedOut', user: null });
     }
   },
 

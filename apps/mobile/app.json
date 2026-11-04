@@ -22,7 +22,7 @@
         "NSLocationWhenInUseUsageDescription": "Yaqin atrofdagi do'konlarni va ularning mahsulotlarini xaritada ko'rsatish uchun joylashuvingizdan foydalanamiz.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "33"
+      "buildNumber": "36"
     },
     "android": {
       "package": "com.looksave.looksave",
@@ -34,7 +34,7 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
       ],
-      "versionCode": 11
+      "versionCode": 15
     },
     "plugins": [
       "expo-router",
@@ -45,7 +45,8 @@
         {
           "android": {
             "compileSdkVersion": 36,
-            "targetSdkVersion": 36
+            "targetSdkVersion": 36,
+            "useLegacyPackaging": false
           }
         }
       ],
