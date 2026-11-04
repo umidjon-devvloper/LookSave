@@ -1,7 +1,7 @@
 import type { AuthUser } from '@looksave/shared-types';
 import { create } from 'zustand';
 
-import { clearTokens, getRefreshToken } from '../api/client';
+import { ApiError, clearTokens, getRefreshToken } from '../api/client';
 import { getProfile, login as apiLogin, register as apiRegister } from '../api/endpoints';
 
 type Status = 'loading' | 'signedIn' | 'signedOut';
@@ -50,10 +50,34 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const user = await getProfile();
       set({ status: 'signedIn', user });
-    } catch {
-      // Tarmoq yo'q bo'lsa ham chiqarib yubormaymiz — foydalanuvchi
-      // qayta urinishi mumkin. Token yaroqsiz bo'lsa client o'zi tozalagan.
-      set({ status: 'signedOut', user: null });
+    } catch (err) {
+      /*
+       * ⚠️ FAQAT HAQIQIY AUTH XATOLARIDA CHIQARAMIZ (2026-11-04).
+       *
+       * Ilgari har xato (tarmoq uzilishi, server timeouti, 500) ham
+       * foydalanuvchini `signedOut` qilib qo'yardi — ilovaga qaytganida
+       * yana login so'rardi. Natija: internet zaif bo'lsa, foydalanuvchi
+       * "ilova o'zi chiqarib yuboryapti" deb shikoyat qilardi.
+       *
+       * Endi faqat 401/403 (yaroqsiz yoki muddati o'tgan token) yoki
+       * aniq auth kodlari signedOut qiladi. Boshqa xatolarda: foydalanuvchini
+       * signedIn qolidradik, user ma'lumoti keyinroq (tarmoq tiklanganda)
+       * yangilanadi. Token yaroqsiz bo'lsa client o'zi refresh qilgan va
+       * endi muvaffaqiyatsiz bo'lsa — tokenlar tozalangan.
+       */
+      if (
+        err instanceof ApiError &&
+        (err.status === 401 ||
+          err.status === 403 ||
+          err.code === 'UNAUTHORIZED' ||
+          err.code === 'TOKEN_EXPIRED' ||
+          err.code === 'TOKEN_INVALID')
+      ) {
+        set({ status: 'signedOut', user: null });
+      } else {
+        // Tarmoq/server xatosi — token saqlanadi, user keyinroq yangilanadi
+        set({ status: 'signedIn', user: null });
+      }
     }
   },
 
