@@ -52,7 +52,8 @@ export const useSplashTargetStore = create<SplashTargetState>((set) => ({
  * daraxtidan olib tashlanadi va o'lchab bo'lmay qoladi.
  */
 export function useSplashLanding(): {
-  ref: React.RefObject<View>;
+  // React 19: useRef<View>(null) endi `RefObject<View | null>` qaytaradi
+  ref: React.RefObject<View | null>;
   onLayout: () => void;
 } {
   const ref = useRef<View>(null);
