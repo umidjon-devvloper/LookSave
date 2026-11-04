@@ -34,7 +34,7 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
       ],
-      "versionCode": 15
+      "versionCode": 16
     },
     "plugins": [
       "expo-router",
