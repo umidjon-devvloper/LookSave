@@ -1,4 +1,5 @@
-import * as FileSystem from 'expo-file-system';
+// Expo SDK 54: eski `readAsStringAsync` + `EncodingType` /legacy ichida
+import * as FileSystem from 'expo-file-system/legacy';
 // @ts-expect-error — jpeg-js/lib/decoder tip e'lonisiz; qaytishi quyida tiplanadi
 import decodeJpeg from 'jpeg-js/lib/decoder';
 

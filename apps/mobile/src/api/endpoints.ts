@@ -1,6 +1,12 @@
 import type { AuthResult, AuthUser } from '@looksave/shared-types';
 
-import * as FileSystem from 'expo-file-system';
+/*
+ * ⚠️ `expo-file-system/legacy` — Expo SDK 54 da eski imperative API shu
+ * yerga ko'chirildi (`uploadAsync`, `EncodingType`, `FileSystemUploadType`).
+ * Yangi oqim-asosli API (`File`, `Directory` sinflari) hali barcha oqimlarga
+ * mos emas — presign URL'ga binary yuborish uchun aynan eski API kerak.
+ */
+import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 
 import { api, apiList, saveTokens } from './client';

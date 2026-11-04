@@ -38,6 +38,17 @@
     "@rollup/rollup-linux-x64-gnu": "4.62.4",
     "@rollup/rollup-linux-x64-musl": "4.62.4"
   },
+  "overrides": {
+    "comment-overrides": [
+      "apps/mobile Expo SDK 54 ga ko'tarildi — React 19 va @types/react 19 kerak.",
+      "Boshqa apps (admin-panel, web) hali React 18 da. Ikki xil @types/react",
+      "hoisted bo'lsa, mobile uchun TS ForwardRef va ReactNode turlarini aralash",
+      "o'qib build to'xtardi. Boshqa apps React 18 bilan ishlasin uchun ularga",
+      "o'zlarining local @types/react@18 i qoladi; root darajasidagi hoistga",
+      "React 19 qotiriladi va bu mobile'ning local 19 bilan mos."
+    ],
+    "@types/react": "~19.1.0"
+  },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
     "@gltf-transform/core": "^4.4.2",
