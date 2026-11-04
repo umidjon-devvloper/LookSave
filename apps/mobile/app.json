@@ -7,8 +7,8 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
-    "_comment_newArch": "expo-gl yangi arxitekturada (Fabric/bridgeless) sirtini ekranga ulay olmaydi: kontekst yaratiladi, bufer to'g'ri o'lchamda, kadrlar chiziladi — lekin ekran bo'sh qoladi. Shu sabab eski arxitektura. Qaytarishdan oldin expo-gl yangilanганini tekshiring.",
-    "newArchEnabled": false,
+    "_comment_newArch": "SDK 54 dan boshlab yangi arxitektura (Fabric/bridgeless) MAJBURIY: react-native-reanimated 4 va boshqa SDK 54 native kutubxonalari eski arxitekturada umuman qurilmaydi (`assertNewArchitectureEnabledTask` ishdan bo'shaydi). Ilgari expo-gl eski arxitekturani talab qilardi, lekin u 2026-10-31 da butunlay olib tashlandi (PhotoSwipe RN View'ga ko'chirildi).",
+    "newArchEnabled": true,
     "backgroundColor": "#0A0A0F",
     "assetBundlePatterns": [
       "**/*"
@@ -34,7 +34,7 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
       ],
-      "versionCode": 16
+      "versionCode": 20
     },
     "plugins": [
       "expo-router",
