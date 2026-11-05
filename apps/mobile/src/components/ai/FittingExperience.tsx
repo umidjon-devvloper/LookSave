@@ -1096,7 +1096,13 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
           ) : null}
         </View>
 
-        {/* Gorizontal qator — ixcham tab'lar, qolganlari surib ko'riladi. */}
+        {/*
+          Gorizontal qator — ixcham tab'lar, qolganlari surib ko'riladi.
+          ⚠️ LOOK REJIMIDA YASHIRINADI (2026-11-05). Mijoz aniq komplektni
+          tanlagan, kategoriya tanlash ortiqcha — tasma faqat Look
+          kiyimlari bilan to'lgan va boshqa narsalar chalg'itmasin.
+        */}
+        {inLookMode ? null : (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -1140,6 +1146,7 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
             );
           })}
         </ScrollView>
+        )}
 
         {/*
         ── Uslub chiplari ──
@@ -1149,9 +1156,15 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
         bo'sh ro'yxatda chiplar yo'qolardi va foydalanuvchi o'zi qo'ygan
         filtrni BEKOR QILA OLMASDI — boshi berk ko'cha.
 
+        ⚠️ LOOK REJIMIDA USLUB FILTR HAM KERAK EMAS (2026-11-05) —
+        aniq komplekt tanlangan, filtr bo'sh ro'yxatga aylantirishi
+        mumkin. Mijoz "Boshqa kiyim tanlash" bossa Look chiqadi va
+        uslub chiplari qaytadan paydo bo'ladi.
+
         Filtr serverda bajariladi: chip `queryKey` ni o'zgartiradi va
         ro'yxat qaytadan so'raladi. Qayta bosilsa — bekor bo'ladi.
       */}
+        {inLookMode ? null : (
         <View style={styles.styleRowWrap}>
           <View style={styles.styleRow}>
             {GARMENT_STYLES.map((item) => {
@@ -1174,6 +1187,7 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
             })}
           </View>
         </View>
+        )}
 
         <View style={styles.bottom}>
           {limitReached ? (
