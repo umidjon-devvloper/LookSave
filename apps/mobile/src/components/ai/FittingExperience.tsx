@@ -230,6 +230,15 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
   const storeId = useAiFlowStore((state) => state.storeId);
   const storeName = useAiFlowStore((state) => state.storeName);
   const setStore = useAiFlowStore((state) => state.setStore);
+  /*
+   * ⚠️ "LOOK REJIMI" (2026-11-05). Foydalanuvchi saqlangan Look'ni bosib
+   * kiyintirishga kirsa, tasmada FAQAT shu kiyimlar ko'rinadi — butun
+   * katalog emas. "Boshqa kiyim tanlash" bossa filtr tozalanadi va
+   * katalog ochiladi. Tab orqali (`showBack === false`) kirsa — Look
+   * rejimi avtomatik tozalanadi.
+   */
+  const lookFilter = useAiFlowStore((state) => state.lookFilter);
+  const setLookFilter = useAiFlowStore((state) => state.setLookFilter);
 
   /**
    * Kiyintirish — AI faqat shu yerdan (kiyim bosilganda) ishga tushadi.
@@ -356,9 +365,20 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
       limit: 30,
     });
 
+  /*
+   * ⚠️ LOOK REJIMIDA: tasmada faqat o'sha Look'dagi kiyimlar. Boshqa
+   * filtrlar (tab, do'kon, uslub, o'lcham) e'tiborga olinmaydi — mijoz
+   * aynan shu komplektni ko'rish uchun kirdi. Katalogga chiqish esa pastdagi
+   * "Boshqa kiyim tanlash" tugmasi orqali (filtrni tozalaydi).
+   */
+  const inLookMode = (lookFilter?.length ?? 0) > 0;
+
   const garments = useQuery({
-    queryKey: ['garments', tab, storeId, sizeFilter, gender, styleFilter],
-    queryFn: () => fetchGarments(sizeFilter),
+    queryKey: inLookMode
+      ? ['garments', 'look-mode', (lookFilter ?? []).join(',')]
+      : ['garments', tab, storeId, sizeFilter, gender, styleFilter],
+    queryFn: () =>
+      inLookMode ? getGarments({ variantIds: lookFilter ?? [] }) : fetchGarments(sizeFilter),
     enabled: ready,
   });
 
@@ -370,7 +390,10 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
    * mijoz kiyimni o'zida ko'radi, razmerni esa mahsulot sahifasida tanlaydi.
    */
   const needFallback =
-    Boolean(sizeFilter) && garments.isSuccess && (garments.data?.length ?? 0) === 0;
+    !inLookMode &&
+    Boolean(sizeFilter) &&
+    garments.isSuccess &&
+    (garments.data?.length ?? 0) === 0;
   const fallback = useQuery({
     queryKey: ['garments', tab, storeId, null, gender, styleFilter],
     queryFn: () => fetchGarments(null),
@@ -708,6 +731,26 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
     setSize(null);
     setNotice(null);
   }, [tab]);
+
+  /*
+   * ⚠️ TAB ORQALI KIRGANDA LOOK REJIMI TOZALANADI (2026-11-05).
+   *
+   * Tab orqali kiyintirish ekrani butun katalog uchun ochiladi — mijoz
+   * "Kiyib ko'rish" tabidan boshqa kiyim izlab keladi. Agar oldingi
+   * sessiyadan `lookFilter` qolgan bo'lsa (saqlangan Look'dan kirgan edi),
+   * uni tozalaymiz — aks holda tasma faqat eski Look'dagi 3-4 kiyimni
+   * ko'rsatib qolib, mijoz nega katalog yo'q deb tushunmay qolardi.
+   *
+   * `showBack` — AI oqimi (Look'dan kirish) belgisi: faqat tab rejimida
+   * (!showBack) tozalaymiz. Oqimdan kelganda saqlab qolamiz.
+   */
+  useEffect(() => {
+    if (!showBack && (lookFilter?.length ?? 0) > 0) {
+      setLookFilter(null);
+    }
+    // ESLint disable: showBack prop faqat bir marta o'rnatiladi, kuzatish shart emas
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const cart = useMutation({
     mutationFn: async (lines: Array<{ variantId: string; chosenSize: string }>) => {
@@ -1153,6 +1196,27 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
             <Text style={styles.fallbackNote}>
               Sizning {fitSize} razmeringiz bu do‘konda yo‘q — barcha kiyimlar ko‘rsatilmoqda
             </Text>
+          ) : null}
+
+          {/*
+            ⚠️ "Look rejimi" banner (2026-11-05). Mijoz saqlangan Look'dan
+            kirgan — tasmada faqat o'sha kiyimlar. Boshqa kiyim qo'shish
+            uchun filtrdan chiqish kerak.
+          */}
+          {inLookMode ? (
+            <View style={styles.lookModeBanner}>
+              <Icon name="looks" size={14} color={colors.accent} />
+              <Text style={styles.lookModeText}>
+                Look rejimi — {lookFilter?.length ?? 0} ta kiyim
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setLookFilter(null)}
+                hitSlop={8}
+              >
+                <Text style={styles.lookModeAction}>Boshqa kiyim tanlash</Text>
+              </Pressable>
+            </View>
           ) : null}
 
           {itemsLoading ? (
@@ -1633,6 +1697,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     marginBottom: spacing.sm,
   },
+  lookModeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1,
+    borderColor: colors.borderAccent,
+  },
+  lookModeText: { ...text.tiny, color: colors.text, flex: 1 },
+  lookModeAction: { ...text.tiny, color: colors.accent, fontWeight: '700' },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.sm },
   headerButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerText: { flex: 1, alignItems: 'center' },

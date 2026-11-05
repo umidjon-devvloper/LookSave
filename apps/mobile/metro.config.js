@@ -40,7 +40,14 @@ config.resolver.nodeModulesPaths = [
 //
 //    Shuning uchun ierarxik qidiruv qaytarildi va React nuqtali ravishda
 //    bittaga qadaldi — `expo-three` o'zining React nusxasi bilan keladi.
-const REACT_ROOT = path.resolve(workspaceRoot, 'node_modules/react');
+// ⚠️ MOBILE'NIKI, ILDIZDAGISI EMAS (2026-11-05).
+//
+// Monorepo ildizida react@18 (web ilovasi uchun), mobile'da react@19 (SDK 54
+// Fabric renderer talab qiladi). Ilgari bu yerda `workspaceRoot` edi — Metro
+// mobile'ni React 18 bilan yig'ardi, natijada RN 0.81 ning Fabric shimida:
+//     TypeError: Cannot read property 'default' of undefined
+// chiqib ilova umuman yuklanmasdi. Endi mobile'ning o'z nusxasidan oladi.
+const REACT_ROOT = path.resolve(projectRoot, 'node_modules/react');
 
 // 5. `three` ham bittaga qadaladi — ILOVA O'ZINIKIGA.
 //

@@ -93,6 +93,20 @@ interface AiFlowState {
    */
   outfit: OutfitLayer[];
 
+  /**
+   * "Look rejimi" — faqat shu variant ID'lar primerka tasmasida ko'rinadi.
+   *
+   * ⚠️ NIMA UCHUN KERAK (2026-11-05). Foydalanuvchi saqlangan Look'ni
+   * bosib kiyintirishga kirsa, ekran butun katalog o'rniga FAQAT o'sha
+   * komplektdagi kiyimlarni ko'rsatishi kerak — chunki u aynan shu
+   * tanlovni ko'rish uchun kirgan. Katalog ochish «Boshqa kiyim tanlash»
+   * yoki «Lookdan chiqish» tugmasi orqali.
+   *
+   * `null` — oddiy rejim (butun katalog). Massiv — faqat shu ID'lar.
+   * Sessiya ichida yashaydi; saqlanmaydi (saqlangan Look o'zi qoladi).
+   */
+  lookFilter: string[] | null;
+
   setOccasion: (value: Occasion) => void;
   setStyle: (value: StyleName) => void;
   setMood: (value: Mood) => void;
@@ -104,6 +118,8 @@ interface AiFlowState {
   wear: (category: string, variantId: string) => void;
   takeOff: (category: string) => void;
   resetOutfit: () => void;
+  /** Look rejimini yoqish — faqat shu kiyimlar ko'rinadi. null — tozalash. */
+  setLookFilter: (variantIds: string[] | null) => void;
   reset: () => void;
 }
 
@@ -114,6 +130,7 @@ const INITIAL = {
   storeId: null,
   storeName: null,
   outfit: [],
+  lookFilter: null,
 } satisfies Omit<
   AiFlowState,
   | 'setOccasion'
@@ -125,6 +142,7 @@ const INITIAL = {
   | 'wear'
   | 'takeOff'
   | 'resetOutfit'
+  | 'setLookFilter'
   | 'reset'
 >;
 
@@ -192,6 +210,12 @@ export const useAiFlowStore = create<AiFlowState>((set) => ({
     void persistOutfit([]);
     set({ outfit: [] });
   },
+
+  /*
+   * Look rejimi — faqat tanlangan kiyimlar primerka tasmasida ko'rinadi.
+   * Foydalanuvchi "Boshqa kiyim tanlash" bossa null bilan tozalanadi.
+   */
+  setLookFilter: (variantIds) => set({ lookFilter: variantIds }),
 
   restoreOutfit: async () => {
     try {

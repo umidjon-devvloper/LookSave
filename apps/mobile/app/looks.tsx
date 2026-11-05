@@ -45,8 +45,15 @@ export default function Looks(): JSX.Element {
   const t = useI18n((state) => state.t);
   const resetOutfit = useAiFlowStore((state) => state.resetOutfit);
   const wear = useAiFlowStore((state) => state.wear);
+  const setLookFilter = useAiFlowStore((state) => state.setLookFilter);
 
   // Saqlangan lookni qayta kiyish — bir bosishda kiyintirish ekraniga.
+  //
+  // ⚠️ LOOK REJIMI (2026-11-05). Kiyintirish ochilganda faqat SHU LOOKDAGI
+  // kiyimlar tasmada ko'rinadi — butun katalog yo'q. Foydalanuvchi uni
+  // ko'rish uchun kirgan, boshqa narsalar chalg'itmaydi. "Boshqa kiyim
+  // tanlash" bossa filtr tozalanadi va katalog ochiladi.
+  //
   // Slot nomi category sifatida ishlatiladi: fitting ekrani barcha slot
   // nomlarini ham qabul qiladi (`CATEGORY_SLOT` fallback orqali), tabda
   // aniqrok mos kelmasligi mumkin, lekin avatarda to'liq ko'rinadi.
@@ -55,6 +62,7 @@ export default function Looks(): JSX.Element {
     look.items.forEach((piece) => {
       wear(piece.slot, piece.variantId);
     });
+    setLookFilter(look.items.map((piece) => piece.variantId));
     router.push('/ai/fitting');
   };
 
