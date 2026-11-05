@@ -208,7 +208,8 @@ export const useAiFlowStore = create<AiFlowState>((set) => ({
     }),
   resetOutfit: () => {
     void persistOutfit([]);
-    set({ outfit: [] });
+    // Komplekt tozalansa Look rejimi ham tozalanadi — mantiqan juft
+    set({ outfit: [], lookFilter: null });
   },
 
   /*

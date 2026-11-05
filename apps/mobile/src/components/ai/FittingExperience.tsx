@@ -733,24 +733,18 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
   }, [tab]);
 
   /*
-   * ⚠️ TAB ORQALI KIRGANDA LOOK REJIMI TOZALANADI (2026-11-05).
+   * ⚠️ LOOK REJIMI NAVIGATSIYADA SAQLANADI (2026-11-05, so'rovga ko'ra).
    *
-   * Tab orqali kiyintirish ekrani butun katalog uchun ochiladi — mijoz
-   * "Kiyib ko'rish" tabidan boshqa kiyim izlab keladi. Agar oldingi
-   * sessiyadan `lookFilter` qolgan bo'lsa (saqlangan Look'dan kirgan edi),
-   * uni tozalaymiz — aks holda tasma faqat eski Look'dagi 3-4 kiyimni
-   * ko'rsatib qolib, mijoz nega katalog yo'q deb tushunmay qolardi.
+   * Ilgari tab orqali kirganda Look rejimi avtomatik tozalanardi — mijoz
+   * "Look'ni tanlab, uyga qaytib, AI bossa katalog chiqyapti — nega?"
+   * degan edi. Endi Look rejimi **faqat** mijoz "Boshqa kiyim tanlash"
+   * tugmasini bosganda yoki chip'dan hamma kiyimni yechib tashlaganda
+   * tozalanadi. Ya'ni Look tanlovi sessiya davomida saqlanadi, qaysi
+   * yo'ldan kirsa ham.
    *
-   * `showBack` — AI oqimi (Look'dan kirish) belgisi: faqat tab rejimida
-   * (!showBack) tozalaymiz. Oqimdan kelganda saqlab qolamiz.
+   * ⚠️ VA AVTOMATIK TOZALASH YO'Q, chunki tab ochilishi oddiy navigatsiya
+   * — tanlovni yo'qotish uchun yetarli sabab emas.
    */
-  useEffect(() => {
-    if (!showBack && (lookFilter?.length ?? 0) > 0) {
-      setLookFilter(null);
-    }
-    // ESLint disable: showBack prop faqat bir marta o'rnatiladi, kuzatish shart emas
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const cart = useMutation({
     mutationFn: async (lines: Array<{ variantId: string; chosenSize: string }>) => {
