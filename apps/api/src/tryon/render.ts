@@ -455,7 +455,8 @@ export async function listGarments(filters: GarmentFilters) {
         AND ($8::uuid[] IS NULL OR v.id = ANY($8::uuid[]))
         -- Kategoriya berilsa u ustun: slotdan aniqroq
         AND ($4::text IS NULL OR c.slug = $4)
-        AND COALESCE(NULLIF(v.images->>0, ''), NULLIF(p.images->>0, '')) IS NOT NULL
+        -- variantIds bergan bo'lsa, rasmsiz ham ko'rsatamiz
+        AND ($8::uuid[] IS NOT NULL OR COALESCE(NULLIF(v.images->>0, ''), NULLIF(p.images->>0, '')) IS NOT NULL)
         AND ($2::text IS NULL OR p.gender IN ($2, 'unisex'))
         AND ($5::uuid IS NULL OR p.store_id = $5)
         -- O'lcham: aynan shu variantda, aynan shu o'lcham, aynan omborda.
