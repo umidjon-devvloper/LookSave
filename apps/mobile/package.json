@@ -13,8 +13,8 @@
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
-    "@looksave/shared-types": "*",
-    "@looksave/validation": "*",
+    "@looksave/shared-types": "workspace:*",
+    "@looksave/validation": "workspace:*",
     "@tanstack/react-query": "^5.62.7",
     "expo": "^54",
     "expo-asset": "~12.0.14",
