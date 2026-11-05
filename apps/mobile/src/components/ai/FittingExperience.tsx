@@ -1212,19 +1212,79 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
             uchun filtrdan chiqish kerak.
           */}
           {inLookMode ? (
-            <View style={styles.lookModeBanner}>
-              <Icon name="looks" size={14} color={colors.accent} />
-              <Text style={styles.lookModeText}>
-                Look rejimi — {lookFilter?.length ?? 0} ta kiyim
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setLookFilter(null)}
-                hitSlop={8}
-              >
-                <Text style={styles.lookModeAction}>Boshqa kiyim tanlash</Text>
-              </Pressable>
-            </View>
+            <>
+              <View style={styles.lookModeBanner}>
+                <Icon name="looks" size={14} color={colors.accent} />
+                <Text style={styles.lookModeText}>
+                  Look rejimi — {lookFilter?.length ?? 0} ta kiyim
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setLookFilter(null)}
+                  hitSlop={8}
+                >
+                  <Text style={styles.lookModeAction}>Boshqa kiyim tanlash</Text>
+                </Pressable>
+              </View>
+
+              {/*
+                ⚠️ "KIYINTIRISH" TUGMASI (2026-11-05). Look rejimida yagona
+                CTA — mijoz hamma kiyim + yuzni bir urinishda ishga tushirishi
+                uchun. Hozirgi arxitektura qatlamma-qatlam generatsiya qiladi
+                (baseRenderId zanjiri), lekin bu tugma zanjirni ishga tushiradi
+                va mijozga aniq holat ko'rsatadi:
+                  - pending bor → "AI kiyintirmoqda..." + loader
+                  - hammasi ready → "Kiyilgan ✓"
+                  - failed → "Qayta urinish"
+              */}
+              {(() => {
+                const anyPending = resolved.some(
+                  (layer) =>
+                    !layer.render ||
+                    layer.render.status === 'pending' ||
+                    layer.render.status === 'processing',
+                );
+                const anyFailed = resolved.some(
+                  (layer) => layer.render?.status === 'failed',
+                );
+                const allReady =
+                  resolved.length > 0 &&
+                  resolved.every((layer) => layer.render?.status === 'ready');
+
+                const label = anyFailed
+                  ? 'Qayta kiyintirish'
+                  : anyPending
+                    ? 'AI kiyintirmoqda…'
+                    : allReady
+                      ? '✓ Kiyilgan'
+                      : 'Kiyintirish';
+
+                return (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Hammasini birdan kiyintirish"
+                    onPress={refreshScene}
+                    disabled={anyPending && !anyFailed}
+                    style={[
+                      styles.lookDressButton,
+                      allReady && styles.lookDressButtonDone,
+                      anyFailed && styles.lookDressButtonError,
+                    ]}
+                  >
+                    {anyPending && !anyFailed ? (
+                      <ActivityIndicator size="small" color={colors.text} />
+                    ) : (
+                      <Icon
+                        name={allReady ? 'check' : anyFailed ? 'reset' : 'tryon'}
+                        size={16}
+                        color={colors.text}
+                      />
+                    )}
+                    <Text style={styles.lookDressButtonText}>{label}</Text>
+                  </Pressable>
+                );
+              })()}
+            </>
           ) : null}
 
           {itemsLoading ? (
@@ -1720,6 +1780,20 @@ const styles = StyleSheet.create({
   },
   lookModeText: { ...text.tiny, color: colors.text, flex: 1 },
   lookModeAction: { ...text.tiny, color: colors.accent, fontWeight: '700' },
+  lookDressButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accent,
+  },
+  lookDressButtonDone: { backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.borderAccent },
+  lookDressButtonError: { backgroundColor: colors.danger },
+  lookDressButtonText: { ...text.bodyMed, color: colors.text, fontWeight: '700' },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.sm },
   headerButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerText: { flex: 1, alignItems: 'center' },
