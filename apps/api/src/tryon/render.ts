@@ -443,10 +443,12 @@ export async function listGarments(filters: GarmentFilters) {
             ) AS colors,
             s.id AS store_id, s.name AS store_name
        FROM products p
-       JOIN product_variants v ON v.product_id = p.id AND v.is_active
-       JOIN stores s ON s.id = p.store_id AND s.status = 'active'
+       JOIN product_variants v ON v.product_id = p.id
+         AND ($8::uuid[] IS NOT NULL OR v.is_active)
+       JOIN stores s ON s.id = p.store_id
+         AND ($8::uuid[] IS NOT NULL OR s.status = 'active')
        LEFT JOIN categories c ON c.id = p.category_id
-      WHERE p.status = 'active'
+      WHERE ($8::uuid[] IS NOT NULL OR p.status = 'active')
         -- variantIds bergan bo'lsa, SLOT filtri qo'llanmaydi:
         -- Look turli do'kondan, turli slotdan bo'lishi mumkin.
         AND ($8::uuid[] IS NOT NULL OR p.slot = ANY($1::text[]))
