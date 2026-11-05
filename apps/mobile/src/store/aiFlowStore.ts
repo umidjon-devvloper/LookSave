@@ -20,6 +20,7 @@ import { clearLayer, setLayer, type OutfitLayer } from '@looksave/validation';
  */
 const STORE_KEY = 'ai.store';
 const OUTFIT_KEY = 'ai.outfit';
+const LOOK_FILTER_KEY = 'ai.lookFilter';
 
 async function persistStore(id: string | null, name: string | null): Promise<void> {
   try {
@@ -47,6 +48,28 @@ async function persistOutfit(outfit: OutfitLayer[]): Promise<void> {
     }
   } catch (err) {
     console.warn('[ai-flow] komplektni saqlab bo`lmadi', err);
+  }
+}
+
+/**
+ * Look rejimi filtri qurilmada saqlanadi.
+ *
+ * ⚠️ NEGA (2026-11-05). Ilova yoki Metro reload bo'lsa `outfit` qayta
+ * tiklanadi (SecureStore'dan) lekin `lookFilter` xotira ichida — null
+ * bo'lib ketardi. Natijada mijoz Look tanlagan edi, qaytib kirsa
+ * katalog chiqib kelardi va "nega men tanlagan kiyimlar yo'q?" degan
+ * edi. Endi `lookFilter` ham qurilmada saqlanadi — ilova yopilib
+ * ochilsa ham, tab ochilsa ham Look rejimi joyida qoladi.
+ */
+async function persistLookFilter(variantIds: string[] | null): Promise<void> {
+  try {
+    if (variantIds && variantIds.length > 0) {
+      await SecureStore.setItemAsync(LOOK_FILTER_KEY, JSON.stringify(variantIds));
+    } else {
+      await SecureStore.deleteItemAsync(LOOK_FILTER_KEY);
+    }
+  } catch (err) {
+    console.warn('[ai-flow] Look filtrini saqlab bo`lmadi', err);
   }
 }
 
@@ -208,6 +231,7 @@ export const useAiFlowStore = create<AiFlowState>((set) => ({
     }),
   resetOutfit: () => {
     void persistOutfit([]);
+    void persistLookFilter(null);
     // Komplekt tozalansa Look rejimi ham tozalanadi — mantiqan juft
     set({ outfit: [], lookFilter: null });
   },
@@ -215,8 +239,12 @@ export const useAiFlowStore = create<AiFlowState>((set) => ({
   /*
    * Look rejimi — faqat tanlangan kiyimlar primerka tasmasida ko'rinadi.
    * Foydalanuvchi "Boshqa kiyim tanlash" bossa null bilan tozalanadi.
+   * Qurilmada saqlanadi — ilova qayta ochilsa ham yo'qolmaydi.
    */
-  setLookFilter: (variantIds) => set({ lookFilter: variantIds }),
+  setLookFilter: (variantIds) => {
+    void persistLookFilter(variantIds);
+    set({ lookFilter: variantIds });
+  },
 
   restoreOutfit: async () => {
     try {
@@ -238,7 +266,36 @@ export const useAiFlowStore = create<AiFlowState>((set) => ({
           });
         }
       }
-      set((state) => (state.outfit.length ? {} : { outfit }));
+
+      // Look filtri ham tiklanadi — outfit bilan juft
+      let lookFilter: string[] | null = null;
+      try {
+        const rawFilter = await SecureStore.getItemAsync(LOOK_FILTER_KEY);
+        if (rawFilter) {
+          const parsedFilter = JSON.parse(rawFilter) as unknown;
+          if (Array.isArray(parsedFilter) && parsedFilter.every((v) => typeof v === 'string')) {
+            lookFilter = parsedFilter as string[];
+          }
+        }
+      } catch {
+        // Filtr yo'q bo'lsa muammo emas — faqat outfit tiklanadi
+      }
+
+      /*
+       * ⚠️ MIGRATSIYA (2026-11-05). Ilgari lookFilter saqlanmasdi; eski
+       * foydalanuvchilarda outfit bor, filtr yo'q. Komplekt bor ekan,
+       * foydalanuvchi uni Look sifatida yig'gan deb hisoblaymiz va
+       * outfit'dan filtrni chiqaramiz. Birinchi "Boshqa kiyim tanlash"
+       * bosilsa, filtr o'chadi va oddiy oqimga qaytadi.
+       */
+      if (!lookFilter && outfit.length > 0) {
+        lookFilter = outfit.map((layer) => layer.variantId);
+        void persistLookFilter(lookFilter);
+      }
+
+      set((state) =>
+        state.outfit.length ? {} : { outfit, lookFilter: lookFilter ?? state.lookFilter },
+      );
     } catch (err) {
       console.warn('[ai-flow] saqlangan komplektni o`qib bo`lmadi', err);
     }
@@ -248,6 +305,7 @@ export const useAiFlowStore = create<AiFlowState>((set) => ({
   reset: () => {
     void persistStore(null, null);
     void persistOutfit([]);
+    void persistLookFilter(null);
     set(INITIAL);
   },
 }));
