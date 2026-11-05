@@ -385,8 +385,14 @@ export async function listGarments(filters: GarmentFilters) {
      * mahsulot suratiga tushadi — ya'ni gallereyada bir xil ko'rinadigan
      * bir necha karta paydo bo'lardi. Tartiblashda o'z surati borlari
      * oldinda turadi, shuning uchun tanlangan variant eng aniqrog'i bo'ladi.
+     *
+     * ⚠️ LOOK REJIMIDA (variantIds berilganda) — DISTINCT ON v.id,
+     * chunki mijoz AYNAN SHU VARIANT ID larni so'ragan va ularning har
+     * biri alohida ko'rinishi kerak (bitta mahsulotning ikki rangi ham).
+     * Aks holda Look'da 4 ta variant berilsa-yu bir mahsulotdan ikki variant
+     * bo'lsa, faqat 3 ta karta chiqardi.
      */
-    `SELECT DISTINCT ON (p.id)
+    `SELECT DISTINCT ON (CASE WHEN $8::uuid[] IS NOT NULL THEN v.id ELSE p.id END)
             v.id AS variant_id, p.id AS product_id, p.title, p.slot,
             p.base_price AS price, p.currency,
             COALESCE(NULLIF(v.images->>0, ''), NULLIF(p.images->>0, '')) AS image,
@@ -462,7 +468,7 @@ export async function listGarments(filters: GarmentFilters) {
         -- Uslub: KESISHMA, tenglik emas. Tags erkin massiv va do'kon
         -- unga o'z belgilarini ham qo'shishi mumkin.
         AND ($7::text IS NULL OR p.tags @> ARRAY[$7]::text[])
-      ORDER BY p.id, (v.images->>0) IS NOT NULL DESC, v.id
+      ORDER BY CASE WHEN $8::uuid[] IS NOT NULL THEN v.id ELSE p.id END, (v.images->>0) IS NOT NULL DESC, v.id
       LIMIT $3`,
     [
       slots,
