@@ -40,6 +40,10 @@ export function Layout({ children }: { children: React.ReactNode }): JSX.Element
         <meta name="theme-color" content="#0A0A0F" />
         <Meta />
         <Links />
+        <script
+          src="https://anywear.decart.ai/widget/latest/anywear.js?domain=looksave.uz"
+          async
+        />
       </head>
       <body>
         {children}
