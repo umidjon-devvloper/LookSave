@@ -529,7 +529,15 @@ export const getAvatar = (options: ApiOptions = {}): Promise<UserAvatar> =>
   api<UserAvatar>('/tryon/avatar', options);
 
 export const requestAvatar = (options: ApiOptions = {}): Promise<UserAvatar> =>
-  api<UserAvatar>('/tryon/avatar', { ...options, method: 'POST' });
+  /*
+   * ⚠️ `body: {}` SHART. `requestAvatar` o'lchov/do'kon talab qilmaydi, lekin
+   * backend route zod sxemasi (`z.object(...).partial()`) BOSH OBYEKT kutadi.
+   * Bo'sh POST yuborilsa `Content-Type` ham qo'yilmaydi va `express.json()`
+   * tanani parse qilmaydi: `req.body === undefined`, zod esa «obyekt kutgandim,
+   * `undefined` keldi» deydi va umumiy «Ma`lumotlar to`liq emas» qaytadi —
+   * foydalanuvchi uchun hech qanday ma'lumot bermaydigan xato.
+   */
+  api<UserAvatar>('/tryon/avatar', { ...options, method: 'POST', body: {} });
 
 export const requestAvatarAngle = (
   angle: AvatarAngle,
