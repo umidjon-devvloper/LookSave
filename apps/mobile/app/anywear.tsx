@@ -1,36 +1,41 @@
+import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { WebView } from 'react-native-webview';
 
 import { Icon } from '../src/components/Icon';
 import { Screen } from '../src/components/ui';
 import { colors, radius, spacing, text } from '../src/theme/tokens';
 
 /**
- * Real-time try-on — Decart Anywear widget WebView ichida.
+ * Real-time try-on — Decart Anywear widget.
  *
- * NEGA WEBVIEW: Anywear faqat web uchun JS widget sifatida mavjud
- * (React Native SDK yo'q). Inline HTML ga script tegini joylab, WebView
- * orqali render qilamiz. Widget mahsulot kartochkalarini o'zi tortadi
- * va foydalanuvchi "try on" bossa, kameradan surat olib virtual tryon
- * chiqaradi (real vaqt).
+ * ⚠️ WEBVIEW O'RNIGA TASHQI BRAUZER: `react-native-webview` native moduli
+ * joriy dev-client build'ga qo'shilmagan (build 48). Prebuild + rebuild
+ * qilmasdan ishlash uchun Safari'da ochamiz — foydalanuvchi widget bilan
+ * to'liq tanishib, ilovaga qaytadi.
  *
- * `domain=looksave.uz` parametri widget serveriga qaysi hisob
- * ulanayotganini aytadi — hisob sozlamalarida `looksave.uz` ruxsat
- * berilgan bo'lishi kerak.
- */
-
-/**
- * Hosted sahifa — `apps/web/public/anywear.html`.
- * Decart widget origin check qilsa, bu URL `looksave.uz` dan kelgani
- * uchun inline HTML'dan ishonchli ishlaydi.
+ * Kelasi rebuild'da WebView'ga qaytarsak bo'ladi (git tarixida bor).
  */
 const ANYWEAR_URL = 'https://looksave.uz/anywear.html';
 
 export default function AnywearScreen(): JSX.Element {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const [opened, setOpened] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        await Linking.openURL(ANYWEAR_URL);
+        setOpened(true);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Brauzer ochilmadi');
+      }
+    })();
+  }, []);
 
   return (
     <Screen>
@@ -51,22 +56,45 @@ export default function AnywearScreen(): JSX.Element {
         <View style={styles.backBtn} />
       </View>
 
-      <WebView
-        source={{ uri: ANYWEAR_URL }}
-        originWhitelist={['*']}
-        javaScriptEnabled
-        domStorageEnabled
-        allowsInlineMediaPlayback
-        mediaPlaybackRequiresUserAction={false}
-        style={styles.web}
-        startInLoadingState
-        renderLoading={() => (
-          <View style={styles.loading}>
+      <View style={styles.body}>
+        {error ? (
+          <>
+            <Icon name="close" size={48} color="#EF4444" />
+            <Text style={styles.heading}>Brauzer ochilmadi</Text>
+            <Text style={styles.sub}>{error}</Text>
+            <Pressable
+              style={styles.retry}
+              onPress={() => {
+                setError(null);
+                void Linking.openURL(ANYWEAR_URL).catch((e) =>
+                  setError(e instanceof Error ? e.message : 'Brauzer ochilmadi'),
+                );
+              }}
+            >
+              <Text style={styles.retryText}>Qayta urinish</Text>
+            </Pressable>
+          </>
+        ) : opened ? (
+          <>
+            <Icon name="tryon" size={48} color={colors.primary} />
+            <Text style={styles.heading}>Safari’da ochildi</Text>
+            <Text style={styles.sub}>
+              Real-time kiyim ko‘rish Safari’da ishga tushdi. Tugatgach ilovaga qayting.
+            </Text>
+            <Pressable
+              style={styles.retry}
+              onPress={() => void Linking.openURL(ANYWEAR_URL)}
+            >
+              <Text style={styles.retryText}>Qayta ochish</Text>
+            </Pressable>
+          </>
+        ) : (
+          <>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Widget yuklanmoqda…</Text>
-          </View>
+            <Text style={styles.sub}>Brauzer ochilmoqda…</Text>
+          </>
         )}
-      />
+      </View>
     </Screen>
   );
 }
@@ -94,13 +122,22 @@ const styles = StyleSheet.create({
   },
   titleWrap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   title: { ...text.bodyMed, color: colors.text, fontWeight: '700' },
-  web: { flex: 1, backgroundColor: '#FBF7FF' },
-  loading: {
-    ...StyleSheet.absoluteFillObject,
+  body: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: spacing.lg,
+    gap: spacing.md,
     backgroundColor: '#FBF7FF',
-    gap: spacing.sm,
   },
-  loadingText: { ...text.small, color: colors.textMuted },
+  heading: { ...text.h3, color: colors.text, textAlign: 'center' },
+  sub: { ...text.body, color: colors.textMuted, textAlign: 'center' },
+  retry: {
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radius.pill,
+  },
+  retryText: { ...text.bodyMed, color: '#FFFFFF', fontWeight: '700' },
 });
