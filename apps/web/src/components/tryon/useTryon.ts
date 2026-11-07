@@ -84,7 +84,14 @@ interface ActBody {
 }
 
 export function useTryon(locale: string) {
-  const [tab, setTab] = useState('tshirt');
+  /*
+   * ⚠️ 'all' — boshlang'ich tab. Mobil ilova bilan bir xil
+   * (`FittingExperience.tsx`). Shunda do'konda qaysi kiyim bo'lsa ham
+   * birinchi ochilishda ko'rinadi — ilgari 'tshirt' bilan ochilsa-yu
+   * do'konda futbolka bo'lmasa, mijoz «hozircha kiyim yo'q» ni ko'rardi
+   * va hech qayerda umumiy ro'yxatga chiqa olmasdi.
+   */
+  const [tab, setTab] = useState('all');
   const [angle, setAngle] = useState<AvatarAngle>('front');
   const [outfit, setOutfit] = useState<OutfitLayer[]>([]);
   const [store, setStoreState] = useState<ChosenStore | null>(null);
@@ -138,7 +145,14 @@ export function useTryon(locale: string) {
   const refresh = useCallback(async () => {
     const seq = ++requestSeq.current;
 
-    const params = new URLSearchParams({ category: tab, angle, fit: onlyMySize ? '1' : '0' });
+    /*
+     * ⚠️ 'all' TABIDA KATEGORIYA YUBORILMAYDI — mobil bilan bir xil
+     * (`FittingExperience.tsx`): backend filtri bo'sh bo'lsa barcha
+     * slotdan kiyim qaytaradi. Yuborilsa, backend 'all' degan turkumni
+     * qidirardi va bo'sh ro'yxat qaytarardi.
+     */
+    const params = new URLSearchParams({ angle, fit: onlyMySize ? '1' : '0' });
+    if (tab && tab !== 'all') params.set('category', tab);
     if (store) params.set('storeId', store.id);
     if (outfitParam) params.set('outfit', outfitParam);
     if (styleFilter) params.set('style', styleFilter);
@@ -368,6 +382,12 @@ export function useTryon(locale: string) {
    */
   useEffect(() => {
     if (!state?.ready || items.length === 0) return;
+    /*
+     * ⚠️ 'all' AVTOMAT KIYINTIRMAYDI. 'all' turkum emas, qarash rejimi:
+     * tasmada har xil slotdagi kiyimlar aralash turadi, birinchisini
+     * avtomat kiyintirish kutilmagan — mijoz tasmani ko'rib, o'zi tanlasin.
+     */
+    if (tab === 'all') return;
     if (dismissed.includes(tab)) return;
     if (outfit.some((layer) => layer.category === tab)) return;
 

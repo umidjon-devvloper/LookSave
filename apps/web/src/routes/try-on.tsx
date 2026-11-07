@@ -52,18 +52,31 @@ export function loader({ params }: Route.LoaderArgs) {
 }
 
 /**
- * Kategoriya tablari — mobil ilovadagi ro'yxat bilan aynan bir xil.
+ * Kategoriya tablari — mobil ilovadagi ro'yxat (`FittingExperience.tsx`) bilan
+ * AYNAN BIR XIL BO'LISHI SHART. Ilgari web'da faqat 5 tasi bor edi va
+ * «Hammasi» tabi umuman yo'q edi: do'konda kurtka turgan bo'lsa ham,
+ * futbolka tabida «hozircha kiyim yo'q» chiqib, mijoz butun katalogni
+ * ochib ham ko'rolmasdi.
+ *
+ * ⚠️ «HAMMASI» BIRINCHI — boshlang'ich holat shu. Shunda yangi
+ * foydalanuvchi do'konda nima borligini darhol ko'radi.
  *
  * ⚠️ TARTIB — KO'RISH TARTIBI, KIYINISH TARTIBI EMAS. Kiyinish tartibi
  * `@looksave/validation` dagi `LAYER_ORDER` da: shimni kurtkadan keyin
  * kiyib bo'lmaydi.
  */
 const TABS: Array<{ category: string; label: string; icon: IconName }> = [
+  { category: 'all', label: 'Hammasi', icon: 'tryon' },
   { category: 'tshirt', label: 'Futbolka', icon: 'slotTop' },
-  { category: 'hoodie', label: 'Xudi', icon: 'slotTop' },
-  { category: 'jacket', label: 'Kurtka', icon: 'slotOuter' },
+  { category: 'hoodie', label: 'Hoody', icon: 'slotTop' },
+  { category: 'sweater', label: 'Sviter', icon: 'slotTop' },
   { category: 'shirt', label: "Ko'ylak", icon: 'slotTop' },
+  { category: 'jacket', label: 'Kurtka', icon: 'slotOuter' },
+  { category: 'coat', label: 'Palto', icon: 'slotOuter' },
   { category: 'trousers', label: 'Shim', icon: 'slotBottom' },
+  { category: 'jeans', label: 'Jinsi', icon: 'slotBottom' },
+  { category: 'shorts', label: 'Shorti', icon: 'slotBottom' },
+  { category: 'skirt', label: 'Yubka', icon: 'slotBottom' },
 ];
 
 const ANGLES: AvatarAngle[] = ['front', 'side', 'back'];
