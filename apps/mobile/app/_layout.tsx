@@ -1,4 +1,9 @@
 import {
+  Fraunces_500Medium,
+  Fraunces_500Medium_Italic,
+  Fraunces_600SemiBold,
+} from '@expo-google-fonts/fraunces';
+import {
   Inter_400Regular,
   Inter_500Medium,
   Inter_600SemiBold,
@@ -65,13 +70,18 @@ function AppShell(): JSX.Element {
 
   usePushRegistration();
 
-  // Deckdagi grotesk o'rniga Inter (06-dizayn.md §3). Shrift yuklanmaguncha
-  // ekran ko'rsatilmaydi — aks holda tizim shriftidan Inter'ga sakrash sezilib qoladi.
+  // Atelier identity (06-dizayn.md §3): Fraunces editorial serif display +
+  // Inter humanist sans body. Shrift yuklanmaguncha ekran ko'rsatilmaydi —
+  // aks holda tizim shriftidan sakrash sezilib qoladi va sarlavhalar o'z
+  // tortishini yo'qotadi.
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    Fraunces_500Medium,
+    Fraunces_500Medium_Italic,
+    Fraunces_600SemiBold,
   });
 
   useEffect(() => {
@@ -102,13 +112,32 @@ function AppShell(): JSX.Element {
   // Onboarding bayrog'i o'qilmaguncha (`null`) splash ushlab turiladi: aks
   // holda kirish nuqtasi ilk-ochilishni bilmay (tabs) ga sakrab, onboarding
   // uning ustidan ochilib miltillardi.
-  const appReady = fontsLoaded && status !== 'loading' && onboardingSeen !== null;
+  const normalReady = fontsLoaded && status !== 'loading' && onboardingSeen !== null;
+
+  /*
+   * ⚠️ SPLASH TIMEOUT — ILOVANI "DOIM OCHILADIGAN" QILADI.
+   *
+   * Google Play 2026-11-03 da «ilova ochilmayapti» uchun politika buzilishi
+   * yubordi. Agar font yuklash, auth tiklash yoki SecureStore bironta sabab
+   * bilan osilib qolsa (sekin tarmoq, native modul kutilmagan xato), splash
+   * cheksiz turardi — Google reviewer buni "yiqilgan" deb hisoblaydi.
+   *
+   * 6 soniyadan keyin baribir UI ni ochamiz: `status === 'loading'` bo'lsa
+   * ekran kerakli joyga (sign-in yoki (tabs)) o'zi yo'naltirib yuboradi.
+   */
+  const [timedOut, setTimedOut] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setTimedOut(true), 6000);
+    return () => clearTimeout(timer);
+  }, []);
+  const appReady = normalReady || timedOut;
   const [splashDone, setSplashDone] = useState(false);
   const handleSplashFinish = useCallback(() => setSplashDone(true), []);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <StatusBar style="light" />
+      {/* Atelier yorug' fon — status bar ikoni va soati qora chiziladi */}
+      <StatusBar style="dark" />
       {appReady ? (
         <Stack
           screenOptions={{
@@ -148,6 +177,7 @@ function AppShell(): JSX.Element {
           {/* Market ichma-ich oqimi: do`konlar → kategoriyalar (o`z sarlavhasi bor) */}
           <Stack.Screen name="market" options={{ headerShown: false }} />
           <Stack.Screen name="stores" options={{ title: t.tabs.stores }} />
+          <Stack.Screen name="anywear" options={{ headerShown: false }} />
           {/* O'lchamlar ekranida o'z sarlavhasi bor */}
           <Stack.Screen name="settings/measurements" options={{ headerShown: false }} />
           <Stack.Screen name="settings/profile" options={{ title: t.profile.editProfile }} />
