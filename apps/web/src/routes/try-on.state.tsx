@@ -151,7 +151,16 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   if (!context.user) return Response.json(empty, { headers });
 
   const url = new URL(request.url);
-  const category = url.searchParams.get('category') ?? 'tshirt';
+  /*
+   * ⚠️ 'all' — JAMI RO'YXAT TABI (mobil bilan bir xil). Backend filtri
+   * bo'sh bo'lsa barcha slotdan kiyim qaytaradi. Boshlang'ich holat ham
+   * shu — ilgari 'tshirt' edi va yangi do'konda futbolka yo'q bo'lsa,
+   * ro'yxat bo'sh ochilardi.
+   */
+  const rawCategory = url.searchParams.get('category');
+  const category = rawCategory && rawCategory !== 'all' ? rawCategory : 'all';
+  /** Backend'ga uzatiladigan qiymat: 'all' bo'lsa filtr yo'q */
+  const categoryFilter = category === 'all' ? null : category;
 
   /*
    * ⚠️ DO'KON `id` SI TEKSHIRILADI. U brauzerning `localStorage` idan
@@ -263,7 +272,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     const variantIds = outfit.map((layer) => layer.variantId);
     const [initialGarments, outfitRenders, frontRenders] = await Promise.all([
       getGarments(
-        { category, storeId, size, style, gender: profile.gender, limit: 30 },
+        { category: categoryFilter, storeId, size, style, gender: profile.gender, limit: 30 },
         context.options,
       ),
       getRenders({ variantIds, angle, scope: 'all' }, context.options),
@@ -283,7 +292,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     const needFallback = Boolean(size) && initialGarments.length === 0;
     const fallbackGarments = needFallback
       ? await getGarments(
-          { category, storeId, size: null, style, gender: profile.gender, limit: 30 },
+          { category: categoryFilter, storeId, size: null, style, gender: profile.gender, limit: 30 },
           context.options,
         )
       : null;
