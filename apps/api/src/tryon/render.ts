@@ -14,6 +14,7 @@ import {
   generationFingerprint,
   isOpenAiEnabled,
 } from '../integrations/openai';
+import { faceSwap } from '../integrations/facefusion';
 import { deleteByUrl, presignRead, uploadObject } from '../integrations/r2';
 import { makeCutout } from '../store/cutout';
 import { logger } from '../logger';
@@ -452,11 +453,15 @@ export async function listGarments(filters: GarmentFilters) {
         -- variantIds bergan bo'lsa, SLOT filtri qo'llanmaydi:
         -- Look turli do'kondan, turli slotdan bo'lishi mumkin.
         AND ($8::uuid[] IS NOT NULL OR p.slot = ANY($1::text[]))
-        AND ($8::uuid[] IS NULL OR v.id = ANY($8::uuid[]))
+        -- Home "Look" tugmasi mahsulot IDsi bilan qo'shadi (variant emas) —
+        -- shuning uchun ikkala ro'yxatni ham qabul qilamiz
+        AND ($8::uuid[] IS NULL OR v.id = ANY($8::uuid[]) OR p.id = ANY($8::uuid[]))
         -- Kategoriya berilsa u ustun: slotdan aniqroq
         AND ($4::text IS NULL OR c.slug = $4)
-        -- variantIds bergan bo'lsa, rasmsiz ham ko'rsatamiz
-        AND ($8::uuid[] IS NOT NULL OR COALESCE(NULLIF(v.images->>0, ''), NULLIF(p.images->>0, '')) IS NOT NULL)
+        -- SURAT MAJBURIY — hatto Look rejimida ham. Rasmsiz variantni
+        -- qaytarsak, render.ts "Bu mahsulotning surati yo'q" deb 422 beradi
+        -- va mijoz uchun "AI kiyintirmoqda…" abadiy qotib qoladi.
+        AND COALESCE(NULLIF(v.images->>0, ''), NULLIF(p.images->>0, '')) IS NOT NULL
         AND ($2::text IS NULL OR p.gender IN ($2, 'unisex'))
         AND ($5::uuid IS NULL OR p.store_id = $5)
         -- O'lcham: aynan shu variantda, aynan shu o'lcham, aynan omborda.
@@ -675,6 +680,7 @@ export async function requestRender(
     slot: sources.slot,
     faceReferenceUrl,
     layer: baseRenderId !== null,
+    angle,
   });
 
   return toDto(fresh);
@@ -780,6 +786,8 @@ interface QueuedRender {
   faceReferenceUrl: string | null;
   /** Model surati allaqachon kiyintirilgan — prompt boshqacha bo'ladi */
   layer: boolean;
+  /** Facefusion post-processor front_only sozlamasini hurmat qilish uchun */
+  angle: RenderAngle;
 }
 
 /**
@@ -844,6 +852,7 @@ async function runOpenAi({
   slot,
   faceReferenceUrl,
   layer,
+  angle,
 }: QueuedRender): Promise<void> {
   /*
    * Holat ish HAQIQATAN boshlanganda yoziladi. Navbatda turgan qator
@@ -857,7 +866,7 @@ async function runOpenAi({
     });
 
   try {
-    const buffer = await generateTryon({
+    const openAiBuffer = await generateTryon({
       modelImageUrl,
       garmentImageUrl,
       kind: garmentKindForSlot(slot),
@@ -865,7 +874,17 @@ async function runOpenAi({
       layer,
     });
 
-    await storeResult(renderId, buffer);
+    /*
+     * ⚠️ FACE SWAP POST-PROCESS. OpenAI chiqargan rasmda yuz ba'zan
+     * foydalanuvchiga o'xshamaydi. Facefusion orqali asl yuzni joylab
+     * olamiz. Yuz referensi yoki FACEFUSION_URL yo'q bo'lsa, yoki yon/orqa
+     * burchakda bo'lsak (front_only) — asl buffer o'zgarmasdan qaytadi.
+     */
+    const finalBuffer = faceReferenceUrl
+      ? await faceSwap({ target: openAiBuffer, sourceFaceUrl: faceReferenceUrl, angle })
+      : openAiBuffer;
+
+    await storeResult(renderId, finalBuffer);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'noma`lum xato';
     logger.error({ err, renderId }, 'openai: kiyintirish yiqildi');
