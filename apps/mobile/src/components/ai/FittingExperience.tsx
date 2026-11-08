@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  Dimensions,
   FlatList,
   Image,
   Pressable,
@@ -63,6 +64,13 @@ import { goBack } from '../../navigation/back';
 const PREMIUM_TRYON_BACKGROUND = require('../../../assets/tryon-boutique-bg-portrait-v2.png');
 /** Hero fon cho'zilish diapazoni — Home ekrani kabi: 560 px */
 const TRYON_HERO_STRETCH = 560;
+/*
+ * Hero fon rasmi balandligi — Scroll'dan tashqarida qotirilgan (`tryonHeroFixed`).
+ * Ekran balandligining ~95%'i: avatar sahnasi + maniken tag qismigacha butun
+ * fon rasm bilan qoplanadi. Ilgari 72% edi — manikenning oyoq qismi fon rasm
+ * chegarasidan pastda qolib, oq fon ko'rinib qolar edi.
+ */
+const TRYON_HERO_HEIGHT = Math.round(Dimensions.get('window').height * 0.85);
 
 /**
  * AI kiyintirish — ekranning butun tanasi.
@@ -1111,6 +1119,44 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
 
   return (
     <Screen>
+      {/*
+        ⚠️ HERO RASMI SCROLLVIEW'DAN TASHQARIDA. Rasm Screen'ning
+        eng pastki qatlamida fixed turadi; ScrollView uning ustidan
+        scroll bo'ladi — pastga tortilganda kartalar rasm ustini
+        yopadi, overscroll'da esa rasm pastga cho'ziladi (tepa oq
+        fonda emas, cho'zilgan rasmda spinner chiqadi).
+      */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.tryonHeroFixed,
+          {
+            transform: [
+              {
+                translateY: scrollY.interpolate({
+                  inputRange: [-TRYON_HERO_STRETCH, 0],
+                  outputRange: [-TRYON_HERO_STRETCH / 2, 0],
+                  extrapolateRight: 'clamp' as const,
+                }),
+              },
+              {
+                scaleY: scrollY.interpolate({
+                  inputRange: [-TRYON_HERO_STRETCH, 0],
+                  outputRange: [2, 1],
+                  extrapolateRight: 'clamp' as const,
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <Animated.Image
+          source={PREMIUM_TRYON_BACKGROUND}
+          resizeMode="stretch"
+          style={styles.tryonHeroBackground}
+        />
+      </Animated.View>
+
       <Animated.ScrollView
         contentContainerStyle={styles.page}
         showsVerticalScrollIndicator={false}
@@ -1129,21 +1175,29 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
           />
         }
       >
-        <View style={styles.tryonHero}>
         {/*
-          ⚠️ REZINKA EFFEKTI OLIB TASHLANDI. Hero rasmi avval scroll'ga ergashib
-          cho'zilar/kattalashardi; bu refresh indikatorini bekitib, "nega surat
-          keldi-yu, hech narsa yangilanmadi?" degan savolni tug'dirardi. Endi
-          rasm joyida qoladi, standart iOS/Android spinner esa content ichida
-          ko'rinadi.
+          ⚠️ HERO PINNED. Avatar sahnasi (header + maniken + controls + angle
+          rail) scroll bo'ylab viewport'ning tepasida qoladi: `translateY: scrollY`
+          — pastga scroll bo'lsa content ko'tariladi, hero esa shuncha pastga
+          siljib joyida qolgandek ko'rinadi, kartalar esa uning ustini yopadi.
+          pullDown (`scrollY < 0`) uchun 0 — pastga qo'shimcha siljitmaydi.
         */}
-        <Animated.View style={StyleSheet.absoluteFill}>
-          <Animated.Image
-            source={PREMIUM_TRYON_BACKGROUND}
-            resizeMode="stretch"
-            style={styles.tryonHeroBackground}
-          />
-        </Animated.View>
+        <Animated.View
+          style={[
+            styles.tryonHero,
+            {
+              transform: [
+                {
+                  translateY: scrollY.interpolate({
+                    inputRange: [0, 10_000],
+                    outputRange: [0, 10_000],
+                    extrapolateLeft: 'clamp' as const,
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
         <View style={[styles.header, { paddingTop: insets.top + spacing.xs }]}>
         <Pressable
           accessibilityRole="button"
@@ -1235,48 +1289,43 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
 
           </View>
 
-          <View style={styles.angleRail} pointerEvents="box-none">
-            {anglePreviews.map((photo, index) => {
-              const optionIndex = index;
-              const selected = index === angleIndex;
-              return (
-                <Pressable
-                  key={photo.key}
-                  accessibilityRole="button"
-                  accessibilityLabel={angleOptions[optionIndex]?.label}
-                  onPress={() => {
-                    const option = angleOptions[optionIndex];
-                    if (option) setAngle(option.value);
-                  }}
-                  style={[styles.anglePreview, selected && styles.anglePreviewActive]}
-                >
-                  {photo.url ? (
-                    <Image source={{ uri: photo.url }} style={styles.anglePreviewImage} resizeMode="contain" />
-                  ) : null}
-                </Pressable>
-              );
-            })}
-          </View>
+          {/*
+            ⚠️ ANGLE RAIL faqat 2 va undan ko'p burchak bo'lsa ko'rsatiladi.
+            ANGLE_OPTIONS = [front] bo'lgach rail yagona thumbnail bilan
+            ekranni behuda to'ldirardi.
+          */}
+          {angleOptions.length > 1 ? (
+            <View style={styles.angleRail} pointerEvents="box-none">
+              {anglePreviews.map((photo, index) => {
+                const optionIndex = index;
+                const selected = index === angleIndex;
+                return (
+                  <Pressable
+                    key={photo.key}
+                    accessibilityRole="button"
+                    accessibilityLabel={angleOptions[optionIndex]?.label}
+                    onPress={() => {
+                      const option = angleOptions[optionIndex];
+                      if (option) setAngle(option.value);
+                    }}
+                    style={[styles.anglePreview, selected && styles.anglePreviewActive]}
+                  >
+                    {photo.url ? (
+                      <Image source={{ uri: photo.url }} style={styles.anglePreviewImage} resizeMode="contain" />
+                    ) : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
 
-          <View style={styles.rotationNav} pointerEvents="box-none">
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Oldingi burchak"
-              onPress={() => setAngle(angleOptions[(angleIndex - 1 + angleOptions.length) % angleOptions.length]?.value ?? 'front')}
-              style={styles.rotationButton}
-            >
-              <Text style={styles.rotationArrow}>↔</Text>
-            </Pressable>
-            <Text style={styles.rotationText}>360°</Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Keyingi burchak"
-              onPress={() => setAngle(angleOptions[(angleIndex + 1) % angleOptions.length]?.value ?? 'front')}
-              style={styles.rotationButton}
-            >
-              <Text style={styles.rotationArrow}>↔</Text>
-            </Pressable>
-          </View>
+          {/*
+            ⚠️ 360° ROTATION NAV OLIB TASHLANDI. Avvallari pastda ikki ↔ tugma
+            va "360°" matni bor edi — svayp va o'ngdagi anglePreview rail
+            ikkinchi marta shu funksiyani beradi, qo'sh element ekranni
+            chalkashtirar edi. Angle almashtirish endi faqat svayp yoki
+            o'ngdagi thumbnail'lar orqali.
+          */}
 
           {/*
             «Lookda» chiplari — sahnaning TEPASIDA, kategoriya nomi + × bilan.
@@ -1362,7 +1411,7 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
             </View>
           ) : null}
         </View>
-        </View>
+        </Animated.View>
 
         {/*
           Gorizontal qator — ixcham tab'lar, qolganlari surib ko'riladi.
@@ -2041,11 +2090,16 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
   );
 }
 
-/** Avatar yonidagi dumaloq tugma — maketdagi uslubda. */
+/*
+ * ⚠️ FAQAT OLD BURCHAK (2026-11-09). Yon va orqa chiqarilgan edi, lekin:
+ *   - OpenAI varaq'da 3 figura doim bir xil pozada chiqmasdi
+ *   - Facefusion yon/orqaga yuzni mos qo'yolmasdi
+ *   - Operator qo'lda 3 pozani bir rasm bilan chiqarish mushkul
+ * Natijada ikkinchi/uchinchi burchakda sifat past bo'lardi. Faqat old
+ * qoldirildi — svayp va angle rail avtomatik ravishda bo'sh bo'ladi.
+ */
 const ANGLE_OPTIONS: Array<{ value: AvatarAngle; label: string }> = [
   { value: 'front', label: 'Old' },
-  { value: 'side', label: 'Yon' },
-  { value: 'back', label: 'Orqa' },
 ];
 
 function Control({
@@ -2180,8 +2234,25 @@ const styles = StyleSheet.create({
   tryonHero: {
     position: 'relative',
     overflow: 'hidden',
-    backgroundColor: '#EEE7F7',
+    backgroundColor: 'transparent',
     paddingBottom: spacing.sm,
+  },
+  /*
+   * ⚠️ FIXED HERO — ScrollView dan tashqarida, ekranning yuqori yarmida
+   * absolyut turadi. Yuqori qismi `0`, balandligi `TRYON_HERO_HEIGHT` —
+   * bu avatar sahnasining yuqori yarmini qoplaydi. Scroll pastga tortilsa
+   * kartalar uning ustini yopadi, pulldown'da `scaleY`/`translateY` orqali
+   * cho'ziladi.
+   */
+  tryonHeroFixed: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: TRYON_HERO_HEIGHT,
+    backgroundColor: '#EEE7F7',
+    overflow: 'hidden',
+    zIndex: 0,
   },
   tryonHeroBackground: {
     ...StyleSheet.absoluteFillObject,

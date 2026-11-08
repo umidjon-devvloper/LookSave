@@ -67,36 +67,107 @@ async function isAlreadyTransparent(input: Buffer): Promise<boolean> {
 }
 
 /*
- * Chegaradagi qora halo'ni olib tashlaydi.
+ * Chegaradagi qora halo'ni olib tashlaydi va chekkalarni silliq qiladi.
  *
- * ⚠️ MUAMMO: @imgly/background-removal'ning alfa kanali yumshoq o'tish
- * beradi — chekkalarda yarim-shaffof piksellar qoladi, va ularning RGB
- * qiymati fon rangidan (qora/qorong'i-kulrang) olingan. Mijoz ekranida
- * bu figurani o'rab turgan qora halo bo'lib ko'rinadi.
+ * ⚠️ MUAMMO: @imgly'ning alfa kanali yumshoq o'tish beradi — chekkalardagi
+ * yarim-shaffof piksellarning RGB qiymati qora fondan olingan, bu halo
+ * bo'lib ko'rinadi. To'g'ridan-to'g'ri qattiq threshold qo'llasak, halo
+ * yo'qoladi, lekin chekkalar JAG'LANADI (pikselli stupeni ko'rinadi).
  *
- * YECHIM — ikki bosqich:
- * 1) Alfa kanalini kontrastlashtiramiz: threshold'dan past piksellar
- *    to'liq shaffof, yuqori — to'liq ko'rinadigan. Yumshoq o'tish zonasi
- *    1-2 pikselga qisqaradi.
- * 2) Natijani PNG qilib qayta kodlaymiz, siqishsiz (level 9, palette yo'q).
+ * YECHIM — uch bosqich:
+ * 1) RGB'ni alfa bo'yicha PREMULTIPLY qilish o'rniga, chekkalardagi qora
+ *    piksellarning RGB'sini QO'SHNI opak piksellar rangiga almashtiramiz.
+ *    Buning uchun: alfa<255 bo'lgan pikselga sharp'ning `extract channel`
+ *    + `recomb` bilan, yoki oddiyroq — alfa>200 bo'lmasa, qo'shni
+ *    opak pikselni ko'chiramiz.
+ * 2) Alfa'ni yumshoq blur bilan silliqlaymiz (0.4px) — chekkalardagi
+ *    stupeni yo'qoladi, silliq antialias chiziq paydo bo'ladi.
+ * 3) Shu silliq alfani oraliqda normallashtiramiz: <40 → 0, >200 → 255,
+ *    o'rtada — yumshoq ramp. Halo'ni yo'qolgan, chekka silliq.
  */
 async function refineAlpha(input: Buffer): Promise<Buffer> {
   try {
-    const image = sharp(input).ensureAlpha();
-    const { data, info } = await image.raw().toBuffer({ resolveWithObject: true });
+    const base = sharp(input).ensureAlpha();
+    const meta = await base.metadata();
+    if (!meta.width || !meta.height) return input;
+
+    const { data, info } = await base.raw().toBuffer({ resolveWithObject: true });
     const { width, height, channels } = info;
     if (channels !== 4) return input;
 
-    // 1-chi bosqich: alfa threshold
-    for (let i = 3; i < data.length; i += 4) {
-      const a = data[i]!;
-      if (a < 48) data[i] = 0;
-      else if (a > 210) data[i] = 255;
-      // Oraliqda: o'rtaga tortish — chekkalar aniq bo'ladi
-      else data[i] = Math.min(255, Math.round(((a - 48) / (210 - 48)) * 255));
+    /*
+     * 1) Chekkalardagi QORA piksel RGB'sini aniqlab, alfa>230 bo'lgan eng
+     *    yaqin opak pikseldan (3x3 tagidan) ko'chiramiz. Bu halo'ning
+     *    rangini o'zgartiradi — qora o'rniga teri/kiyim rangi bo'ladi.
+     */
+    const copy = Buffer.from(data);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 4;
+        const a = copy[i + 3]!;
+        if (a >= 230 || a < 10) continue;
+        const r = copy[i]!,
+          g = copy[i + 1]!,
+          b = copy[i + 2]!;
+        if (r > 24 || g > 24 || b > 24) continue; // qora bo'lmasa qoldiramiz
+        // 3x3 opak qo'shnini topamiz
+        let sumR = 0,
+          sumG = 0,
+          sumB = 0,
+          cnt = 0;
+        for (let dy = -2; dy <= 2 && cnt === 0; dy++) {
+          for (let dx = -2; dx <= 2; dx++) {
+            const ny = y + dy,
+              nx = x + dx;
+            if (ny < 0 || ny >= height || nx < 0 || nx >= width) continue;
+            const j = (ny * width + nx) * 4;
+            if (copy[j + 3]! < 230) continue;
+            sumR += copy[j]!;
+            sumG += copy[j + 1]!;
+            sumB += copy[j + 2]!;
+            cnt++;
+          }
+        }
+        if (cnt > 0) {
+          data[i] = Math.round(sumR / cnt);
+          data[i + 1] = Math.round(sumG / cnt);
+          data[i + 2] = Math.round(sumB / cnt);
+        }
+      }
     }
 
-    return await sharp(data, { raw: { width, height, channels: 4 } })
+    // 2) Alfa kanali bo'yicha yengil blur — chekkalar silliq bo'ladi
+    const rgbaBuffer = await sharp(data, { raw: { width, height, channels: 4 } })
+      .png({ compressionLevel: 0 })
+      .toBuffer();
+
+    const smoothed = await sharp(rgbaBuffer)
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    // Alfa'ni ajratib blur qilamiz
+    const alphaOnly = Buffer.alloc(width * height);
+    for (let i = 0; i < width * height; i++) alphaOnly[i] = smoothed.data[i * 4 + 3]!;
+
+    const blurredAlpha = await sharp(alphaOnly, {
+      raw: { width, height, channels: 1 },
+    })
+      .blur(0.5)
+      .raw()
+      .toBuffer();
+
+    // 3) Yangi alfa'ni ramp bilan normallashtirish va qaytarib qo'yish
+    for (let i = 0; i < width * height; i++) {
+      const a = blurredAlpha[i]!;
+      let out: number;
+      if (a < 40) out = 0;
+      else if (a > 200) out = 255;
+      else out = Math.round(((a - 40) / (200 - 40)) * 255);
+      smoothed.data[i * 4 + 3] = out;
+    }
+
+    return await sharp(smoothed.data, { raw: { width, height, channels: 4 } })
       .png({ compressionLevel: 9, palette: false })
       .toBuffer();
   } catch {

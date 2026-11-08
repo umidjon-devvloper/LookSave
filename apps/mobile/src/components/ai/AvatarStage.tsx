@@ -1,10 +1,20 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { type ReactNode } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View, type ImageStyle } from 'react-native';
 
-import { colors, radius, spacing, text } from '../../theme/tokens';
+import { colors, spacing, text } from '../../theme/tokens';
 
-const STUDIO_BACKGROUND = require('../../../assets/tryon-studio-bg.png');
+/*
+ * ⚠️ MANIKEN — AVATAR YASALMAGUNCHA ZAXIRA SURAT.
+ *
+ * Foydalanuvchi yangi ro'yxatdan o'tgan va avatar hali yasalmagan paytda
+ * yuz surati ("selfie") kiyintirish sahnasida chiqib qolardi — bu App
+ * Store sharhlovchisiga ham g'alati ko'rinardi. Buning o'rniga neytral
+ * 3D-maniken ko'rsatiladi: foydalanuvchi kiyimlarni "biror narsa" ustida
+ * sinab ko'rishi mumkin, ekran professional qoladi va yuklanish
+ * indikatori yo'q bo'ladi.
+ */
+const MANNEQUIN_FALLBACK = require('../../../assets/3d-person.jpg');
 
 /**
  * Avatar sahnasi — mijoz maketidagi ko'rinish.
@@ -74,14 +84,6 @@ export function AvatarStage({
 
   return (
     <View style={styles.root}>
-      <Image source={STUDIO_BACKGROUND} style={styles.studioBackground} resizeMode="cover" />
-      <LinearGradient
-        colors={['rgba(5,5,9,0.42)', 'rgba(5,5,9,0.28)', 'rgba(5,5,9,0.5)']}
-        locations={[0, 0.48, 1]}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
-
       {/*
         ⚠️ FLOOR GLOW OLIB TASHLANDI (2026-11-01). Ilgari oyoq ostida sekin
         "nafas oladigan" binafsha nurlanish bor edi — foydalanuvchi uni
@@ -97,16 +99,25 @@ export function AvatarStage({
       ) : source ? (
         <Image
           source={{ uri: source }}
-          style={[styles.personFrame, dimmed && styles.dimmed, zoomed && styles.personFrameZoomed]}
+          style={[
+            styles.personFrame,
+            !cutoutUrl && styles.personWithoutCutout,
+            dimmed && styles.dimmed,
+            zoomed && styles.personFrameZoomed,
+          ]}
           resizeMode="contain"
         />
       ) : (
-        <View style={styles.personFrame} />
+        <Image
+          source={MANNEQUIN_FALLBACK}
+          style={[styles.personFrame, dimmed && styles.dimmed, zoomed && styles.personFrameZoomed]}
+          resizeMode="contain"
+        />
       )}
 
       {/* Pastdagi yengil fade sahnani ilova foniga yumshoq ulaydi. */}
       <LinearGradient
-        colors={['rgba(5,5,9,0)', 'rgba(5,5,9,0.42)', 'rgba(5,5,9,0.82)']}
+        colors={['rgba(255,255,255,0)', 'rgba(247,243,255,0.28)', 'rgba(240,234,255,0.74)']}
         locations={[0, 0.62, 1]}
         style={styles.bottomFade}
         pointerEvents="none"
@@ -177,12 +188,10 @@ const styles = StyleSheet.create({
    */
   root: {
     flex: 1,
-    backgroundColor: '#050509',
-    borderRadius: radius.lg,
+    backgroundColor: 'transparent',
+    borderRadius: 0,
     overflow: 'hidden',
   },
-
-  studioBackground: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
 
   /*
    * ⚠️ PASTDA JOY QOLDIRILADI. Boshqaruv tugmalari sahna ostida yotiq qator
@@ -201,18 +210,25 @@ const styles = StyleSheet.create({
    */
   personFrame: {
     position: 'absolute',
-    top: '4%',
-    left: '8%',
-    right: '8%',
-    bottom: '3%',
+    top: '6%',
+    left: '14%',
+    right: '14%',
+    bottom: '4%',
   },
-  swipeFrame: { ...StyleSheet.absoluteFillObject },
+  personWithoutCutout: { mixBlendMode: 'multiply' } as ImageStyle,
+  swipeFrame: {
+    position: 'absolute',
+    top: '6%',
+    left: '14%',
+    right: '14%',
+    bottom: '4%',
+  },
 
   /*
    * Pastki singdirish — gavdaning kesilgan pastki qismini qorong'iga
    * eritadi. Podium shu zona ichida, uning ustida turadi.
    */
-  bottomFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '22%' },
+  bottomFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '10%', opacity: 0.35 },
   dimmed: { opacity: 0.35 },
   /*
    * 1.45 — tajribada tanlangan. Kamrog'i sezilmaydi, ko'prog'ida bosh
@@ -228,7 +244,16 @@ const styles = StyleSheet.create({
    * ko'rinardi. Odam kadrning o'rtadagi ~45% ini egallaydi, halqa esa
    * undan bir oz kengroq bo'lishi kerak.
    */
+  // Qorong'i sahna ustidagi o'lchov yozuvlari — cream matn, kichik italic
   label: { position: 'absolute' },
-  labelValue: { ...text.h3, color: colors.text, fontVariant: ['tabular-nums'] },
-  labelUnit: { ...text.tiny, color: colors.textMuted, marginTop: -2 },
+  labelValue: {
+    ...text.h3,
+    color: colors.text,
+    fontVariant: ['tabular-nums'],
+  },
+  labelUnit: {
+    ...text.tiny,
+    color: colors.textMuted,
+    marginTop: -2,
+  },
 });
