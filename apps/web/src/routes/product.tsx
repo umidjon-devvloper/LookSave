@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, data, redirect, useFetcher, useSearchParams } from 'react-router';
 
-import { Button, Card, Chip, ErrorView, Icon, ImageFrame, ProductCard } from '@looksave/ui-web';
+import { Button, ErrorView, Icon, ProductCard } from '@looksave/ui-web';
 
 import { ApiError, isNetworkError } from '@/api/client';
 import {
@@ -11,17 +11,16 @@ import {
   type ProductCard as Card2,
   type ProductDetail,
 } from '@/api/endpoints';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
+import productStyles from '@/components/product/product.css?url';
 import { isLocale, type Locale } from '@/i18n/locale';
-import { discount, distance, money } from '@/lib/format';
+import { discount, money } from '@/lib/format';
 import { auth, requireAuth } from '@/session.server';
 
 import type { Route } from './+types/product';
+
+export function links() {
+  return [{ rel: 'stylesheet', href: productStyles }];
+}
 
 /**
  * Mahsulot sahifasi — docs/15-sayt-dizayn.md §4.3.
@@ -178,11 +177,11 @@ export default function Product({ loaderData }: Route.ComponentProps): JSX.Eleme
 
   const [size, setSize] = useState<string | null>(null);
   const [imageIndex, setImageIndex] = useState(0);
+  const [qty, setQty] = useState(1);
 
   const images = variant?.images.length ? variant.images : product.images;
   const price = variantPrice(product.price, variant?.priceDelta);
   const cut = discount(price, product.oldPrice);
-  const away = distance(product.store.distanceM);
   const sizes = variant?.sizes ?? [];
 
   const submitting = fetcher.state !== 'idle';
@@ -220,8 +219,17 @@ export default function Product({ loaderData }: Route.ComponentProps): JSX.Eleme
     },
   };
 
+  const prevImage = (): void => {
+    if (images.length === 0) return;
+    setImageIndex((i) => (i - 1 + images.length) % images.length);
+  };
+  const nextImage = (): void => {
+    if (images.length === 0) return;
+    setImageIndex((i) => (i + 1) % images.length);
+  };
+
   return (
-    <div className="shell-wide section-y pb-28 lg:pb-[clamp(4rem,8vw,7rem)]">
+    <div className="product-page shell-wide section-y pb-28 lg:pb-[clamp(4rem,8vw,7rem)]">
       {/*
         ⚠️ `<` EKRANLANADI. Mahsulot nomi va tavsifi do'kondan keladi,
         ya'ni ular bizning matnimiz emas. Ichida `</script>` bo'lsa u
@@ -236,32 +244,30 @@ export default function Product({ loaderData }: Route.ComponentProps): JSX.Eleme
         }}
       />
 
-      <nav aria-label="Yo'l" className="mb-6 flex flex-wrap items-center gap-2 text-small text-dim">
-        <Link to={`/${locale}`} className="hover:text-foreground">
-          Bosh
+      <nav aria-label="Yo'l" className="product-breadcrumb mb-6">
+        <Link to={`/${locale}`} className="product-breadcrumb-home" aria-label="Bosh sahifa">
+          <Icon name="home" size={14} />
         </Link>
-        <span aria-hidden="true">/</span>
-        <Link to={`/${locale}/catalog`} className="hover:text-foreground">
-          Katalog
-        </Link>
+        <Link to={`/${locale}`}>Bosh sahifa</Link>
+        <Icon name="next" size={12} />
+        <Link to={`/${locale}/catalog`}>Katalog</Link>
         {product.category ? (
           <>
-            <span aria-hidden="true">/</span>
-            <Link
-              to={`/${locale}/catalog?category=${product.category.slug}`}
-              className="hover:text-foreground"
-            >
+            <Icon name="next" size={12} />
+            <Link to={`/${locale}/catalog?category=${product.category.slug}`}>
               {product.category.name}
             </Link>
           </>
         ) : null}
+        <Icon name="next" size={12} />
+        <span className="is-current">{product.title}</span>
       </nav>
 
-      <div className="grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:gap-14">
+      <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14">
         {/* ── Gallereya ── */}
         <div className="flex flex-col-reverse gap-4 sm:flex-row">
           {images.length > 1 ? (
-            <div className="flex gap-3 overflow-x-auto sm:w-20 sm:flex-col sm:overflow-visible">
+            <div className="product-thumb-rail">
               {images.map((src, index) => (
                 <button
                   key={src}
@@ -269,255 +275,308 @@ export default function Product({ loaderData }: Route.ComponentProps): JSX.Eleme
                   onClick={() => setImageIndex(index)}
                   aria-label={`Rasm ${index + 1}`}
                   aria-current={index === imageIndex}
-                  className={
-                    index === imageIndex
-                      ? 'w-16 shrink-0 rounded-md ring-2 ring-borderAccent sm:w-full'
-                      : 'w-16 shrink-0 rounded-md ring-1 ring-border transition hover:ring-borderStrong sm:w-full'
-                  }
+                  className={`product-thumb ${index === imageIndex ? 'is-on' : ''}`}
                 >
-                  <ImageFrame src={src} alt="" ratio="3/4" rounded="md" />
+                  <img src={src} alt="" />
                 </button>
               ))}
             </div>
           ) : null}
 
-          <div className="relative flex-1">
-            <ImageFrame
-              src={images[imageIndex] ?? null}
-              alt={product.title}
-              ratio="3/4"
-              loading="eager"
-              // React 18 `fetchPriority` ni tanimaydi — DOM atributi kichik harfda
-              {...{ fetchpriority: 'high' }}
-            />
+          <div className="product-gallery-main flex-1">
+            {images[imageIndex] ? (
+              <img
+                src={images[imageIndex]}
+                alt={product.title}
+                loading="eager"
+                {...{ fetchpriority: 'high' }}
+              />
+            ) : null}
 
-            <div className="pointer-events-none absolute start-3 top-3 flex gap-2">
-              {product.canTryOn ? (
-                <span className="rounded-sm border border-borderAccent bg-primarySoft px-2 py-0.5 text-tiny font-medium text-brand">
-                  3D
-                </span>
-              ) : null}
-              {product.isLimited ? (
-                <span className="rounded-sm border border-limited/50 bg-limited/15 px-2 py-0.5 text-tiny font-medium text-limited">
-                  LIMITED
-                </span>
-              ) : null}
-              {cut ? (
-                <span className="rounded-sm border border-danger/50 bg-danger/15 px-2 py-0.5 text-tiny font-medium text-danger">
-                  {cut}
-                </span>
-              ) : null}
-            </div>
+            {product.canTryOn ? <span className="product-gallery-chip">Try-On</span> : null}
+
+            <button
+              type="button"
+              className="product-gallery-fav"
+              aria-label="Sevimlilarga qo'shish"
+            >
+              <Icon name="favorite" size={20} />
+            </button>
+
+            {images.length > 1 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={prevImage}
+                  aria-label="Oldingi rasm"
+                  className="product-gallery-nav -prev"
+                >
+                  <Icon name="back" size={20} />
+                </button>
+                <button
+                  type="button"
+                  onClick={nextImage}
+                  aria-label="Keyingi rasm"
+                  className="product-gallery-nav -next"
+                >
+                  <Icon name="next" size={20} />
+                </button>
+
+                <div className="product-gallery-dots">
+                  {images.map((src, index) => (
+                    <button
+                      key={src}
+                      type="button"
+                      onClick={() => setImageIndex(index)}
+                      aria-label={`Rasm ${index + 1}`}
+                      className={index === imageIndex ? 'is-on' : ''}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : null}
+
+            <button
+              type="button"
+              className="product-gallery-expand"
+              aria-label="Kattalashtirish"
+            >
+              <Icon name="zoom" size={18} />
+            </button>
           </div>
         </div>
 
         {/* ── Ma'lumot ── */}
         <div className="lg:sticky lg:top-[6.5rem] lg:self-start">
-          {product.brand ? (
-            <p className="text-label font-semibold uppercase text-dim">{product.brand.name}</p>
+          {product.category ? (
+            <span className="product-category-pill">{product.category.name}</span>
           ) : null}
 
-          <h1 className="mt-2 text-balance text-hero font-bold leading-[1.05]">{product.title}</h1>
+          <h1 className="product-title">{product.title}</h1>
 
-          {/*
-            ⚠️ NARX SARLAVHADAN KEYINGI ENG KATTA ELEMENT. Ilgari u
-            `text-h2` (22px) edi va tavsif bilan bir og'irlikda turardi —
-            xarid sahifasida esa narx ikkinchi o'rinda bo'lishi kerak.
-            Chegirma foizi yonida turadi, eski narx esa kichik va
-            chizilgan: uchtasi bitta qatorda o'qiladi.
-          */}
-          <p className="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <span className="text-h1 font-bold tabular-nums leading-none">
-              {money(price, product.currency)}
-            </span>
-
+          <p className="product-price">
+            {money(price, product.currency)}
             {product.oldPrice ? (
-              <span className="text-body tabular-nums text-dim line-through">
-                {money(product.oldPrice, product.currency)}
-              </span>
+              <span className="product-old-price">{money(product.oldPrice, product.currency)}</span>
             ) : null}
-
             {cut ? (
-              <span className="rounded-sm bg-danger/15 px-2 py-0.5 text-small font-medium text-danger">
+              <span className="product-old-price" style={{ color: '#ef4444' }}>
                 {cut}
               </span>
             ) : null}
           </p>
 
-          {/* ── Do'kon ── */}
-          <Card className="mt-6 p-4">
-            <Link
-              to={`/${locale}/store/${product.store.id}`}
-              className="flex items-center gap-3 focus-visible:outline-none"
-            >
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-surface2 text-brand">
-                <Icon name="shop" size={20} />
-              </span>
-
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-body font-medium text-foreground">
-                  {product.store.name}
-                </span>
-                <span className="block text-small text-dim">
-                  {product.store.isOpen ? 'Ochiq' : 'Yopiq'}
-                  {away ? ` · ${away}` : ''}
+          {/* Sotuvchi kartasi */}
+          <Link to={`/${locale}/store/${product.store.id}`} className="product-seller">
+            <span className="product-seller-avatar">
+              <Icon name="shop" size={22} />
+            </span>
+            <span className="product-seller-info">
+              <span className="product-seller-name">
+                {product.store.name}
+                <span className="product-seller-check" aria-label="Rasmiy do'kon">
+                  ✓
                 </span>
               </span>
+              <span className="product-seller-sub">
+                {product.store.isOpen ? "Ochiq · Rasmiy do'kon" : "Rasmiy do'kon"}
+              </span>
+            </span>
+            <Icon name="next" size={18} className="text-[#6b5f79]" />
+          </Link>
 
-              <Icon name="next" size={16} className="text-dim" />
-            </Link>
-          </Card>
+          {/* O'lcham */}
+          {sizes.length > 0 ? (
+            <div className="mt-6">
+              <div className="product-section-title">
+                <span>
+                  O'lcham
+                  {product.sizeChart?.system ? (
+                    <span className="ms-2 text-[#6b5f79] font-normal">
+                      ({product.sizeChart.system})
+                    </span>
+                  ) : null}
+                </span>
+              </div>
+              <div className="product-size-row">
+                {sizes.map((item) => (
+                  <button
+                    key={item.size}
+                    type="button"
+                    disabled={!item.available || item.stock <= 0}
+                    onClick={() => setSize(item.size)}
+                    className={`product-size ${size === item.size ? 'is-on' : ''}`}
+                  >
+                    {item.size}
+                  </button>
+                ))}
+              </div>
+              {sizes.some((item) => item.available && item.stock <= 3) ? (
+                <p className="mt-3 text-sm text-[#f59e0b]">Ba'zi o'lchamlar tugab bormoqda</p>
+              ) : null}
+            </div>
+          ) : null}
 
-          {/* ── Rang ── */}
+          {/* Rang */}
           {product.variants.length > 1 ? (
             <div className="mt-6">
-              <p className="text-label font-semibold uppercase text-dim">
-                Rang
-                {variant?.colorName ? (
-                  <span className="ms-2 normal-case tracking-normal text-muted-foreground">
-                    {variant.colorName}
-                  </span>
-                ) : null}
-              </p>
-
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="product-section-title">
+                <span>
+                  Rangi
+                  {variant?.colorName ? (
+                    <span className="ms-2 text-[#6b5f79] font-normal">· {variant.colorName}</span>
+                  ) : null}
+                </span>
+              </div>
+              <div className="product-color-row">
                 {product.variants.map((item, index) => (
-                  <Chip
+                  <button
                     key={item.id}
-                    selected={index === variantIndex}
+                    type="button"
                     onClick={() => pickColor(item.id)}
+                    aria-label={item.colorName ?? `Variant ${index + 1}`}
+                    className={`product-color ${index === variantIndex ? 'is-on' : ''}`}
                   >
-                    {item.colorHex ? (
-                      <span
-                        className="size-3 rounded-full border border-borderStrong"
-                        style={{ backgroundColor: item.colorHex }}
-                        aria-hidden="true"
-                      />
-                    ) : null}
-                    {item.colorName ?? `Variant ${index + 1}`}
-                  </Chip>
+                    <span
+                      className="product-color-inner"
+                      style={{ backgroundColor: item.colorHex ?? '#d9cae8' }}
+                    />
+                  </button>
                 ))}
               </div>
             </div>
           ) : null}
 
-          {/* ── O'lcham ── */}
-          <div className="mt-6">
-            <div className="flex items-baseline justify-between gap-3">
-              <p className="text-label font-semibold uppercase text-dim">
-                O'lcham
-                {product.sizeChart?.system ? (
-                  <span className="ms-2 normal-case tracking-normal text-dim">
-                    {product.sizeChart.system}
-                  </span>
-                ) : null}
-              </p>
-              {size === null ? <p className="text-small text-brand">o'lchamni tanlang</p> : null}
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              {sizes.length === 0 ? (
-                <p className="text-small text-dim">Omborda yo'q</p>
-              ) : (
-                sizes.map((item) => (
-                  <Chip
-                    key={item.size}
-                    selected={size === item.size}
-                    disabled={!item.available || item.stock <= 0}
-                    onClick={() => setSize(item.size)}
-                  >
-                    {item.size}
-                  </Chip>
-                ))
-              )}
-            </div>
-
-            {/*
-              ⚠️ «Sizga M to'g'ri keladi» YOZILMAYDI. API o'lcham jadvalini
-              bermaydi (`sizeChart` faqat `{type, system}`), ya'ni bunday
-              maslahat taxmin bo'lardi — noto'g'ri o'lcham esa aynan biz
-              yechmoqchi bo'lgan muammoni qaytaradi.
-            */}
-            {sizes.some((item) => item.available && item.stock <= 3) ? (
-              <p className="mt-3 text-small text-warning">Ba'zi o'lchamlar tugab bormoqda</p>
-            ) : null}
-          </div>
-
-          {/* ── Amallar ── */}
-          <fetcher.Form method="post" className="mt-8 flex flex-col gap-3">
+          {/* Amallar: miqdor + savat + hozir sotib olish */}
+          <fetcher.Form method="post" className="product-actions">
             <input type="hidden" name="variantId" value={variant?.id ?? ''} />
             <input type="hidden" name="size" value={size ?? ''} />
 
-            <Button
+            <div className="product-qty">
+              <button
+                type="button"
+                onClick={() => setQty((q) => Math.max(1, q - 1))}
+                disabled={qty <= 1}
+                aria-label="Kamaytirish"
+              >
+                −
+              </button>
+              <span className="product-qty-val">{qty}</span>
+              <button
+                type="button"
+                onClick={() => setQty((q) => Math.min(99, q + 1))}
+                aria-label="Ko'paytirish"
+              >
+                +
+              </button>
+            </div>
+
+            <button
               type="submit"
-              className="w-full shadow-glow"
-              loading={submitting}
-              disabled={size === null || !variant}
+              disabled={size === null || !variant || submitting}
+              className="product-btn -primary"
             >
-              {signedIn ? 'Savatga' : 'Kirish va savatga'}
-            </Button>
+              <Icon name="cart" size={18} />
+              {submitting ? 'Qo‘shilmoqda…' : signedIn ? "Savatga qo'shish" : 'Kirish va savatga'}
+            </button>
 
             {product.canTryOn ? (
-              <Button asChild variant="ghost" className="w-full">
-                <Link to={`/${locale}/try-on`}>3D da kiyib ko'rish</Link>
-              </Button>
+              <Link to={`/${locale}/try-on`} className="product-btn -secondary">
+                <Icon name="hanger" size={18} />
+                Hozir sotib olish
+              </Link>
             ) : null}
-
-            {error ? <p className="text-small text-danger">{error}</p> : null}
           </fetcher.Form>
 
-          {/* ── Ishonch ── */}
-          <div className="mt-8 grid grid-cols-3 gap-3 border-t border-border pt-6">
-            {[
-              { icon: 'authentic' as const, label: 'Original' },
-              { icon: 'delivery' as const, label: 'Yetkazish' },
-              { icon: 'premium' as const, label: 'Tanlangan' },
-            ].map((item) => (
-              <div key={item.label} className="flex flex-col items-center gap-2 text-center">
-                <Icon name={item.icon} size={18} className="text-brand" />
-                <span className="text-tiny text-dim">{item.label}</span>
-              </div>
-            ))}
+          {error ? (
+            <p className="mt-3 text-sm text-[#ef4444]">{error}</p>
+          ) : null}
+
+          {/* Ishonch kartasi — uchta ustun */}
+          <div className="product-trust">
+            <div className="product-trust-item">
+              <span className="product-trust-icon">
+                <Icon name="authentic" size={18} />
+              </span>
+              <span className="product-trust-text">
+                <strong>Original</strong>
+                mahsulot
+              </span>
+            </div>
+            <div className="product-trust-item">
+              <span className="product-trust-icon">
+                <Icon name="delivery" size={18} />
+              </span>
+              <span className="product-trust-text">
+                <strong>Tez yetkazib berish</strong>
+                1–3 kun
+              </span>
+            </div>
+            <div className="product-trust-item">
+              <span className="product-trust-icon">
+                <Icon name="reset" size={18} />
+              </span>
+              <span className="product-trust-text">
+                <strong>Qaytarish imkoniyati</strong>
+                14 kun ichida
+              </span>
+            </div>
           </div>
 
-          {/* ── Tafsilotlar ── */}
-          <Accordion type="single" collapsible className="mt-6 border-t border-border">
+          {/* Yoyma bo'limlar */}
+          <div className="product-accordions">
             {product.description ? (
-              <AccordionItem value="description">
-                <AccordionTrigger className="text-body">Tavsif</AccordionTrigger>
-                <AccordionContent className="text-body leading-relaxed text-muted-foreground">
-                  {product.description}
-                </AccordionContent>
-              </AccordionItem>
+              <details className="product-accordion">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-[18px] text-base font-semibold text-[#171020] hover:bg-[#faf6fe]">
+                  <span className="product-accordion-label">
+                    <Icon name="authentic" size={18} className="product-accordion-icon" />
+                    Tavsif
+                  </span>
+                  <Icon name="next" size={16} className="rotate-90 text-[#6b5f79]" />
+                </summary>
+                <div className="product-accordion-body">{product.description}</div>
+              </details>
             ) : null}
 
-            <AccordionItem value="delivery">
-              <AccordionTrigger className="text-body">Yetkazish va qaytarish</AccordionTrigger>
-              <AccordionContent className="text-body leading-relaxed text-muted-foreground">
+            <details className="product-accordion">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-[18px] text-base font-semibold text-[#171020] hover:bg-[#faf6fe]">
+                <span className="product-accordion-label">
+                  <Icon name="delivery" size={18} className="product-accordion-icon" />
+                  Yetkazish va qaytarish
+                </span>
+                <Icon name="next" size={16} className="rotate-90 text-[#6b5f79]" />
+              </summary>
+              <div className="product-accordion-body">
                 Buyurtma to'g'ridan-to'g'ri {product.store.name} do'koniga boradi. To'lov do'konda
                 yoki yetkazib berilganda. Qaytarish shartlari do'kon siyosatiga bo'ysunadi.
-              </AccordionContent>
-            </AccordionItem>
+              </div>
+            </details>
 
             {product.tags.length > 0 ? (
-              <AccordionItem value="tags">
-                <AccordionTrigger className="text-body">Teglar</AccordionTrigger>
-                <AccordionContent>
+              <details className="product-accordion">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-[18px] text-base font-semibold text-[#171020] hover:bg-[#faf6fe]">
+                  <span className="product-accordion-label">
+                    <Icon name="hanger" size={18} className="product-accordion-icon" />
+                    Teglar
+                  </span>
+                  <Icon name="next" size={16} className="rotate-90 text-[#6b5f79]" />
+                </summary>
+                <div className="product-accordion-body">
                   <span className="flex flex-wrap gap-2">
                     {product.tags.map((tag) => (
                       <Link
                         key={tag}
                         to={`/${locale}/catalog?q=${encodeURIComponent(tag)}`}
-                        className="rounded-full border border-border bg-surface2 px-3 py-1 text-small text-muted-foreground transition-colors hover:bg-surface3 hover:text-foreground"
+                        className="rounded-full border border-[#e9dcf2] bg-white px-3 py-1 text-sm text-[#6b5f79] transition-colors hover:bg-[#f7edff] hover:text-[#171020]"
                       >
                         {tag}
                       </Link>
                     ))}
                   </span>
-                </AccordionContent>
-              </AccordionItem>
+                </div>
+              </details>
             ) : null}
-          </Accordion>
+          </div>
         </div>
       </div>
 
@@ -553,13 +612,13 @@ export default function Product({ loaderData }: Route.ComponentProps): JSX.Eleme
         keyin «savatga» tugmasi ko'rinmay qoladi. Shuning uchun narx va
         amal doim ekran pastida turadi (15-sayt-dizayn.md §4.3).
       */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur-xl lg:hidden">
+      <div className="product-sticky-mobile fixed inset-x-0 bottom-0 z-40 lg:hidden">
         <div className="shell flex items-center gap-4 py-3">
           <span className="flex-1">
-            <span className="block text-body font-bold tabular-nums">
+            <span className="block text-base font-bold tabular-nums text-[#8617ef]">
               {money(price, product.currency)}
             </span>
-            <span className="block text-tiny text-dim">
+            <span className="block text-xs text-[#6b5f79]">
               {size ? `O'lcham ${size}` : "o'lchamni tanlang"}
             </span>
           </span>
@@ -567,9 +626,14 @@ export default function Product({ loaderData }: Route.ComponentProps): JSX.Eleme
           <fetcher.Form method="post">
             <input type="hidden" name="variantId" value={variant?.id ?? ''} />
             <input type="hidden" name="size" value={size ?? ''} />
-            <Button type="submit" loading={submitting} disabled={size === null || !variant}>
+            <button
+              type="submit"
+              disabled={size === null || !variant || submitting}
+              className="product-btn -primary"
+              style={{ height: 46, padding: '0 22px', minWidth: 'auto' }}
+            >
               Savatga
-            </Button>
+            </button>
           </fetcher.Form>
         </div>
       </div>

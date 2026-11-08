@@ -1,0 +1,584 @@
+/*
+ * Mahsulot sahifasi — yorug' atelier dizayn (reference: product detail).
+ *
+ * ⚠️ FAQAT PRODUCT SAHIFASI UCHUN — `.product-page` ildizi ostida.
+ * Dizayn tizimining qorong'i tokenlari saytdan farq qiladi, shuning uchun
+ * kerakli elementlarni mahalliy qiymatlar bilan bosamiz.
+ *
+ * Palitra:
+ *  - Fon: #FBF7FF (ochiq siyohrang-pushti)
+ *  - Panel: oq, shaffof chegara (#E9DCF2)
+ *  - Asos matn: #171020
+ *  - Ikkilamchi matn: #6B5F79
+ *  - Urg'u: #8617EF (tugma), #9D12EC (matn)
+ */
+
+.product-page {
+  background: linear-gradient(180deg, #fbf7ff 0%, #fff 60%);
+  color: #171020;
+  min-height: 100vh;
+}
+
+.product-page .product-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  color: #6b5f79;
+}
+.product-page .product-breadcrumb a {
+  color: #6b5f79;
+  transition: color 0.15s;
+}
+.product-page .product-breadcrumb a:hover {
+  color: #171020;
+}
+.product-page .product-breadcrumb .is-current {
+  color: #171020;
+  font-weight: 500;
+}
+.product-page .product-breadcrumb-home {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #e9dcf2;
+}
+
+/* Gallereya */
+.product-gallery-main {
+  position: relative;
+  border-radius: 24px;
+  overflow: hidden;
+  background: linear-gradient(145deg, #f3e9fb, #ebddfb);
+  border: 1px solid #e9dcf2;
+  aspect-ratio: 4 / 5;
+}
+.product-gallery-main img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 24px;
+}
+.product-gallery-chip {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  background: #fff;
+  border: 1px solid #e9dcf2;
+  padding: 7px 13px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #171020;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 16px rgba(75, 34, 108, 0.1);
+}
+.product-gallery-chip::before {
+  content: '✨';
+  font-size: 14px;
+}
+.product-gallery-fav {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #e9dcf2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #171020;
+  box-shadow: 0 4px 16px rgba(75, 34, 108, 0.1);
+  transition: all 0.15s;
+}
+.product-gallery-fav:hover {
+  color: #a926ff;
+  border-color: #c89bf3;
+}
+.product-gallery-fav.is-on {
+  color: #ef4444;
+}
+.product-gallery-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #e9dcf2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #171020;
+  box-shadow: 0 4px 16px rgba(75, 34, 108, 0.14);
+  transition: all 0.15s;
+}
+.product-gallery-nav:hover {
+  background: #f7edff;
+}
+.product-gallery-nav.-prev {
+  left: 18px;
+}
+.product-gallery-nav.-next {
+  right: 18px;
+}
+.product-gallery-expand {
+  position: absolute;
+  bottom: 18px;
+  right: 18px;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #e9dcf2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #171020;
+  box-shadow: 0 4px 16px rgba(75, 34, 108, 0.1);
+}
+.product-gallery-dots {
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+}
+.product-gallery-dots button {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(23, 16, 32, 0.25);
+  transition: all 0.15s;
+}
+.product-gallery-dots button.is-on {
+  background: #171020;
+  width: 22px;
+}
+
+/* Kichik rasmlar ustuni */
+.product-thumb-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 92px;
+  flex-shrink: 0;
+}
+.product-thumb {
+  width: 92px;
+  height: 92px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #f7edff;
+  border: 2px solid transparent;
+  padding: 6px;
+  transition: all 0.15s;
+  position: relative;
+}
+.product-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.product-thumb.is-on {
+  border-color: #8617ef;
+  box-shadow: 0 6px 18px rgba(134, 23, 239, 0.18);
+}
+.product-thumb:hover {
+  border-color: #c89bf3;
+}
+
+/* O'ng ustun */
+.product-category-pill {
+  display: inline-flex;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #f2e7fa;
+  color: #9d12ec;
+  font-size: 13px;
+  font-weight: 600;
+}
+.product-title {
+  margin-top: 14px;
+  font-size: clamp(32px, 4vw, 44px);
+  font-weight: 700;
+  line-height: 1.1;
+  color: #171020;
+  letter-spacing: -0.015em;
+}
+.product-price {
+  margin-top: 14px;
+  font-size: clamp(32px, 3.5vw, 40px);
+  font-weight: 700;
+  color: #8617ef;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.product-old-price {
+  margin-left: 10px;
+  color: #a39aaf;
+  text-decoration: line-through;
+  font-weight: 500;
+  font-size: 18px;
+}
+.product-meta-row {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  color: #6b5f79;
+  font-size: 15px;
+}
+.product-meta-row .rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #171020;
+  font-weight: 600;
+}
+.product-meta-row .rating span {
+  color: #6b5f79;
+  font-weight: 400;
+}
+.product-meta-divider {
+  width: 1px;
+  height: 18px;
+  background: #e9dcf2;
+}
+
+/* Sotuvchi kartasi */
+.product-seller {
+  margin-top: 22px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  background: #fff;
+  border: 1px solid #e9dcf2;
+  border-radius: 18px;
+  transition: all 0.15s;
+}
+.product-seller:hover {
+  border-color: #c89bf3;
+  box-shadow: 0 6px 20px rgba(75, 34, 108, 0.08);
+}
+.product-seller-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #f7edff, #ead8fb);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #9d12ec;
+}
+.product-seller-info {
+  flex: 1;
+  min-width: 0;
+}
+.product-seller-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: #171020;
+  font-size: 16px;
+}
+.product-seller-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #22c55e;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+}
+.product-seller-sub {
+  font-size: 13px;
+  color: #6b5f79;
+  margin-top: 2px;
+}
+
+/* Bo'lim sarlavhasi */
+.product-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #171020;
+  margin-bottom: 12px;
+}
+.product-section-title .link {
+  color: #9d12ec;
+  font-weight: 500;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* O'lcham chiplari */
+.product-size-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.product-size {
+  min-width: 56px;
+  height: 46px;
+  padding: 0 18px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #e9dcf2;
+  color: #171020;
+  font-weight: 600;
+  font-size: 15px;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.product-size:hover:not(:disabled) {
+  border-color: #c89bf3;
+}
+.product-size.is-on {
+  background: #8617ef;
+  border-color: #8617ef;
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(134, 23, 239, 0.3);
+}
+.product-size:disabled {
+  color: #c5bccd;
+  background: #f7f4fb;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+/* Rang swatch */
+.product-color-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.product-color {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  padding: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.product-color-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  border: 1px solid rgba(23, 16, 32, 0.08);
+}
+.product-color.is-on {
+  border-color: #8617ef;
+}
+
+/* Amallar qatori */
+.product-actions {
+  margin-top: 26px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.product-qty {
+  display: inline-flex;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e9dcf2;
+  border-radius: 14px;
+  padding: 0 4px;
+  height: 54px;
+}
+.product-qty button {
+  width: 36px;
+  height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b5f79;
+  font-size: 18px;
+  border-radius: 10px;
+  transition: all 0.15s;
+}
+.product-qty button:hover:not(:disabled) {
+  background: #f7edff;
+  color: #171020;
+}
+.product-qty button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.product-qty-val {
+  min-width: 36px;
+  text-align: center;
+  font-weight: 600;
+  color: #171020;
+  font-variant-numeric: tabular-nums;
+}
+.product-btn {
+  flex: 1;
+  min-width: 180px;
+  height: 54px;
+  padding: 0 24px;
+  border-radius: 14px;
+  font-weight: 600;
+  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.15s;
+}
+.product-btn.-primary {
+  background: linear-gradient(135deg, #a926ff, #7516e7);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(137, 23, 239, 0.3);
+}
+.product-btn.-primary:hover:not(:disabled) {
+  box-shadow: 0 14px 30px rgba(137, 23, 239, 0.42);
+  transform: translateY(-1px);
+}
+.product-btn.-primary:disabled {
+  background: #d7cbe5;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+.product-btn.-secondary {
+  background: #fff;
+  color: #171020;
+  border: 1px solid #e9dcf2;
+}
+.product-btn.-secondary:hover:not(:disabled) {
+  border-color: #8617ef;
+  color: #8617ef;
+}
+
+/* Ishonch qatori */
+.product-trust {
+  margin-top: 26px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 18px;
+  background: #fff;
+  border: 1px solid #e9dcf2;
+  border-radius: 18px;
+}
+.product-trust-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.product-trust-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #f7edff;
+  color: #8617ef;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.product-trust-text {
+  font-size: 13px;
+  color: #6b5f79;
+  line-height: 1.35;
+}
+.product-trust-text strong {
+  display: block;
+  color: #171020;
+  font-weight: 600;
+  font-size: 13.5px;
+}
+
+/* Yoyma bo'limlar */
+.product-accordions {
+  margin-top: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.product-accordion {
+  background: #fff;
+  border: 1px solid #e9dcf2;
+  border-radius: 16px;
+  overflow: hidden;
+}
+.product-accordion > button,
+.product-accordion > [data-trigger] {
+  width: 100%;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 600;
+  font-size: 15px;
+  color: #171020;
+  transition: background 0.15s;
+}
+.product-accordion > button:hover,
+.product-accordion > [data-trigger]:hover {
+  background: #faf6fe;
+}
+.product-accordion-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.product-accordion-icon {
+  color: #8617ef;
+}
+.product-accordion-body {
+  padding: 0 20px 20px;
+  color: #6b5f79;
+  font-size: 14.5px;
+  line-height: 1.6;
+}
+
+/* Mobil yopishqoq panel — yorug' */
+.product-sticky-mobile {
+  background: rgba(255, 255, 255, 0.96);
+  border-top: 1px solid #e9dcf2;
+  backdrop-filter: blur(14px);
+}
+
+@media (max-width: 900px) {
+  .product-trust {
+    grid-template-columns: 1fr;
+  }
+  .product-thumb-rail {
+    flex-direction: row;
+    width: auto;
+  }
+  .product-thumb {
+    width: 72px;
+    height: 72px;
+  }
+}
