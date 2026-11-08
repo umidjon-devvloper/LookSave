@@ -434,9 +434,11 @@
 }
 .store-detail-cover-fav:hover { color: #a926ff; }
 
-/* Shapka — muqovaning ustidan yarmi chiqib turgan logo */
+/* Shapka — muqovaning ustidan yarmi chiqib turgan logo. Nom ham oq
+ * bo'lgani uchun matn blokini yuqoriga qarab joylaymiz — ism muqova
+ * ichida, binafsha ustida qolsin. */
 .store-detail-header {
-  margin-top: -56px;
+  margin-top: -110px;
   position: relative;
   z-index: 2;
   padding: 0 clamp(16px, 2.4vw, 32px);
@@ -473,8 +475,9 @@
   gap: 10px;
   font-size: clamp(28px, 3.4vw, 40px);
   font-weight: 800;
-  color: #171020;
+  color: #fff;
   line-height: 1.1;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 .store-detail-check {
   width: 24px;
