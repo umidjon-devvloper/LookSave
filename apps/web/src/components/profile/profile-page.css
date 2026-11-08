@@ -1,0 +1,166 @@
+/*
+ * Profil sahifasi — yorug' atelier dizayn.
+ *
+ * `.profile-page` ildiz sinfi layout'da; `::before` orqali butun viewport'ga
+ * yorug' gradient fon. Landing-nav override — har sahifa CSS'ini mustaqil
+ * yuklaydi, home sahifaning landing.css'iga tayanib bo'lmaydi.
+ */
+
+.profile-page {
+  color: #171020;
+  min-height: 100vh;
+  position: relative;
+  z-index: 0;
+}
+.profile-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(180deg, #fbf7ff 0%, #fff 70%);
+  z-index: -1;
+}
+
+/* Navbar — landing-nav takrori */
+.landing-nav { height: 6.5rem; background: #fff; }
+.landing-nav nav {
+  color: #171323 !important;
+  border-color: #e8dcf0 !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  box-shadow: 0 8px 30px rgba(75, 34, 108, 0.1) !important;
+}
+.landing-nav nav .text-foreground { color: #171323 !important; }
+.landing-nav nav .text-muted-foreground { color: #5e5669 !important; }
+.landing-nav nav a[aria-current='page'] {
+  color: #9d12ec !important;
+  border-color: transparent !important;
+  background: #f2e7fa !important;
+  box-shadow: none !important;
+}
+.landing-nav nav > a:first-child > span:first-child {
+  background: #171020 !important;
+  border-color: #4b176c !important;
+}
+.landing-nav nav .bg-popover {
+  background: #fff !important;
+  border-color: #e8dcf0 !important;
+  box-shadow: 0 12px 32px rgba(75, 34, 108, 0.12) !important;
+  color: #171020 !important;
+}
+.landing-nav nav .bg-popover a { color: #5e5669 !important; }
+.landing-nav nav .bg-popover a:hover { background: #f7edff !important; color: #171323 !important; }
+.landing-nav nav .bg-popover a.text-brand { color: #9d12ec !important; background: #f2e7fa !important; }
+.landing-nav nav a[href$='/sign-in'] {
+  background: linear-gradient(135deg, #a926ff, #7516e7) !important;
+  color: #fff !important;
+  border: 0 !important;
+  box-shadow: 0 10px 24px rgba(137, 23, 239, 0.3) !important;
+}
+
+/* Page heading */
+.profile-page h1 {
+  color: #171020 !important;
+  font-weight: 800;
+}
+.profile-page .text-muted-foreground { color: #6b5f79 !important; }
+.profile-page .text-dim { color: #6b5f79 !important; }
+.profile-page .text-foreground { color: #171020 !important; }
+.profile-page .text-brand { color: #8617ef !important; }
+
+/* Hamma qorong'i gradient kartalar — oq panel */
+.profile-page [class*='from-[#161226]'],
+.profile-page [class*='from-[#1a1035]'],
+.profile-page [class*='via-[#0f0a1e]'],
+.profile-page [class*='to-[#0a071a]'],
+.profile-page [class*='to-[#0f0a1e]'],
+.profile-page [class*='to-[#0e0a1b]'] {
+  background: #fff !important;
+  background-image: none !important;
+  border-color: #e9dcf2 !important;
+  box-shadow: 0 10px 30px rgba(75, 34, 108, 0.1) !important;
+  color: #171020 !important;
+}
+
+/* Border/border-primary override */
+.profile-page [class*='border-primary'] {
+  border-color: #e9dcf2 !important;
+}
+.profile-page [class*='border-border'] {
+  border-color: #e9dcf2 !important;
+}
+
+/* Ambient glow blur doiralar — yashirsin, oq fonda xunuk */
+.profile-page [aria-hidden='true'][class*='blur-'] {
+  opacity: 0.08 !important;
+}
+
+/* Avatar doira — binafsha gradient saqlanadi */
+.profile-page [class*='from-primary/50'] {
+  background: linear-gradient(145deg, #a926ff, #7516e7) !important;
+  background-image: linear-gradient(145deg, #a926ff, #7516e7) !important;
+  color: #fff !important;
+}
+.profile-page [class*='from-primary/50'] svg {
+  color: #fff !important;
+}
+
+/* NavLink active holati */
+.profile-page nav a[aria-current='page'],
+.profile-page nav a.bg-primary\/10,
+.profile-page nav a[class*='bg-primary'] {
+  background: #f2e7fa !important;
+  color: #9d12ec !important;
+}
+
+/* Boshqa nav link — hoverda yengil */
+.profile-page nav a:not([aria-current='page']) {
+  color: #6b5f79 !important;
+}
+.profile-page nav a:not([aria-current='page']):hover {
+  background: #f7edff !important;
+  color: #171020 !important;
+}
+
+/* Input/textarea */
+.profile-page input,
+.profile-page textarea,
+.profile-page select {
+  background: #fff !important;
+  border-color: #e9dcf2 !important;
+  color: #171020 !important;
+}
+.profile-page input::placeholder,
+.profile-page textarea::placeholder {
+  color: #a39aaf !important;
+}
+.profile-page input:focus,
+.profile-page textarea:focus {
+  border-color: #a926ff !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(169, 38, 255, 0.15) !important;
+}
+
+/* Section label */
+.profile-page label,
+.profile-page .text-label,
+.profile-page [class*='uppercase'][class*='text-'] {
+  color: #6b5f79 !important;
+}
+
+/* Saqlash tugmasi va boshqa primary */
+.profile-page button[type='submit'],
+.profile-page [class*='bg-primary']:not([class*='Soft']):not(nav *):not([aria-hidden]) {
+  background: linear-gradient(135deg, #a926ff, #7516e7) !important;
+  color: #fff !important;
+  border: 0 !important;
+  box-shadow: 0 10px 24px rgba(137, 23, 239, 0.28) !important;
+}
+.profile-page button[type='submit']:hover {
+  box-shadow: 0 14px 30px rgba(137, 23, 239, 0.4) !important;
+}
+
+/* Hisobingiz xavfsiz / info kartalar — ochiq binafsha */
+.profile-page [class*='bg-primary/10'],
+.profile-page [class*='bg-primarySoft'] {
+  background: #f7edff !important;
+  color: #9d12ec !important;
+}

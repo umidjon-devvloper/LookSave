@@ -3,12 +3,17 @@ import { Form, NavLink, Outlet, data } from 'react-router';
 import { Icon, type IconName } from '@looksave/ui-web';
 
 import { getProfile, type FullProfile } from '@/api/endpoints';
+import profileStyles from '@/components/profile/profile-page.css?url';
 import { isLocale, type Locale } from '@/i18n/locale';
 import { phone as formatPhone } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { requireAuth } from '@/session.server';
 
 import type { Route } from './+types/profile';
+
+export function links() {
+  return [{ rel: 'stylesheet', href: profileStyles }];
+}
 
 const LINKS: Array<{ to: string; label: string; icon: IconName; end?: boolean }> = [
   { to: '', label: 'Profil', icon: 'profile', end: true },
@@ -34,7 +39,7 @@ export default function ProfileLayout({ loaderData }: Route.ComponentProps): JSX
   const name = profile?.fullName ?? user.fullName ?? 'Foydalanuvchi';
 
   return (
-    <div className="shell-wide section-y">
+    <div className="profile-page shell-wide section-y">
       {/* Page heading */}
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
