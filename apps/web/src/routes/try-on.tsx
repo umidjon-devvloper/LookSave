@@ -9,10 +9,15 @@ import { PhotoStep } from '@/components/tryon/PhotoStep';
 import { SizesStep } from '@/components/tryon/SizesStep';
 import { StorePicker } from '@/components/tryon/StorePicker';
 import { useTryon } from '@/components/tryon/useTryon';
+import tryonStyles from '@/components/tryon/tryon-page.css?url';
 import { isLocale } from '@/i18n/locale';
 import { money } from '@/lib/format';
 
 import type { Route } from './+types/try-on';
+
+export function links() {
+  return [{ rel: 'stylesheet', href: tryonStyles }];
+}
 
 /**
  * AI kiyintirish — docs/12-tz.md Q-7.
@@ -146,7 +151,7 @@ export default function TryOnPage({ loaderData }: Route.ComponentProps): JSX.Ele
 
   if (loading) {
     return (
-      <div className="shell section-y flex justify-center">
+      <div className="tryon-page shell section-y flex justify-center">
         <span className="size-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
       </div>
     );
@@ -154,7 +159,7 @@ export default function TryOnPage({ loaderData }: Route.ComponentProps): JSX.Ele
 
   if (!state?.signedIn) {
     return (
-      <div className="shell section-y">
+      <div className="tryon-page shell section-y">
         <Card className="mx-auto flex max-w-lg flex-col items-center gap-4 p-8 text-center">
           <span className="flex size-12 items-center justify-center rounded-full bg-primarySoft text-brand">
             <Icon name="hanger" size={24} />
@@ -175,7 +180,7 @@ export default function TryOnPage({ loaderData }: Route.ComponentProps): JSX.Ele
 
   if (state.needs.photo || redoPhoto) {
     return (
-      <div className="shell section-y">
+      <div className="tryon-page shell section-y">
         <Header />
         <div className="mx-auto mt-8 max-w-lg">
           <PhotoStep
@@ -190,7 +195,7 @@ export default function TryOnPage({ loaderData }: Route.ComponentProps): JSX.Ele
 
   if (state.needs.sizes) {
     return (
-      <div className="shell section-y">
+      <div className="tryon-page shell section-y">
         <Header />
         <div className="mx-auto mt-8 max-w-xl">
           <SizesStep controller={controller} />
@@ -201,7 +206,7 @@ export default function TryOnPage({ loaderData }: Route.ComponentProps): JSX.Ele
 
   if (state.needs.store) {
     return (
-      <div className="shell section-y">
+      <div className="tryon-page shell section-y">
         <Header />
         <div className="mx-auto mt-8 max-w-lg">
           <StorePicker controller={controller} locale={locale} />

@@ -37,6 +37,7 @@ export function Nav({ locale, user, cartCount }: NavProps): JSX.Element {
   const isProduct = location.pathname.startsWith(`/${locale}/p/`);
   const isStores = location.pathname === `/${locale}/stores` || location.pathname.startsWith(`/${locale}/stores/`);
   const isStore = location.pathname.startsWith(`/${locale}/store/`);
+  const isTryon = location.pathname === `/${locale}/try-on` || location.pathname.startsWith(`/${locale}/try-on/`);
 
   useEffect(() => {
     /*
@@ -79,7 +80,7 @@ export function Nav({ locale, user, cartCount }: NavProps): JSX.Element {
   ];
 
   return (
-    <header className={cn('fixed inset-x-0 top-0 z-50', (isHome || isProduct || isStores || isStore) && 'landing-nav', isCatalog && 'catalog-nav')}>
+    <header className={cn('fixed inset-x-0 top-0 z-50', (isHome || isProduct || isStores || isStore || isTryon) && 'landing-nav', isCatalog && 'catalog-nav')}>
       <div className="shell-wide">
         <nav
           className={cn(
