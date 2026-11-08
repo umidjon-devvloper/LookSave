@@ -1,4 +1,5 @@
 import { Button, Icon, type IconName } from '@looksave/ui-web';
+import { ArrowRight, Store } from 'lucide-react';
 
 import { Reveal } from '@/components/Reveal';
 import { SectionBackdrop } from '@/components/SectionBackdrop';
@@ -28,7 +29,7 @@ const BENEFITS: Array<{ icon: IconName; title: string; body: string }> = [
   },
 ];
 
-export function Stores(): JSX.Element {
+function LegacyStores(): JSX.Element {
   return (
     <section id="stores" className="section-y relative isolate landing-sellers">
       {/* Fon rasmi — chetlari fonga singiydi, qo'shni bo'limga tutashadi */}
@@ -82,6 +83,59 @@ export function Stores(): JSX.Element {
                   </div>
                 </CardContent>
               </Card>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function Stores(): JSX.Element {
+  return (
+    <section id="stores" className="landing-stores-showcase">
+      <div className="shell-wide landing-stores-inner">
+        <Reveal className="landing-stores-copy">
+          <p className="landing-section-pill">
+            <Store aria-hidden="true" />
+            Do‘konlar uchun
+          </p>
+          <h2 className="landing-light-headline">
+            O‘lchamiga ishongan xaridorga <span>soting</span>
+          </h2>
+          <p className="landing-light-lead">
+            LookSave — bozor maydoni, sayt yasovchi emas. Mahsulot sizdan, xaridor bizdan — va u
+            kiyimni o‘zida ko‘rib bo‘lgan holda keladi.
+          </p>
+          <Button asChild className="landing-store-cta">
+            <a href="#waitlist">
+              <Store aria-hidden="true" />
+              Do‘kon ochish
+              <ArrowRight aria-hidden="true" />
+            </a>
+          </Button>
+        </Reveal>
+
+        <Reveal delay={100} className="landing-store-art">
+          <img
+            src="/img/stores-illustration-v1.png"
+            alt="LookSave uchun uch o‘lchamli do‘kon maketi"
+            loading="lazy"
+          />
+        </Reveal>
+
+        <div className="landing-benefit-list">
+          {BENEFITS.map((benefit, index) => (
+            <Reveal key={benefit.title} delay={index * 80}>
+              <article className="landing-benefit-card">
+                <span className="landing-benefit-icon">
+                  <Icon name={benefit.icon} size={25} />
+                </span>
+                <div>
+                  <h3>{benefit.title}</h3>
+                  <p>{benefit.body}</p>
+                </div>
+              </article>
             </Reveal>
           ))}
         </div>

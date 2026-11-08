@@ -115,13 +115,13 @@ export function Spotlight({
     setIndex((current) => (current + step + items.length) % items.length);
 
   return (
-    <div className="relative" aria-roledescription="karusel" aria-label="Ommabop mahsulotlar">
+    <div className="landing-spotlight-wrap" aria-roledescription="karusel" aria-label="Ommabop mahsulotlar">
       <article
         data-landing-depth
-        className="landing-spotlight-card grid overflow-hidden rounded-card border border-border bg-surface md:grid-cols-[1.05fr_1fr]"
+        className="landing-spotlight-card"
       >
         {/* ── Chap: neon ramkadagi surat ── */}
-        <div className="relative isolate flex min-h-[24rem] items-center justify-center p-8">
+        <div className="landing-spotlight-media">
           {/*
             Fon — neon portal surati.
 
@@ -151,7 +151,7 @@ export function Spotlight({
             */
             loading="eager"
             decoding="async"
-            className="pointer-events-none absolute inset-0 size-full object-cover object-center"
+            className="landing-spotlight-bg"
           />
 
           {/*
@@ -161,7 +161,7 @@ export function Spotlight({
           */}
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0"
+            className="landing-spotlight-fade"
             style={{
               background: 'linear-gradient(to right, transparent 78%, hsl(var(--surface)) 100%)',
             }}
@@ -184,21 +184,13 @@ export function Spotlight({
                 rejimi bilan bir xil sabab: oq fon qorong'i sahifada
                 ko'zni uradi.
               */
-              className="relative z-10 max-h-[74%] w-auto max-w-[62%] rounded-sm object-contain brightness-[0.94] contrast-[0.97] drop-shadow-[0_18px_44px_rgba(0,0,0,0.7)]"
+              className="landing-spotlight-image"
             />
           ) : (
             <span className="relative z-10 flex size-32 items-center justify-center rounded-full border border-borderStrong bg-surface2 text-dim">
               <Icon name="cart" size={34} />
             </span>
           )}
-
-          {/* 3D belgisi — faqat kiyib ko'rish mumkin bo'lsa */}
-          {item.canTryOn ? (
-            <span className="absolute start-5 top-5 z-10 inline-flex items-center gap-1.5 rounded-full border border-primary/50 bg-primarySoft px-3 py-1 text-tiny font-semibold text-brand backdrop-blur-md">
-              <Icon name="tryon" size={12} />
-              3D
-            </span>
-          ) : null}
 
           {item.isLimited ? (
             <span className="absolute end-5 top-5 z-10 inline-flex items-center gap-1.5 rounded-full border border-limited/50 bg-limited/15 px-3 py-1 text-tiny font-semibold text-limited backdrop-blur-md">
@@ -209,7 +201,7 @@ export function Spotlight({
         </div>
 
         {/* ── O'ng: matn ── */}
-        <div className="flex flex-col justify-center gap-5 p-8 sm:p-10">
+        <div className="landing-spotlight-copy">
           {detail?.category ? (
             <p className="text-small font-medium text-brand">{detail.category}</p>
           ) : null}
@@ -264,7 +256,7 @@ export function Spotlight({
 
       {/* ── Almashtirgich ── */}
       {items.length > 1 ? (
-        <div className="mt-5 flex items-center justify-end gap-3">
+        <div className="landing-spotlight-controls">
           <p className="me-1 text-small tabular-nums text-dim" aria-hidden="true">
             {index + 1} / {items.length}
           </p>

@@ -67,8 +67,8 @@ export function Footer({ locale }: { locale: Locale }): JSX.Element {
   ];
 
   return (
-    <footer className="shell-wide mb-6 mt-24">
-      <div className="relative overflow-hidden rounded-[24px] border border-primary/20 bg-[linear-gradient(180deg,hsl(var(--surface)/0.9),hsl(var(--panel)/0.94))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+    <footer className="shell-wide landing-footer">
+      <div className="landing-footer-panel relative overflow-hidden rounded-[24px] border border-primary/20">
         <FooterMesh className="pointer-events-none absolute bottom-0 start-0 h-[200px] w-full opacity-20 sm:h-[260px] sm:w-[560px] sm:opacity-[0.28]" />
 
         <div className="relative flex flex-col gap-9 p-7 sm:p-9 lg:flex-row lg:items-stretch lg:gap-0 lg:p-[52px_56px_48px]">
@@ -76,13 +76,14 @@ export function Footer({ locale }: { locale: Locale }): JSX.Element {
           <div className="flex flex-col items-start gap-6 lg:shrink-0 lg:grow-[1.35] lg:basis-0 lg:pe-14">
             <div className="flex flex-col gap-3.5">
               <div className="flex items-center gap-4 sm:gap-[18px]">
-                <img
-                  src="/img/logo-mark.png"
-                  alt=""
-                  width={62}
-                  height={43}
-                  className="w-11 sm:w-[62px]"
-                />
+                <span className="landing-footer-logo-mark">
+                  <img
+                    src="/img/logo-mark.png"
+                    alt=""
+                    width={62}
+                    height={43}
+                  />
+                </span>
                 <span className="text-[1.375rem] font-bold leading-none tracking-[0.06em] sm:text-[1.875rem]">
                   Look<span className="text-brand">Save</span>
                 </span>
@@ -211,7 +212,7 @@ export function Footer({ locale }: { locale: Locale }): JSX.Element {
             futerda unga javob bo'lishi kerak. Bezak sifatida qo'yilsa,
             aksincha, shubha uyg'otadi.
           */}
-          <span className="flex h-10 items-center gap-2.5 rounded-full border border-primary/30 bg-primarySoft px-4 text-small text-foreground sm:px-[18px]">
+          <span className="hidden h-10 items-center gap-2.5 rounded-full border border-primary/30 bg-primarySoft px-4 text-small text-foreground sm:px-[18px]">
             <Icon name="authentic" size={17} className="text-brand" />
             Xavfsiz to'lovlar
           </span>

@@ -1,4 +1,5 @@
-import { Crown, LayoutGrid, Star, Tag, User } from 'lucide-react';
+import { Coins, Palette, Ruler, Shirt, SlidersHorizontal, Tag, UserRound } from 'lucide-react';
+import { useState } from 'react';
 import type { Brand, Category } from '@/api/endpoints';
 import { cn } from '@/lib/utils';
 
@@ -19,11 +20,12 @@ const GENDERS = [
 ];
 
 const DEFAULT_CATEGORIES = [
-  { id: '1', slug: 'tops', name: 'Tops' },
-  { id: '2', slug: 'bottoms', name: 'Bottoms' },
-  { id: '3', slug: 'shoes', name: 'Shoes' },
-  { id: '4', slug: 'headwear', name: 'Headwear' },
-  { id: '5', slug: 'accessories', name: 'Accessories' },
+  { id: '1', slug: 'outerwear', name: 'Tashqi kiyim' },
+  { id: '2', slug: 'tops', name: 'Ko‘ylak va futbolka' },
+  { id: '3', slug: 'bottoms', name: 'Pantalon va shorti' },
+  { id: '4', slug: 'sportswear', name: 'Sport kiyim' },
+  { id: '5', slug: 'knitwear', name: 'Sviter va xudi' },
+  { id: '6', slug: 'accessories', name: 'Aksessuarlar' },
 ];
 
 const DEFAULT_BRANDS = [
@@ -54,6 +56,10 @@ export function CatalogFilters({
 }): JSX.Element {
   const displayCategories = categories.length > 0 ? categories : (DEFAULT_CATEGORIES as Category[]);
   const displayBrands = brands.length > 0 ? brands : (DEFAULT_BRANDS as Brand[]);
+  const [size, setSize] = useState('M');
+  const [color, setColor] = useState('#151318');
+  const sizes = ['XS', 'S', 'M', 'L', 'XL'];
+  const colors = ['#151318', '#ffffff', '#c5c7cc', '#133d75', '#07835f', '#ef253c', 'multi'];
 
   return (
     <div
@@ -62,8 +68,9 @@ export function CatalogFilters({
         className,
       )}
     >
-      {/* ── KIMGA ── */}
-      <FilterSection icon={<User className="size-4 text-brand" />} title="KIMGA">
+      <div className="catalog-filter-title"><SlidersHorizontal className="size-5" /><strong>Filtrlar</strong></div>
+
+      <FilterSection icon={<UserRound className="size-4 text-brand" />} title="Jinsi">
         {GENDERS.map((item) => (
           <FilterChip
             key={item.value}
@@ -75,8 +82,7 @@ export function CatalogFilters({
         ))}
       </FilterSection>
 
-      {/* ── KATEGORIYA ── */}
-      <FilterSection icon={<LayoutGrid className="size-4 text-brand" />} title="KATEGORIYA">
+      <FilterSection icon={<Shirt className="size-4 text-brand" />} title="Kategoriyalar">
         {displayCategories.map((category) => (
           <FilterChip
             key={category.id}
@@ -90,8 +96,7 @@ export function CatalogFilters({
         ))}
       </FilterSection>
 
-      {/* ── BREND ── */}
-      <FilterSection icon={<Crown className="size-4 text-brand" />} title="BREND">
+      <FilterSection icon={<Tag className="size-4 text-brand" />} title="Brend">
         {displayBrands.map((brand) => (
           <FilterChip
             key={brand.id}
@@ -101,10 +106,10 @@ export function CatalogFilters({
             {brand.name}
           </FilterChip>
         ))}
+        <button type="button" className="catalog-show-all">Barchasini ko‘rsatish⌄</button>
       </FilterSection>
 
-      {/* ── NARX ── */}
-      <FilterSection icon={<Tag className="size-4 text-brand" />} title="NARX">
+      <FilterSection icon={<Coins className="size-4 text-brand" />} title="Narx">
         <div className="flex items-center gap-2">
           <input
             name="priceMin"
@@ -128,22 +133,28 @@ export function CatalogFilters({
             className="h-10 w-full rounded-xl border border-border/80 bg-surface2/90 px-3 text-center text-xs text-foreground placeholder:text-dim transition-colors focus:border-borderAccent focus:bg-surface3 focus:outline-none"
           />
         </div>
+        <input
+          type="range"
+          min="0"
+          max="5000000"
+          step="50000"
+          value={filters.priceMax ?? 5000000}
+          onChange={(event) => onPrice(String(filters.priceMin ?? ''), event.target.value)}
+          className="catalog-price-range"
+          aria-label="Eng yuqori narx"
+        />
       </FilterSection>
 
-      {/* ── QO'SHIMCHA ── */}
-      <FilterSection icon={<Star className="size-4 text-brand" />} title="QO'SHIMCHA">
-        <FilterChip
-          selected={filters.onlyTryon === true}
-          onClick={() => onToggle('onlyTryon', filters.onlyTryon ? null : '1')}
-        >
-          Kiyib ko'rish mumkin
-        </FilterChip>
-        <FilterChip
-          selected={filters.limited === true}
-          onClick={() => onToggle('limited', filters.limited ? null : '1')}
-        >
-          Limited
-        </FilterChip>
+      <FilterSection icon={<Ruler className="size-4 text-brand" />} title="O‘lcham">
+        <div className="catalog-size-row">
+          {sizes.map((item) => <button type="button" key={item} className={size === item ? 'is-selected' : ''} onClick={() => setSize(item)}>{item}</button>)}
+        </div>
+      </FilterSection>
+
+      <FilterSection icon={<Palette className="size-4 text-brand" />} title="Rang">
+        <div className="catalog-color-row">
+          {colors.map((item) => <button type="button" key={item} aria-label={item === 'multi' ? 'Barcha ranglar' : item} className={`${color === item ? 'is-selected' : ''} ${item === 'multi' ? 'is-multi' : ''}`} style={item === 'multi' ? undefined : { backgroundColor: item }} onClick={() => setColor(item)} />)}
+        </div>
       </FilterSection>
     </div>
   );
@@ -160,7 +171,7 @@ function FilterSection({
 }): JSX.Element {
   return (
     <div>
-      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-foreground">
+      <div className="flex items-center gap-2 text-sm font-bold text-foreground">
         {icon}
         <span>{title}</span>
       </div>
@@ -181,6 +192,7 @@ function FilterChip({
   return (
     <button
       type="button"
+      data-selected={selected ? 'true' : 'false'}
       onClick={onClick}
       className={cn(
         'inline-flex select-none items-center rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all duration-150',

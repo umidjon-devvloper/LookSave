@@ -1,110 +1,27 @@
 import { Link } from 'react-router';
-
-import { Icon } from '@looksave/ui-web';
-
+import { Icon, type IconName } from '@looksave/ui-web';
 import { Reveal } from '@/components/Reveal';
 import type { Locale } from '@/i18n/locale';
 
-/**
- * Kategoriya kartalari — deckning 07-slaydi, docs/15-sayt-dizayn.md §4.1.
- *
- * ⚠️ NOM KATTA HARFDA, LEKIN `text-transform` BILAN EMAS. Bu yerda
- * matn inglizcha yorliq sifatida yozilgan (`MEN`, `WOMEN`, `LIMITED`) —
- * deckdagidek. O'zbekcha nomlar katta harfda chiroyli chiqmaydi
- * (06-dizayn.md §3), shuning uchun tagida oddiy yozuvda tarjimasi turadi.
- *
- * ⚠️ `LIMITED` kartasi OLTIN urg'uda: oltin faqat cheklangan seriyada
- * ishlatiladi va shu sababli qadrini yo'qotmaydi (06-dizayn.md §2).
- */
-
-interface Lane {
-  key: string;
-  label: string;
-  caption: string;
-  image: string;
-  to: (locale: Locale) => string;
-  limited?: boolean;
-}
-
-const LANES: Lane[] = [
-  {
-    key: 'men',
-    label: 'MEN',
-    caption: 'Erkaklar kolleksiyasi',
-    image: '/img/collection-men.webp',
-    to: (locale) => `/${locale}/catalog?gender=male`,
-  },
-  {
-    key: 'women',
-    label: 'WOMEN',
-    caption: 'Ayollar kolleksiyasi',
-    image: '/img/collection-women.webp',
-    to: (locale) => `/${locale}/catalog?gender=female`,
-  },
-  {
-    key: 'limited',
-    label: 'LIMITED',
-    caption: 'Cheklangan seriya',
-    image: '/img/collection-limited.webp',
-    to: (locale) => `/${locale}/catalog?limited=1`,
-    limited: true,
-  },
+interface Category { label: string; icon: IconName; image: string; query: string }
+const CATEGORIES: Category[] = [
+  { label: 'Tashqi kiyim', icon: 'slotOuter', image: '/img/web-hero-jacket.png', query: 'outerwear' },
+  { label: 'Ustki kiyim', icon: 'slotTop', image: '/img/web-category-shirt.png', query: 'tops' },
+  { label: 'Pastki kiyim', icon: 'slotBottom', image: '/img/web-category-pants.png', query: 'bottoms' },
+  { label: 'Poyabzal', icon: 'slotFeet', image: '/img/web-category-shoe.png', query: 'shoes' },
+  { label: 'Aksessuarlar', icon: 'slotHead', image: '/img/web-category-cap.png', query: 'accessories' },
 ];
 
 export function Categories({ locale }: { locale: Locale }): JSX.Element {
   return (
-    <section className="shell-wide section-y landing-categories">
+    <section className="shell-wide landing-categories">
       <Reveal>
-        <div className="grid gap-4 md:grid-cols-3 xl:gap-6">
-          {LANES.map((lane) => (
-            <Link
-              key={lane.key}
-              to={lane.to(locale)}
-              data-landing-depth
-              className="landing-category-card group relative isolate block overflow-hidden rounded-card border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              <div className="aspect-[4/5] md:aspect-[3/4]">
-                <img
-                  src={lane.image}
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                  className="size-full object-cover transition-transform duration-300 ease-spring group-hover:scale-105"
-                />
-              </div>
-
-              {/* Pastdan qorong'ilashuv — nom har qanday fotoda o'qiladi */}
-              <div
-                aria-hidden="true"
-                className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent"
-              />
-
-              <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-5">
-                <span>
-                  <span
-                    className={
-                      lane.limited
-                        ? 'block text-h1 font-bold tracking-tight text-limited'
-                        : 'block text-h1 font-bold tracking-tight text-foreground'
-                    }
-                  >
-                    {lane.label}
-                  </span>
-                  <span className="mt-1 block text-small text-muted-foreground">
-                    {lane.caption}
-                  </span>
-                </span>
-
-                <span
-                  className={
-                    lane.limited
-                      ? 'flex size-10 shrink-0 items-center justify-center rounded-full border border-limited/50 bg-limited/15 text-limited transition-transform duration-150 ease-spring group-hover:translate-x-0.5'
-                      : 'flex size-10 shrink-0 items-center justify-center rounded-full border border-borderStrong bg-surface/80 text-foreground transition-transform duration-150 ease-spring group-hover:translate-x-0.5'
-                  }
-                >
-                  <Icon name="next" size={18} />
-                </span>
-              </div>
+        <div className="landing-section-heading"><h2>Kategoriyalar</h2><Link to={`/${locale}/catalog`}>Barcha kategoriyalar <Icon name="next" size={18} /></Link></div>
+        <div className="landing-category-grid">
+          {CATEGORIES.map((category) => (
+            <Link key={category.label} to={`/${locale}/catalog?category=${category.query}`} className="landing-category-card">
+              <span className="landing-category-copy"><Icon name={category.icon} size={30} /><strong>{category.label}</strong><Icon name="openOut" size={20} /></span>
+              <img src={category.image} alt="" loading="lazy" decoding="async" />
             </Link>
           ))}
         </div>

@@ -92,7 +92,7 @@ export function ErrorBoundary(): JSX.Element {
   const notFound = isRouteErrorResponse(error) && error.status === 404;
 
   return (
-    <main className="pt-[5.5rem] sm:pt-[6.5rem]">
+    <main className="min-h-dvh bg-white pt-[5.5rem] text-[#171323] sm:pt-[6.5rem]">
       <div className="shell py-24">
         <Empty
           icon={notFound ? 'search' : 'close'}

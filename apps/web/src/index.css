@@ -15,6 +15,14 @@
 @layer base {
   body {
     font-family: theme('fontFamily.sans');
+    min-height: 100vh;
+    color: #171323;
+    background: #fff;
+  }
+
+  html {
+    min-height: 100%;
+    background: #fff;
   }
 
   /* Havolaga o'tganda sarlavha 72px lik shapka ostida qolib ketmasin */

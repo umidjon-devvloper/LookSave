@@ -63,5 +63,9 @@
     "typescript": "^5.7.2",
     "vite": "^5.4.11",
     "vite-tsconfig-paths": "^5.1.4"
+  },
+  "optionalDependencies": {
+    "@mjackson/node-fetch-server": "^0.2.0",
+    "exsolve": "^1.2.0"
   }
 }

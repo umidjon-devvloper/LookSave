@@ -37,13 +37,9 @@ export function Layout({ children }: { children: React.ReactNode }): JSX.Element
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#0A0A0F" />
+        <meta name="theme-color" content="#FFFFFF" />
         <Meta />
         <Links />
-        <script
-          src="https://anywear.decart.ai/widget/latest/anywear.js?domain=looksave.uz"
-          async
-        />
       </head>
       <body>
         {children}
@@ -79,7 +75,7 @@ export function ErrorBoundary(): JSX.Element {
     : "Sahifani yangilab ko'ring. Takrorlansa — biroz keyinroq urinib ko'ring.";
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-2 px-8 text-center">
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-2 bg-white px-8 text-center text-[#171323]">
       <p className="text-label font-semibold uppercase tracking-label text-brand">
         {isRouteErrorResponse(error) ? error.status : 'Xato'}
       </p>
