@@ -1,0 +1,371 @@
+/*
+ * Do'konlar sahifasi — yorug' atelier dizayn (reference: stores list).
+ * `.stores-page` ildizi ostida. Landing-navni bu yerda ham takrorlaymiz,
+ * chunki har sahifa CSS'ini o'zi yuklaydi.
+ */
+
+.stores-page {
+  background: linear-gradient(180deg, #fbf7ff 0%, #fff 70%);
+  color: #171020;
+  min-height: 100vh;
+}
+
+/* ── Navbar — landing-nav takrori (product.css bilan bir xil) ── */
+.landing-nav { height: 6.5rem; background: #fff; }
+.landing-nav nav {
+  color: #171323 !important;
+  border-color: #e8dcf0 !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  box-shadow: 0 8px 30px rgba(75, 34, 108, 0.1) !important;
+}
+.landing-nav nav .text-foreground { color: #171323 !important; }
+.landing-nav nav .text-muted-foreground { color: #5e5669 !important; }
+.landing-nav nav a[aria-current='page'] {
+  color: #9d12ec !important;
+  border-color: transparent !important;
+  background: #f2e7fa !important;
+  box-shadow: none !important;
+}
+.landing-nav nav > a:first-child > span:first-child {
+  background: #171020 !important;
+  border-color: #4b176c !important;
+}
+.landing-nav nav .bg-popover {
+  background: #fff !important;
+  border-color: #e8dcf0 !important;
+  box-shadow: 0 12px 32px rgba(75, 34, 108, 0.12) !important;
+  color: #171020 !important;
+}
+.landing-nav nav .bg-popover a { color: #5e5669 !important; }
+.landing-nav nav .bg-popover a:hover { background: #f7edff !important; color: #171323 !important; }
+.landing-nav nav .bg-popover a.text-brand { color: #9d12ec !important; background: #f2e7fa !important; }
+.landing-nav nav a[href$='/sign-in'] {
+  background: linear-gradient(135deg, #a926ff, #7516e7) !important;
+  color: #fff !important;
+  border: 0 !important;
+  box-shadow: 0 10px 24px rgba(137, 23, 239, 0.3) !important;
+}
+
+/* ── Hero ── */
+.stores-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #e9dcf2;
+  color: #9d12ec;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(75, 34, 108, 0.08);
+}
+.stores-title {
+  margin-top: 22px;
+  font-size: clamp(48px, 6vw, 84px);
+  font-weight: 800;
+  color: #171020;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.stores-lead {
+  margin-top: 22px;
+  max-width: 520px;
+  font-size: 16px;
+  color: #6b5f79;
+  line-height: 1.55;
+}
+.stores-trust-row {
+  margin-top: 30px;
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.stores-trust-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #171020;
+  font-size: 14px;
+  font-weight: 600;
+}
+.stores-trust-ico {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #f2e7fa;
+  color: #9d12ec;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.stores-cta {
+  margin-top: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 28px;
+  background: linear-gradient(135deg, #a926ff, #7516e7);
+  color: #fff;
+  border-radius: 16px;
+  font-weight: 600;
+  font-size: 15px;
+  box-shadow: 0 12px 28px rgba(137, 23, 239, 0.32);
+  transition: all 0.15s;
+}
+.stores-cta:hover {
+  box-shadow: 0 16px 34px rgba(137, 23, 239, 0.42);
+  transform: translateY(-1px);
+}
+.stores-cta-chip {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: #fff;
+  border: 1px solid #e9dcf2;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #171020;
+  box-shadow: 0 4px 16px rgba(75, 34, 108, 0.1);
+}
+.stores-cta-chip::before {
+  content: '✨';
+  font-size: 14px;
+}
+.stores-hero-art {
+  position: relative;
+  min-height: 360px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.stores-hero-art img {
+  max-width: 560px;
+  width: 100%;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+}
+
+/* ── Qidiruv + filtrlar qatori ── */
+.stores-controls {
+  margin-top: 40px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(220px, 1.4fr) 1fr 1fr 1fr;
+}
+@media (max-width: 1100px) {
+  .stores-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .stores-controls {
+    grid-template-columns: 1fr;
+  }
+}
+.stores-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 18px;
+  height: 52px;
+  background: #fff;
+  border: 1px solid #e9dcf2;
+  border-radius: 14px;
+  color: #6b5f79;
+  font-size: 14px;
+}
+.stores-input input {
+  flex: 1;
+  background: transparent;
+  outline: none;
+  color: #171020;
+  min-width: 0;
+}
+.stores-input input::placeholder {
+  color: #a39aaf;
+}
+.stores-select {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 18px;
+  height: 52px;
+  background: #fff;
+  border: 1px solid #e9dcf2;
+  border-radius: 14px;
+  color: #171020;
+  font-size: 14px;
+  font-weight: 500;
+}
+.stores-select-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #6b5f79;
+}
+
+/* ── Karta ── */
+.stores-grid {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 22px;
+}
+.store-card {
+  background: #fff;
+  border: 1px solid #e9dcf2;
+  border-radius: 24px;
+  overflow: hidden;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+}
+.store-card:hover {
+  border-color: #c89bf3;
+  box-shadow: 0 16px 36px rgba(137, 23, 239, 0.12);
+  transform: translateY(-2px);
+}
+.store-card-img {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background: #f3e9fb;
+  overflow: hidden;
+}
+.store-card-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.store-card-distance {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  padding: 6px 14px;
+  background: #fff;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #171020;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.14);
+}
+.store-card-fav {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #171020;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transition: all 0.15s;
+}
+.store-card-fav:hover {
+  color: #a926ff;
+}
+.store-card-body {
+  padding: 18px;
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.store-card-logo {
+  position: absolute;
+  top: -34px;
+  left: 18px;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid #e9dcf2;
+  box-shadow: 0 10px 24px rgba(75, 34, 108, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.store-card-logo img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+.store-card-logo.-letter {
+  background: linear-gradient(145deg, #a926ff, #7516e7);
+  color: #fff;
+  font-weight: 700;
+  font-size: 24px;
+}
+.store-card-name {
+  padding-left: 80px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #171020;
+}
+.store-card-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #22c55e;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+}
+.store-card-meta {
+  padding-left: 80px;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+}
+.store-card-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: #d8cce4;
+}
+.store-card-status.-open { color: #22c55e; font-weight: 600; }
+.store-card-status.-closed { color: #ef4444; font-weight: 600; }
+.store-card-address {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6b5f79;
+  font-size: 13.5px;
+}
+.store-card-cta {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 18px;
+  background: #faf6fe;
+  border-radius: 14px;
+  color: #9d12ec;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.15s;
+}
+.store-card:hover .store-card-cta {
+  background: linear-gradient(135deg, #a926ff, #7516e7);
+  color: #fff;
+}
