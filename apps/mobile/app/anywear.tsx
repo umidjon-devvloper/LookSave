@@ -11,20 +11,18 @@ import { colors, radius, spacing, text } from '../src/theme/tokens';
  * Real-time try-on — Decart Anywear widget WebView ichida.
  *
  * NEGA WEBVIEW: Anywear faqat web uchun JS widget sifatida mavjud
- * (React Native SDK yo'q). Inline HTML ga script tegini joylab, WebView
- * orqali render qilamiz. Widget mahsulot kartochkalarini o'zi tortadi
+ * (React Native SDK yo'q). `looksave.uz/anywear.html` sahifasini
+ * WebView'ga yuklaymiz — widget mahsulot kartochkalarini o'zi tortadi
  * va foydalanuvchi "try on" bossa, kameradan surat olib virtual tryon
  * chiqaradi (real vaqt).
  *
  * `domain=looksave.uz` parametri widget serveriga qaysi hisob
  * ulanayotganini aytadi — hisob sozlamalarida `looksave.uz` ruxsat
  * berilgan bo'lishi kerak.
- */
-
-/**
- * Hosted sahifa — `apps/web/public/anywear.html`.
- * Decart widget origin check qilsa, bu URL `looksave.uz` dan kelgani
- * uchun inline HTML'dan ishonchli ishlaydi.
+ *
+ * ⚠️ NATIVE MODUL: `react-native-webview` Expo autolinking bilan avtomatik
+ * qo'shiladi, lekin faqat prebuild+rebuild'dan keyin native binary'ga
+ * kiradi. Agar dev-client build'da modul yo'q bo'lsa — yangi EAS build.
  */
 const ANYWEAR_URL = 'https://looksave.uz/anywear.html';
 

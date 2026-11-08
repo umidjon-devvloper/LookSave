@@ -1,0 +1,122 @@
+/*
+ * Kiyintirish (`/try-on`) sahifasi — yorug' atelier dizayn.
+ *
+ * `.tryon-page` ildiz sinfi har bir return branch'da bor; `::before` orqali
+ * butun viewport'ga yorug' gradient fon chiziladi (body qora).
+ *
+ * Landing-nav override ham shu yerda — har sahifa o'z CSS'ini mustaqil
+ * yuklaydi, home sahifaning landing.css'iga tayanib bo'lmaydi.
+ */
+
+.tryon-page {
+  color: #171020;
+  min-height: 100vh;
+  position: relative;
+  z-index: 0;
+}
+.tryon-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(180deg, #fbf7ff 0%, #fff 70%);
+  z-index: -1;
+}
+
+/* Navbar — landing-nav takrori */
+.landing-nav { height: 6.5rem; background: #fff; }
+.landing-nav nav {
+  color: #171323 !important;
+  border-color: #e8dcf0 !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  box-shadow: 0 8px 30px rgba(75, 34, 108, 0.1) !important;
+}
+.landing-nav nav .text-foreground { color: #171323 !important; }
+.landing-nav nav .text-muted-foreground { color: #5e5669 !important; }
+.landing-nav nav a[aria-current='page'] {
+  color: #9d12ec !important;
+  border-color: transparent !important;
+  background: #f2e7fa !important;
+  box-shadow: none !important;
+}
+.landing-nav nav > a:first-child > span:first-child {
+  background: #171020 !important;
+  border-color: #4b176c !important;
+}
+.landing-nav nav .bg-popover {
+  background: #fff !important;
+  border-color: #e8dcf0 !important;
+  box-shadow: 0 12px 32px rgba(75, 34, 108, 0.12) !important;
+  color: #171020 !important;
+}
+.landing-nav nav .bg-popover a { color: #5e5669 !important; }
+.landing-nav nav .bg-popover a:hover { background: #f7edff !important; color: #171323 !important; }
+.landing-nav nav .bg-popover a.text-brand { color: #9d12ec !important; background: #f2e7fa !important; }
+.landing-nav nav a[href$='/sign-in'] {
+  background: linear-gradient(135deg, #a926ff, #7516e7) !important;
+  color: #fff !important;
+  border: 0 !important;
+  box-shadow: 0 10px 24px rgba(137, 23, 239, 0.3) !important;
+}
+
+/* Kartalar — qorong'i Card komponentlarini oq panelga bosamiz */
+.tryon-page [class*='bg-surface'],
+.tryon-page [class*='bg-panel'],
+.tryon-page [class*='bg-card'] {
+  background: #fff !important;
+  border-color: #e9dcf2 !important;
+  color: #171020 !important;
+  box-shadow: 0 6px 22px rgba(75, 34, 108, 0.08) !important;
+}
+
+/* Matn ranglari */
+.tryon-page .text-foreground { color: #171020 !important; }
+.tryon-page .text-muted-foreground { color: #6b5f79 !important; }
+.tryon-page .text-dim { color: #6b5f79 !important; }
+.tryon-page .text-brand { color: #8617ef !important; }
+
+/* Matn chegaralari */
+.tryon-page .border-border,
+.tryon-page [class*='border-border'] {
+  border-color: #e9dcf2 !important;
+}
+
+/* Icon badge'lar — primarySoft odatda to'q, saytga mos qilaylik */
+.tryon-page .bg-primarySoft,
+.tryon-page [class*='bg-primarySoft'] {
+  background: #f2e7fa !important;
+  color: #9d12ec !important;
+}
+
+/* Primary tugma — sayt CTA gradienti */
+.tryon-page button[class*='bg-primary']:not([class*='Soft']),
+.tryon-page a[class*='bg-primary']:not([class*='Soft']) {
+  background: linear-gradient(135deg, #a926ff, #7516e7) !important;
+  color: #fff !important;
+  border: 0 !important;
+  box-shadow: 0 10px 24px rgba(137, 23, 239, 0.3) !important;
+}
+
+/* Sarlavha */
+.tryon-page h1,
+.tryon-page h2,
+.tryon-page h3 {
+  color: #171020 !important;
+}
+
+/* Input/select */
+.tryon-page input,
+.tryon-page select,
+.tryon-page textarea {
+  background: #fff !important;
+  border-color: #e9dcf2 !important;
+  color: #171020 !important;
+}
+.tryon-page input::placeholder,
+.tryon-page textarea::placeholder {
+  color: #a39aaf !important;
+}
+
+/* ProductCard (katalog rail'da) */
+.tryon-page article[class*='bg-surface'] {
+  background: #fff !important;
+}

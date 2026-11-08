@@ -27,6 +27,7 @@ export function links() {
 }
 import { guest } from '@/session.server';
 import { Categories } from '@/sections/Categories';
+import { Collections } from '@/sections/Collections';
 import { Hero } from '@/sections/Hero';
 import {
   Spotlight,
@@ -191,12 +192,12 @@ export default function Home({ loaderData }: Route.ComponentProps): JSX.Element 
       <Hero locale={locale} />
 
       {/* Ishonch qatori — hero ostida, TOP BRANDS ustida (maketdagi tartib) */}
-      <div className="-mt-4 pb-4">
+      <div className="landing-trust-wrap">
         <TrustBar />
       </div>
 
       {brands.error ? (
-        <section className="shell-wide pb-[clamp(4rem,8vw,7rem)] pt-10">
+        <section className="shell-wide landing-brands-section">
           <SectionHeader title="TOP BRANDS" />
           <SectionError section={brands} />
         </section>
@@ -206,7 +207,7 @@ export default function Home({ loaderData }: Route.ComponentProps): JSX.Element 
           (1440px) da, bu blok esa `shell` (1152px) da edi — ikki panel
           maketda tekislangan bo'lsa ham saytda chetlari mos kelmasdi.
         */
-        <section className="shell-wide pb-[clamp(4rem,8vw,7rem)] pt-10">
+        <section className="shell-wide landing-brands-section">
           <Reveal>
             {/*
               ⚠️ BLOK O'Z PANELIDA TURADI (maket). Ilgari kafellar
@@ -215,7 +216,7 @@ export default function Home({ loaderData }: Route.ComponentProps): JSX.Element 
               havoda osilib turardi. Panel ularni bitta narsaga
               bog'laydi.
             */}
-            <div className="edge-beam edge-beam-2 rounded-card border border-border bg-panel/75 p-7 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:p-9">
+            <div className="landing-brands-panel">
               <SectionHeader
                 title="TOP BRANDS"
                 action={{ label: 'hammasi', href: `/${locale}/catalog` }}
@@ -232,25 +233,31 @@ export default function Home({ loaderData }: Route.ComponentProps): JSX.Element 
                 (mahalliy zaxira) → neytral yorliq belgisi. Bosh
                 harflar kerak emas — nom kafel ichida turibdi.
               */}
-              <ul className="mt-7 grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-7 xl:gap-4">
+              <ul className="landing-brand-grid">
                 {brands.items.map((brand) => (
                   <li key={brand.id}>
                     <Link
                       to={`/${locale}/catalog?brand=${brand.id}`}
                       data-landing-depth
-                      className="landing-brand-tile group relative flex h-[9.875rem] flex-col items-center justify-center gap-5 overflow-hidden rounded-card border border-primary/25 bg-[linear-gradient(180deg,hsl(var(--primary)/0.09),hsl(var(--panel)/0.9))] px-3 py-5 transition-colors duration-200 hover:border-primary/45 hover:bg-[linear-gradient(180deg,hsl(var(--primary)/0.17),hsl(var(--panel)/0.92))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      className="landing-brand-tile group"
                     >
-                      {brand.logoUrl ? (
-                        <img
-                          src={brand.logoUrl}
-                          alt=""
-                          className="h-[46px] max-w-[78%] object-contain"
-                        />
-                      ) : hasBrandLogo(brand.slug) ? (
+                      {hasBrandLogo(brand.slug) ? (
+                        /*
+                          ⚠️ MAHALLIY SVG AVVALDA, URL'dan oldin — chunki R2'dagi
+                          brend PNG'lari oq siluet (shaffof fon). Oq saytda ular
+                          ko'rinmaydi. SVG `currentColor` bilan chiziladi, yorug'
+                          fonda qora, qorong'ida oq.
+                        */
                         <BrandLogo
                           slug={brand.slug}
                           size={46}
                           className="max-w-[78%] text-foreground"
+                        />
+                      ) : brand.logoUrl ? (
+                        <img
+                          src={brand.logoUrl}
+                          alt=""
+                          className="h-[46px] max-w-[78%] object-contain"
                         />
                       ) : (
                         <Icon name="tag" size={40} className="text-foreground" />
@@ -263,7 +270,7 @@ export default function Home({ loaderData }: Route.ComponentProps): JSX.Element 
                         harf uni buzmaydi. O'zbekcha sarlavhada esa
                         `Ko'ylak` → `KO'YLAK` bo'lib xunuklashadi.
                       */}
-                      <span className="text-center text-small font-medium uppercase tracking-wide text-foreground">
+                      <span className="sr-only">
                         {brand.name}
                       </span>
 
@@ -291,13 +298,15 @@ export default function Home({ loaderData }: Route.ComponentProps): JSX.Element 
         </section>
       ) : null}
 
+      <Categories locale={locale} />
+
       {trending.error ? (
-        <section className="shell-wide pb-[clamp(4rem,8vw,7rem)] pt-10">
+        <section className="shell-wide landing-trending-section">
           <SectionHeader title="TRENDING NOW" />
           <SectionError section={trending} />
         </section>
       ) : trending.items.length > 0 ? (
-        <section className="shell-wide pb-[clamp(4rem,8vw,7rem)] pt-10">
+        <section className="shell-wide landing-trending-section">
           <Reveal>
             <SectionHeader
               title="TRENDING NOW"
@@ -314,8 +323,8 @@ export default function Home({ loaderData }: Route.ComponentProps): JSX.Element 
               <Spotlight items={spotlight} details={details} locale={locale} />
             </div>
 
-            <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:gap-6">
-              {trending.items.map((product) => (
+            <div className="landing-trending-grid">
+              {trending.items.slice(0, 4).map((product, productIndex) => (
                 <ProductCard
                   key={product.id}
                   title={product.title}
@@ -323,8 +332,9 @@ export default function Home({ loaderData }: Route.ComponentProps): JSX.Element 
                   oldPrice={product.oldPrice ? money(product.oldPrice, product.currency) : null}
                   image={product.image}
                   storeName={product.store.name}
-                  canTryOn={product.canTryOn}
+                  canTryOn={false}
                   isLimited={product.isLimited}
+                  className={productIndex === 2 ? 'landing-trending-product is-featured' : 'landing-trending-product'}
                   link={(children) => (
                     <Link to={`/${locale}/p/${product.id}`} className="block">
                       {children}
@@ -337,7 +347,8 @@ export default function Home({ loaderData }: Route.ComponentProps): JSX.Element 
         </section>
       ) : null}
 
-      <Categories locale={locale} />
+      <Collections locale={locale} />
+
       <HowItWorks />
       <Stores />
       <Waitlist />

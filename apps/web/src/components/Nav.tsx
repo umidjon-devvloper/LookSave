@@ -32,6 +32,12 @@ export function Nav({ locale, user, cartCount }: NavProps): JSX.Element {
   const [solid, setSolid] = useState(false);
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  const isHome = location.pathname === `/${locale}` || location.pathname === `/${locale}/`;
+  const isCatalog = location.pathname.startsWith(`/${locale}/catalog`);
+  const isProduct = location.pathname.startsWith(`/${locale}/p/`);
+  const isStores = location.pathname === `/${locale}/stores` || location.pathname.startsWith(`/${locale}/stores/`);
+  const isStore = location.pathname.startsWith(`/${locale}/store/`);
+  const isTryon = location.pathname === `/${locale}/try-on` || location.pathname.startsWith(`/${locale}/try-on/`);
 
   useEffect(() => {
     /*
@@ -60,6 +66,7 @@ export function Nav({ locale, user, cartCount }: NavProps): JSX.Element {
    * sahifasidagi filtrda to'liq turibdi.
    */
   const links: Array<{ to: string; label: string; icon: IconName }> = [
+    { to: `/${locale}`, label: 'Bosh sahifa', icon: 'home' },
     { to: `/${locale}/catalog`, label: 'Katalog', icon: 'grid' },
     { to: `/${locale}/stores`, label: "Do'konlar", icon: 'shop' },
     /*
@@ -72,7 +79,7 @@ export function Nav({ locale, user, cartCount }: NavProps): JSX.Element {
   ];
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50">
+    <header className={cn('fixed inset-x-0 top-0 z-50', (isHome || isProduct || isStores || isStore || isTryon) && 'landing-nav', isCatalog && 'catalog-nav')}>
       <div className="shell-wide">
         <nav
           className={cn(
@@ -119,6 +126,7 @@ export function Nav({ locale, user, cartCount }: NavProps): JSX.Element {
               <NavLink
                 key={link.to}
                 to={link.to}
+                end={link.to === `/${locale}`}
                 className={({ isActive }) =>
                   cn(
                     'flex h-11 items-center gap-2.5 whitespace-nowrap rounded-full border px-[18px] text-body font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
@@ -323,9 +331,11 @@ function LocaleSwitch({
       <button
         type="button"
         aria-label="Til"
-        className="inline-flex size-11 items-center justify-center rounded-full border border-borderStrong text-muted-foreground transition-colors duration-150 hover:border-borderAccent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-borderStrong px-3 text-muted-foreground transition-colors duration-150 hover:border-borderAccent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <Icon name="language" size={20} />
+        <span className="text-small font-semibold uppercase">{current}</span>
+        <Icon name="next" size={14} className="rotate-90" />
       </button>
 
       <div className="invisible absolute end-0 top-full z-50 mt-2 min-w-40 rounded-card border border-border bg-popover p-1 opacity-0 shadow-card transition-opacity duration-150 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">

@@ -5,14 +5,19 @@ import { Button, Card, Empty, ErrorView, Icon, ImageFrame } from '@looksave/ui-w
 
 import { isNetworkError } from '@/api/client';
 import { DEFAULT_CENTER, getNearbyStores, type StoreCard } from '@/api/endpoints';
-import { Reveal } from '@/components/Reveal';
+import storesStyles from '@/components/stores/stores.css?url';
 import { isLocale, type Locale } from '@/i18n/locale';
 import { distance } from '@/lib/format';
 import { mapsApiKey } from '@/lib/maps';
 import { cn } from '@/lib/utils';
+// `Reveal` olib tashlandi — yangi hero'da scroll animatsiyasi yo'q
 import { guest } from '@/session.server';
 
 import type { Route } from './+types/stores';
+
+export function links() {
+  return [{ rel: 'stylesheet', href: storesStyles }];
+}
 
 /**
  * Do'konlar — docs/15-sayt-dizayn.md §4.5.
@@ -144,7 +149,7 @@ export default function Stores({ loaderData }: Route.ComponentProps): JSX.Elemen
   };
 
   const list = (
-    <ul className={withMap ? 'flex flex-col gap-3' : 'grid gap-5 md:grid-cols-2 2xl:grid-cols-3'}>
+    <ul className={withMap ? 'flex flex-col gap-3' : 'stores-grid'}>
       {stores.map((store) => (
         <li
           key={store.id}
@@ -166,85 +171,86 @@ export default function Stores({ loaderData }: Route.ComponentProps): JSX.Elemen
   );
 
   return (
-    <div className="pb-[clamp(4rem,8vw,7rem)]">
+    <div className="stores-page pb-[clamp(4rem,8vw,7rem)]">
       {/* ── Hero ─────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden pt-8 pb-12 lg:pt-16 lg:pb-20">
-        <div className="shell-wide grid items-center gap-10 lg:grid-cols-2">
-          {/* Chap ustun: Eyebrow, Sarlavha, Matn */}
-          <div className="relative z-10 flex flex-col items-start">
-            <Reveal>
-              <div className="inline-flex items-center gap-2 rounded-full bg-surface2/50 px-4 py-1.5 text-xs font-semibold text-brand ring-1 ring-primary/30 backdrop-blur-md">
-                <Icon name="stores" size={14} />
-                <span>Yaqin atrofdagi do'konlar</span>
-              </div>
-            </Reveal>
+      <section className="relative pt-8 pb-10 lg:pt-16 lg:pb-14">
+        <div className="shell-wide grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="flex flex-col items-start">
+            <span className="stores-eyebrow">
+              <Icon name="location" size={14} />
+              Yaqin atrofdagi do'konlar
+            </span>
 
-            <Reveal delay={40}>
-              <h1 className="mt-6 text-5xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl">
-                Do'<span className="text-brand">konlar</span>
-              </h1>
-            </Reveal>
+            <h1 className="stores-title">Do'konlar</h1>
 
-            <Reveal delay={80}>
-              <p className="mt-6 max-w-lg text-body text-muted-foreground leading-relaxed">
-                Mahsulot yaqin atrofdagi haqiqiy do'kondan keladi — buyurtma to'g'ridan-to'g'ri unga
-                boradi.
+            <p className="stores-lead">
+              Mahsulot yaqin atrofdagi haqiqiy do'kondan keladi — buyurtma to'g'ridan-to'g'ri unga
+              boradi.
+            </p>
+
+            <div className="stores-trust-row">
+              <span className="stores-trust-item">
+                <span className="stores-trust-ico">
+                  <Icon name="authentic" size={14} />
+                </span>
+                Ishonchli do'konlar
+              </span>
+              <span className="stores-trust-item">
+                <span className="stores-trust-ico">
+                  <Icon name="delivery" size={14} />
+                </span>
+                Tez yetkazib berish
+              </span>
+            </div>
+
+            {!located && !denied ? (
+              <button type="button" onClick={useMyLocation} className="stores-cta">
+                <Icon name="locate" size={18} />
+                Joylashuvimni ishlatish
+                <Icon name="next" size={16} />
+              </button>
+            ) : null}
+            {denied ? (
+              <p className="mt-6 text-sm text-[#6b5f79]">
+                Joylashuv berilmadi — masofa taxminiy markazdan hisoblangan.
               </p>
-            </Reveal>
-
-            {/* Joylashuv so'rovi */}
-            {!located ? (
-              <Reveal delay={120}>
-                <div className="mt-10 flex flex-col gap-4">
-                  <p className="flex max-w-sm items-start gap-3 text-small text-muted-foreground">
-                    <Icon name="locate" size={18} className="mt-0.5 shrink-0 text-brand" />
-                    <span>
-                      {denied
-                        ? 'Joylashuv berilmadi — masofa taxminiy markazdan hisoblangan.'
-                        : "Masofani aniq ko'rsatish uchun joylashuvga ruxsat bering."}
-                    </span>
-                  </p>
-
-                  {!denied ? (
-                    <button
-                      type="button"
-                      onClick={useMyLocation}
-                      className="group inline-flex w-fit items-center gap-3 rounded-2xl border border-primary/40 bg-surface/80 px-6 py-3.5 text-small font-semibold text-brand transition-all hover:bg-surface2 hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    >
-                      <Icon
-                        name="locate"
-                        size={18}
-                        className="transition-transform group-hover:scale-110"
-                      />
-                      Joylashuvimni ishlatish
-                      <Icon
-                        name="next"
-                        size={16}
-                        className="ms-2 opacity-70 transition-transform group-hover:translate-x-1"
-                      />
-                    </button>
-                  ) : null}
-                </div>
-              </Reveal>
             ) : null}
           </div>
 
-          {/* O'ng ustun: Premium 3D Grafik */}
-          <div className="relative flex items-center justify-end">
-            {/* Orqa fon nur effekti */}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute left-1/2 top-1/2 size-[28rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/20 blur-[100px]"
-            />
-            <img
-              src="/img/stores-hero-pin.jpg"
-              alt="Stores Map Pin"
-              className="relative z-10 w-full max-w-[640px] select-none object-contain mix-blend-lighten pointer-events-none"
-              style={{
-                maskImage: 'radial-gradient(ellipse at center, black 40%, transparent 70%)',
-                WebkitMaskImage: 'radial-gradient(ellipse at center, black 40%, transparent 70%)',
-              }}
-            />
+          <div className="stores-hero-art">
+            <span className="stores-cta-chip">Try-On</span>
+            <img src="/img/stores-hero-pin.jpg" alt="" />
+          </div>
+        </div>
+
+        {/* Qidiruv + filtrlar qatori */}
+        <div className="shell-wide">
+          <div className="stores-controls">
+            <label className="stores-input">
+              <Icon name="search" size={18} />
+              <input type="search" placeholder="Do'kon nomini qidirish..." aria-label="Qidirish" />
+            </label>
+            <div className="stores-select">
+              <span className="stores-select-left">
+                <Icon name="location" size={16} />
+                Toshkent
+              </span>
+              <Icon name="next" size={14} className="rotate-90 text-[#6b5f79]" />
+            </div>
+            <div className="stores-select">
+              <span className="stores-select-left">
+                <Icon name="stores" size={16} />
+                Masofa: 10 km
+              </span>
+              <Icon name="next" size={14} className="rotate-90 text-[#6b5f79]" />
+            </div>
+            <div className="stores-select">
+              <span className="stores-select-left">
+                <Icon name="filter" size={16} />
+                Mashhurligi bo'yicha
+              </span>
+              <Icon name="next" size={14} className="rotate-90 text-[#6b5f79]" />
+            </div>
           </div>
         </div>
       </section>
@@ -438,92 +444,84 @@ function StoreRow({
   }
 
   /*
-   * To'rdagi karta — Premium dizayn: qorong'i fon, markazda porlovchi doira.
+   * To'rdagi karta — yorug' atelier dizayn. Muqova rasmi, masofa chipi
+   * va sevimli yurak tepada; pastda logo doirasi, nomi, status, manzil
+   * va "Batafsil" tugmasi.
    */
+  const letter = store.name.trim().charAt(0).toUpperCase() || '?';
   return (
     <Link
       to={`/${locale}/store/${store.id}`}
-      className="group block h-full focus-visible:outline-none"
+      className="store-card focus-visible:outline-none"
     >
-      <Card
-        interactive
-        className="relative flex h-full flex-col overflow-hidden rounded-[24px] border border-primary/20 bg-gradient-to-b from-[#161226] to-[#0e0a1b] p-6 transition-all duration-300 hover:border-primary/50 hover:shadow-[0_0_40px_-10px_rgba(139,92,246,0.3)]"
-      >
-        {/* Orqa fon nur (glow) */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute left-1/2 top-10 size-40 -translate-x-1/2 rounded-full bg-primary/20 blur-[60px]"
-        />
-
-        {/* Yuqori qator: Masofa (chapda) va Sevimlilar (o'ngda) */}
-        <div className="relative z-10 flex items-start justify-between">
-          <div className="flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-medium text-brand">
-            <span>{away || '? km'}</span>
-            <Icon name="location" size={12} className="opacity-80" />
-          </div>
-
-          <button
-            type="button"
-            className="flex size-9 items-center justify-center rounded-full border border-border/60 bg-surface/50 text-muted-foreground transition-colors hover:border-primary/50 hover:text-brand"
-            onClick={(e) => {
-              e.preventDefault();
-              // Heart icon toggled
+      <div className="store-card-img">
+        {store.coverUrl ? (
+          <img src={store.coverUrl} alt="" />
+        ) : (
+          <div
+            style={{
+              width: '100%',
+              height: '100%',
+              background: 'linear-gradient(145deg, #171020, #332b4a)',
             }}
-          >
-            <Icon name="favorite" size={16} />
-          </button>
+            aria-hidden="true"
+          />
+        )}
+        <span className="store-card-distance">{away ?? '— km'}</span>
+        <button
+          type="button"
+          className="store-card-fav"
+          aria-label="Sevimlilarga qo'shish"
+          onClick={(e) => {
+            e.preventDefault();
+          }}
+        >
+          <Icon name="favorite" size={18} />
+        </button>
+      </div>
+
+      <div className="store-card-body">
+        <div className={`store-card-logo${store.logoUrl ? '' : ' -letter'}`}>
+          {store.logoUrl ? <img src={store.logoUrl} alt="" /> : letter}
         </div>
 
-        {/* Markazdagi do'kon belgisi */}
-        <div className="relative z-10 mt-2 mb-6 flex justify-center">
-          <div className="flex size-20 items-center justify-center rounded-full bg-primary/20 ring-1 ring-primary/40 shadow-[0_0_30px_rgba(139,92,246,0.4)]">
-            <Icon name="shop" size={32} className="text-brand drop-shadow-md" />
-          </div>
-        </div>
+        <h2 className="store-card-name">
+          {store.name}
+          <span className="store-card-check" aria-label="Rasmiy do'kon">
+            ✓
+          </span>
+        </h2>
 
-        {/* Ma'lumotlar qismi */}
-        <div className="relative z-10 flex flex-1 flex-col">
-          <h2 className="truncate text-xl font-bold text-foreground">{store.name}</h2>
-
-          <div className="mt-3 flex items-center gap-2 text-sm">
-            <Icon
-              name="clock"
-              size={16}
-              className={state.open ? 'text-success' : 'text-destructive'}
-            />
-            <span className={state.open ? 'text-success' : 'text-destructive font-medium'}>
-              {state.text}
-            </span>
-            {away && (
-              <>
-                <span className="text-dim">·</span>
-                <span className="text-muted-foreground">{away}</span>
-              </>
-            )}
-          </div>
-
+        <div className="store-card-meta">
+          <span className={state.open ? 'store-card-status -open' : 'store-card-status -closed'}>
+            {state.open ? 'Ochiq' : 'Yopiq'}
+          </span>
+          {away ? (
+            <>
+              <span className="store-card-dot" />
+              <span className="text-[#6b5f79]">{away}</span>
+            </>
+          ) : null}
           {store.productCount > 0 ? (
-            <p className="mt-2 text-sm text-muted-foreground">{store.productCount} mahsulot</p>
-          ) : null}
-
-          {store.address ? (
-            <p className="mt-2 flex items-start gap-2 text-sm text-muted-foreground">
-              <Icon name="location" size={16} className="mt-0.5 shrink-0" />
-              <span className="line-clamp-2">{store.address}</span>
-            </p>
+            <>
+              <span className="store-card-dot" />
+              <span className="text-[#6b5f79]">{store.productCount} mahsulot</span>
+            </>
           ) : null}
         </div>
 
-        {/* Batafsil tugmasi */}
-        <div className="relative z-10 mt-6 pt-4">
-          <div className="flex w-full items-center justify-between rounded-xl border border-primary/20 bg-surface/50 px-5 py-3.5 text-sm font-semibold transition-colors group-hover:bg-primary/10 group-hover:border-primary/40">
-            <span>Batafsil</span>
-            <span className="flex size-7 items-center justify-center rounded-full bg-primary/20 text-brand">
-              <Icon name="next" size={14} />
-            </span>
-          </div>
+        {store.address ? (
+          <p className="store-card-address">
+            <Icon name="location" size={14} className="shrink-0 text-[#9d12ec]" />
+            <span className="line-clamp-1">{store.address}</span>
+          </p>
+        ) : null}
+
+        <div className="store-card-cta">
+          <span>Batafsil</span>
+          <Icon name="next" size={16} />
         </div>
-      </Card>
+      </div>
     </Link>
   );
 }
