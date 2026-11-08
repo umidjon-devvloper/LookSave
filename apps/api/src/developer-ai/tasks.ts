@@ -689,8 +689,25 @@ export async function completeTask(
    * sahnaga toza tushardi, ikkinchisi och kulrang to'rtburchak bo'lib
    * ko'rinardi — va farq operatordan kelgan-kelmaganiga bog'liq edi.
    */
-  if (row.kind === 'avatar') void attachCutout(row.ref_id, angles?.['front'] ?? finalResultUrl);
-  else void attachRenderCutout(row.ref_id, finalResultUrl);
+  if (row.kind === 'avatar') {
+    void attachCutout(row.ref_id, angles?.['front'] ?? finalResultUrl);
+  } else {
+    /*
+     * ⚠️ HAR BURCHAKKA KESIM. Avval faqat asosiy burchak uchun chaqirardi
+     * (`attachRenderCutout(row.ref_id, ...)`). Natijada yon/orqa rasmlar
+     * qora/kulrang fon bilan ekranda chiqar edi — AvatarStage `cutout_url`
+     * yo'qligida fon'siz asl rasmni to'g'ridan-to'g'ri joylaydi, ortida
+     * manikenning qora chegarasi ko'rinadi. Endi har bir angle rowi'ga
+     * `cutout_url` joylanadi — ularni ref_id emas, (user_id, variant_id,
+     * angle, source_hash) bo'yicha topamiz, chunki applyResult yon/orqa
+     * uchun yangi id bilan INSERT qilgan.
+     */
+    if (angles) {
+      void attachRenderCutoutsForAllAngles(row.ref_id);
+    } else {
+      void attachRenderCutout(row.ref_id, finalResultUrl);
+    }
+  }
 
   void updateAnnouncement(taskId, {
     kind: 'done',
@@ -756,6 +773,35 @@ async function attachRenderCutout(renderId: string, url: string): Promise<void> 
     ]);
   } catch (err) {
     logger.warn({ err, renderId }, 'developer_ai: kiyintirish kesimi yasalmadi');
+  }
+}
+
+/*
+ * Varaq bo'lgan ishda hamma burchak rowi'ga kesim ulaydi.
+ * applyResult `source_hash` orqali bog'liq rowlarni yaratgan — asosiy ref_id
+ * orqali topib, (user_id, variant_id, source_hash) ga mos barcha ready
+ * rowlarga shu burchakning kesimini joylaymiz.
+ */
+async function attachRenderCutoutsForAllAngles(mainRenderId: string): Promise<void> {
+  try {
+    const { rows } = await pool.query<{ id: string; result_url: string }>(
+      `SELECT r2.id, r2.result_url
+         FROM tryon_renders r1
+         JOIN tryon_renders r2
+           ON r2.user_id = r1.user_id
+          AND r2.variant_id = r1.variant_id
+          AND r2.source_hash = r1.source_hash
+        WHERE r1.id = $1
+          AND r2.status = 'ready'
+          AND r2.result_url IS NOT NULL
+          AND r2.cutout_url IS NULL`,
+      [mainRenderId],
+    );
+    for (const row of rows) {
+      await attachRenderCutout(row.id, row.result_url);
+    }
+  } catch (err) {
+    logger.warn({ err, mainRenderId }, 'developer_ai: varaq kesimlari yasalmadi');
   }
 }
 
