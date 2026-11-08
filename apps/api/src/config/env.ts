@@ -175,6 +175,24 @@ const envSchema = z.object({
   OPENAI_IMAGE_MODEL: z.string().default('gpt-image-2.5-sunburst'),
 
   /*
+   * ⚠️ FACEFUSION — YUZ ALMASHTIRUVCHI POST-PROCESSOR.
+   *
+   * OpenAI chiqargan try-on rasmida yuz ba'zan foydalanuvchiga to'liq
+   * o'xshamaydi (model o'z tasavvurini aralashtiradi). Shu bosqichda
+   * facefusion xizmati orqali asl yuzimizni natijaga qo'shamiz.
+   *
+   * URL bo'sh bo'lsa — post-processing butunlay o'tkazib yuboriladi.
+   * TOKEN ixtiyoriy (serverda sozlangan bo'lishi mumkin).
+   */
+  FACEFUSION_URL: z.string().default(''),
+  FACEFUSION_TOKEN: z.string().default(''),
+  FACEFUSION_MODEL: z.string().default('inswapper_128'),
+  FACEFUSION_PIXEL_BOOST: z.string().default('512x512'),
+  FACEFUSION_ENHANCE: z.coerce.boolean().default(true),
+  /** Faqat front burchakka qo'llash — yon/orqa surati uchun yuz ko'rinmaydi. */
+  FACEFUSION_FRONT_ONLY: z.coerce.boolean().default(true),
+
+  /*
    * ⚠️ CHIQISH SIFATI — ENG KATTA SIFAT RICHAGI, VA U PUL TURADI.
    *
    * `gpt-image-2.5` da besh pog'ona bor: `low` < `medium` < `high` <
