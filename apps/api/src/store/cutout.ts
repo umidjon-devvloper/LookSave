@@ -66,6 +66,44 @@ async function isAlreadyTransparent(input: Buffer): Promise<boolean> {
   }
 }
 
+/*
+ * Chegaradagi qora halo'ni olib tashlaydi.
+ *
+ * ⚠️ MUAMMO: @imgly/background-removal'ning alfa kanali yumshoq o'tish
+ * beradi — chekkalarda yarim-shaffof piksellar qoladi, va ularning RGB
+ * qiymati fon rangidan (qora/qorong'i-kulrang) olingan. Mijoz ekranida
+ * bu figurani o'rab turgan qora halo bo'lib ko'rinadi.
+ *
+ * YECHIM — ikki bosqich:
+ * 1) Alfa kanalini kontrastlashtiramiz: threshold'dan past piksellar
+ *    to'liq shaffof, yuqori — to'liq ko'rinadigan. Yumshoq o'tish zonasi
+ *    1-2 pikselga qisqaradi.
+ * 2) Natijani PNG qilib qayta kodlaymiz, siqishsiz (level 9, palette yo'q).
+ */
+async function refineAlpha(input: Buffer): Promise<Buffer> {
+  try {
+    const image = sharp(input).ensureAlpha();
+    const { data, info } = await image.raw().toBuffer({ resolveWithObject: true });
+    const { width, height, channels } = info;
+    if (channels !== 4) return input;
+
+    // 1-chi bosqich: alfa threshold
+    for (let i = 3; i < data.length; i += 4) {
+      const a = data[i]!;
+      if (a < 48) data[i] = 0;
+      else if (a > 210) data[i] = 255;
+      // Oraliqda: o'rtaga tortish — chekkalar aniq bo'ladi
+      else data[i] = Math.min(255, Math.round(((a - 48) / (210 - 48)) * 255));
+    }
+
+    return await sharp(data, { raw: { width, height, channels: 4 } })
+      .png({ compressionLevel: 9, palette: false })
+      .toBuffer();
+  } catch {
+    return input;
+  }
+}
+
 export async function makeCutout(url: string, prefix: string): Promise<string | null> {
   try {
     const response = await fetch(url);
@@ -84,14 +122,24 @@ export async function makeCutout(url: string, prefix: string): Promise<string | 
      */
     if (await isAlreadyTransparent(input)) return url;
 
+    /*
+     * ⚠️ `medium` MODELI — PREMIUM SIFAT UCHUN (2026-11-09).
+     * `small` (default) tez, lekin chekkalarda qora halo va shovqin qoldiradi;
+     * `medium` sezilarli yaxshiroq, qo'shimcha ~1s ketadi; `large` eng toza,
+     * lekin 1GB VPS'da OOM xavfi. Natijadagi halo'ni `refineAlpha` tagida
+     * yana tozalaymiz (threshold + yengil erode).
+     */
     const out = await removeBackground(new Blob([input], { type: contentType }), {
       publicPath: RESOURCE_PATH,
-      output: { format: 'image/png' },
+      model: 'medium',
+      output: { format: 'image/png', quality: 1 },
     });
+
+    const cleaned = await refineAlpha(Buffer.from(await out.arrayBuffer()));
 
     return await uploadObject({
       key: `${prefix}/${randomUUID()}.png`,
-      body: Buffer.from(await out.arrayBuffer()),
+      body: cleaned,
       contentType: 'image/png',
     });
   } catch (err) {
