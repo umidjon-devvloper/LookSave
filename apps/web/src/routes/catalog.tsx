@@ -19,8 +19,13 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/s
 import { isLocale, type Locale } from '@/i18n/locale';
 import { money } from '@/lib/format';
 import { guest } from '@/session.server';
+import catalogStyles from '../components/catalog/catalog.css?url';
 
 import type { Route } from './+types/catalog';
+
+export function links() {
+  return [{ rel: 'stylesheet', href: catalogStyles }];
+}
 
 const SORT_LABEL: Record<ProductSort, string> = {
   popular: 'Ommabop',
@@ -234,19 +239,20 @@ export default function Catalog({ loaderData }: Route.ComponentProps): JSX.Eleme
       filters={filters as FilterState}
       onToggle={(key, value) => setParam(key, value)}
       onPrice={setPrice}
+      className="catalog-filter-panel"
     />
   );
 
   return (
-    <div className="shell-wide py-6 sm:py-8 lg:py-10">
+    <div className="catalog-page shell-wide">
       {/* ── Hero Section (2-rasmdagi kabi to'g'ridan-to'g'ri integratsiyalashgan 3D paket) ── */}
-      <section className="relative pt-2 pb-6">
+      <section className="catalog-hero">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-end">
           {/* Chap ustun: Eyebrow, Sarlavha, Mahsulot soni */}
           <div className="lg:col-span-7 flex flex-col justify-end pb-2">
             <p className="text-xs font-bold uppercase tracking-wider text-brand">KATALOG</p>
 
-            <h1 className="mt-2 text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white">
+            <h1 className="catalog-title">
               {heading}
             </h1>
 
@@ -259,24 +265,16 @@ export default function Catalog({ loaderData }: Route.ComponentProps): JSX.Eleme
           <div className="lg:col-span-5 relative hidden md:flex justify-end items-end">
             <div className="relative w-full max-w-[480px] flex items-end justify-end">
               <img
-                src="/img/catalog-hero-bag.png"
+                src="/img/catalog-hero-bag-v2.png"
                 alt="LookSave 3D Shopping Bag"
-                className="w-full h-auto object-contain object-bottom pointer-events-none select-none mix-blend-lighten"
-                style={{
-                  maskImage:
-                    'linear-gradient(to right, transparent, black 20%, black 80%, transparent), linear-gradient(to bottom, transparent, black 20%, black 95%, transparent)',
-                  WebkitMaskImage:
-                    'linear-gradient(to right, transparent, black 20%, black 80%, transparent), linear-gradient(to bottom, transparent, black 20%, black 95%, transparent)',
-                  maskComposite: 'intersect',
-                  WebkitMaskComposite: 'source-in',
-                }}
+                className="catalog-hero-art"
               />
             </div>
           </div>
         </div>
 
         {/* ── Qidiruv va Saralash qatori (2-rasmdagidek yonma-yon) ── */}
-        <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+        <div className="catalog-toolbar">
           {/* Qidiruv */}
           <Form method="get" className="w-full max-w-md">
             {[...searchParams.entries()]
@@ -285,7 +283,7 @@ export default function Catalog({ loaderData }: Route.ComponentProps): JSX.Eleme
                 <input key={key} type="hidden" name={key} value={value} />
               ))}
 
-            <div className="relative w-full">
+            <div className="catalog-search relative w-full">
               <span className="pointer-events-none absolute inset-y-0 start-4 flex items-center text-dim">
                 <Icon name="search" size={18} />
               </span>
@@ -300,7 +298,7 @@ export default function Catalog({ loaderData }: Route.ComponentProps): JSX.Eleme
           </Form>
 
           {/* Saralash */}
-          <div className="flex items-center gap-3 self-end sm:self-auto">
+          <div className="catalog-sort flex items-center gap-3 self-end sm:self-auto">
             <span className="text-small text-dim">Saralash:</span>
             <select
               value={filters.sort ?? 'popular'}
@@ -313,6 +311,8 @@ export default function Catalog({ loaderData }: Route.ComponentProps): JSX.Eleme
                 </option>
               ))}
             </select>
+            <button type="button" className="catalog-view-button is-active" aria-label="Katak ko‘rinishi"><Icon name="grid" size={18} /></button>
+            <button type="button" className="catalog-view-button" aria-label="Ro‘yxat ko‘rinishi"><Icon name="list" size={18} /></button>
           </div>
         </div>
 
@@ -374,7 +374,7 @@ export default function Catalog({ loaderData }: Route.ComponentProps): JSX.Eleme
       </section>
 
       {/* ── Asosiy kontent: Chapda Filtr + O'ngda Mahsulot to'ri ── */}
-      <div className="grid gap-8 lg:grid-cols-[18rem_1fr] items-start">
+      <div className="catalog-content-grid">
         {/* Chapdagi yopishqoq filtr paneli (Desktop) */}
         <aside className="hidden lg:block">
           <div className="sticky top-[6.5rem] max-h-[calc(100vh-8rem)] overflow-y-auto pe-1">
@@ -395,7 +395,9 @@ export default function Catalog({ loaderData }: Route.ComponentProps): JSX.Eleme
               }
             />
           ) : loading ? (
-            <SkeletonGrid count={8} />
+            <div className="catalog-skeletons">
+              <SkeletonGrid count={9} />
+            </div>
           ) : items.length === 0 ? (
             <Empty
               title="Hech narsa topilmadi"
@@ -409,7 +411,7 @@ export default function Catalog({ loaderData }: Route.ComponentProps): JSX.Eleme
           ) : (
             <>
               {/* Mahsulotlar to'ri */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="catalog-products-grid">
                 {items.map((product) => (
                   <ProductCard
                     key={product.id}
@@ -418,11 +420,12 @@ export default function Catalog({ loaderData }: Route.ComponentProps): JSX.Eleme
                     oldPrice={product.oldPrice ? money(product.oldPrice, product.currency) : null}
                     image={product.image}
                     storeName={product.store.name}
-                    canTryOn={product.canTryOn}
+                    canTryOn={false}
                     isLimited={product.isLimited}
                     isFavorite={favorites.has(product.id)}
                     onToggleFavorite={() => toggleFavorite(product.id)}
                     onAddToCart={() => handleAddToCart(product)}
+                    className="catalog-product-card"
                     link={(children) => (
                       <Link to={`/${locale}/p/${product.id}`} className="block">
                         {children}
@@ -433,11 +436,11 @@ export default function Catalog({ loaderData }: Route.ComponentProps): JSX.Eleme
               </div>
 
               {/* ── Sahifalash (Pagination) ── */}
-              <div className="mt-12 flex items-center justify-center gap-2">
+              <div className="catalog-pagination">
                 <button
                   type="button"
                   aria-label="Oldingi sahifa"
-                  className="flex size-9 items-center justify-center rounded-xl border border-border/80 bg-surface2/60 text-muted-foreground transition-all duration-150 hover:border-primary/50 hover:text-foreground active:scale-95 disabled:opacity-40"
+                  className="catalog-page-arrow"
                   disabled
                 >
                   <Icon name="back" size={16} />
@@ -446,7 +449,7 @@ export default function Catalog({ loaderData }: Route.ComponentProps): JSX.Eleme
                 <button
                   type="button"
                   aria-label="Sahifa 1"
-                  className="flex size-9 items-center justify-center rounded-xl bg-primary font-bold text-white shadow-[0_0_15px_hsl(var(--primary)/0.6)]"
+                  className="catalog-page-number is-active"
                 >
                   1
                 </button>
@@ -456,7 +459,7 @@ export default function Catalog({ loaderData }: Route.ComponentProps): JSX.Eleme
                   aria-label="Keyingi sahifa"
                   onClick={loadMore}
                   disabled={!cursor}
-                  className="flex size-9 items-center justify-center rounded-xl border border-border/80 bg-surface2/60 text-muted-foreground transition-all duration-150 hover:border-primary/50 hover:text-foreground active:scale-95 disabled:opacity-40"
+                  className="catalog-page-arrow"
                 >
                   <Icon name="next" size={16} />
                 </button>

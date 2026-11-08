@@ -1,10 +1,8 @@
-import { CheckCircle2 } from 'lucide-react';
+import { Apple, CheckCircle2, Mail, Rocket, Store, UserRound } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 
-import { Grid } from '@/components/Grid';
 import { Reveal } from '@/components/Reveal';
-import { SectionBackdrop } from '@/components/SectionBackdrop';
 import { Button, Field } from '@looksave/ui-web';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -56,97 +54,60 @@ export function Waitlist(): JSX.Element {
   };
 
   return (
-    <section id="waitlist" className="section-y relative isolate overflow-hidden landing-waitlist">
-      {' '}
-      {/* Fon rasmi — chetlari fonga singiydi, qo'shni bo'limga tutashadi */}
-      <SectionBackdrop src="/img/bg-planet.webp" position="object-bottom" />
-      <Grid className="landing-grid-motion" />
-      <div className="landing-planet-horizon" aria-hidden="true" />
-      <div className="shell relative max-w-3xl text-center">
+    <section id="waitlist" className="landing-waitlist-showcase">
+      <div className="landing-waitlist-glow" aria-hidden="true" />
+      <img className="landing-waitlist-phone is-left" src="/img/waitlist-phone-market-v1.png" alt="LookSave mobil market ilovasi" loading="lazy" />
+      <img className="landing-waitlist-phone is-right" src="/img/waitlist-phone-tryon-v1.png" alt="LookSave virtual kiyib ko‘rish ilovasi" loading="lazy" />
+
+      <div className="shell landing-waitlist-center">
         <Reveal>
-          <p className="eyebrow">Erta kirish</p>
-          <h2 className="headline mt-4 text-h1">Birinchilardan bo‘lib kiyib ko‘ring</h2>
-          <p className="mx-auto mt-5 max-w-xl text-lead text-muted-foreground">
-            LookSave avval kichik guruhga ochiladi: o‘lcham muammosini yechmoqchi bo‘lgan xaridorlar
-            va qaytarishdan charchagan do‘konlar.
+          <p className="landing-section-pill"><Rocket aria-hidden="true" />Erta kirish</p>
+          <h2 className="landing-light-headline">Birinchilardan bo‘lib <span>kiyib ko‘ring</span></h2>
+          <p className="landing-light-lead">
+            LookSave — AI texnologiyasi bilan kiyimlarni onlayn sinab ko‘rish, xarid qilish va o‘z
+            uslubingizni yaratish imkonini beradi.
           </p>
         </Reveal>
 
         <Reveal delay={120}>
           {state === 'done' ? (
-            <Alert className="mx-auto mt-10 max-w-md border-success/40 bg-success/[0.08] text-left">
-              <CheckCircle2 className="size-4 text-success" />
-              <AlertDescription className="text-muted-foreground">
-                <span className="block font-semibold text-foreground">Ro‘yxatga qo‘shildingiz</span>
-                {email} manziliga taklif tayyor bo‘lganda yozamiz.
+            <Alert className="landing-waitlist-success">
+              <CheckCircle2 className="size-5 text-success" />
+              <AlertDescription>
+                <strong>Ro‘yxatga qo‘shildingiz</strong>
+                <span>{email} manziliga taklif tayyor bo‘lganda yozamiz.</span>
               </AlertDescription>
             </Alert>
           ) : (
-            <Card className="landing-waitlist-card edge-beam mx-auto mt-10 max-w-md border-border bg-surface text-left shadow-card">
-              <CardContent className="p-6">
+            <Card className="landing-waitlist-card">
+              <CardContent>
                 <form onSubmit={submit}>
-                  <ToggleGroup
-                    type="single"
-                    value={role}
-                    onValueChange={(value) => value && setRole(value as Role)}
-                    className="grid grid-cols-2 gap-2"
-                  >
-                    <ToggleGroupItem
-                      value="shopper"
-                      className="rounded-full border border-border data-[state=on]:border-primary/60 data-[state=on]:bg-primary/15 data-[state=on]:text-foreground"
-                    >
-                      Xarid qilmoqchiman
-                    </ToggleGroupItem>
-                    <ToggleGroupItem
-                      value="store"
-                      className="rounded-full border border-border data-[state=on]:border-primary/60 data-[state=on]:bg-primary/15 data-[state=on]:text-foreground"
-                    >
-                      Do‘konim bor
-                    </ToggleGroupItem>
+                  <ToggleGroup type="single" value={role} onValueChange={(value) => value && setRole(value as Role)} className="landing-role-toggle">
+                    <ToggleGroupItem value="shopper"><UserRound aria-hidden="true" />Xarid qilmoqchiman</ToggleGroupItem>
+                    <ToggleGroupItem value="store"><Store aria-hidden="true" />Do‘konim bor</ToggleGroupItem>
                   </ToggleGroup>
 
-                  <Field
-                    id="waitlist-name"
-                    className="mt-5"
-                    label={role === 'store' ? 'Do‘kon nomi' : 'Ism'}
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    autoComplete={role === 'store' ? 'organization' : 'name'}
-                    placeholder={role === 'store' ? 'Atelier Noor' : 'Ismingiz'}
-                  />
+                  <Field id="waitlist-name" className="landing-waitlist-field" label={role === 'store' ? 'Do‘kon nomi' : 'Ism'} value={name} onChange={(event) => setName(event.target.value)} autoComplete={role === 'store' ? 'organization' : 'name'} placeholder={role === 'store' ? 'Atelier Noor' : 'Ismingiz'} />
+                  <Field id="waitlist-email" className="landing-waitlist-field" label="Email" value={email} onChange={(event) => setEmail(event.target.value)} type="email" required autoComplete="email" placeholder="you@example.com" />
 
-                  <Field
-                    id="waitlist-email"
-                    className="mt-4"
-                    label="Email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    type="email"
-                    required
-                    autoComplete="email"
-                    placeholder="you@example.com"
-                  />
-
-                  <Button
-                    type="submit"
-                    loading={state === 'sending'}
-                    className="mt-6 w-full shadow-glow"
-                  >
-                    Taklif so‘rash
+                  <Button type="submit" loading={state === 'sending'} className="landing-waitlist-submit">
+                    <Mail aria-hidden="true" />Taklif so‘rash <span aria-hidden="true">→</span>
                   </Button>
 
-                  {state === 'error' ? (
-                    <p className="mt-4 text-small text-destructive">{message}</p>
-                  ) : (
-                    <p className="mt-4 text-center text-tiny text-dim">
-                      Reklama yo‘q. Taklif ochilganda bitta xat.
-                    </p>
-                  )}
+                  {state === 'error' ? <p className="landing-waitlist-error">{message}</p> : <p className="landing-waitlist-note">Reklama yo‘q. Taklif ochilganda birinchilardan bo‘lib xabar beramiz.</p>}
                 </form>
               </CardContent>
             </Card>
           )}
         </Reveal>
+
+        <div className="landing-app-downloads" aria-label="Ilovani yuklab olish">
+          <span>Ilovani yuklab oling</span>
+          <div>
+            <a href="#waitlist" aria-label="App Store orqali yuklab olish"><Apple aria-hidden="true" /><i><small>Yuklab olish</small>App Store’da</i></a>
+            <a href="#waitlist" aria-label="Google Play orqali yuklab olish"><span className="landing-google-play-icon" aria-hidden="true"><b /><b /><b /><b /></span><i><small>Yuklab olish</small>Google Play’da</i></a>
+          </div>
+        </div>
       </div>
     </section>
   );

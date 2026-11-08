@@ -34,7 +34,7 @@ const STEPS = [
   },
 ];
 
-export function HowItWorks(): JSX.Element {
+function LegacyHowItWorks(): JSX.Element {
   return (
     <section id="how" className="section-y relative isolate landing-how">
       {/*
@@ -146,6 +146,63 @@ export function HowItWorks(): JSX.Element {
                   }}
                 />
               ) : null}
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+  );
+}
+
+export function HowItWorks(): JSX.Element {
+  return (
+    <section id="how" className="landing-how-showcase">
+      <div className="shell-wide landing-how-inner">
+        <Reveal className="landing-how-copy">
+          <p className="landing-section-pill">
+            <Sparkles aria-hidden="true" />
+            Qanday ishlaydi?
+          </p>
+          <h2 className="landing-light-headline">
+            Avatarni bir marta <span>yasang</span>
+          </h2>
+          <p className="landing-light-lead">
+            To‘rt qadam, bir necha daqiqa — va taxmin tugaydi. Bundan keyingi hamma narsa
+            sizning gavdangizga o‘xshash tanada bo‘lib o‘tadi.
+          </p>
+        </Reveal>
+
+        <Reveal delay={120} className="landing-avatar-art">
+          <img
+            src="/img/how-avatar-scene-v1.png"
+            alt="AI avatar va uning raqamli gavda modeli"
+            loading="lazy"
+          />
+          <span className="landing-avatar-chip">
+            <Sparkles aria-hidden="true" />
+            AI Avatar
+            <i aria-hidden="true">✓</i>
+          </span>
+        </Reveal>
+
+        <ol className="landing-step-grid">
+          {STEPS.map((step, index) => (
+            <li key={step.title}>
+              <Reveal delay={index * 70} className="landing-step-reveal">
+                <article className="landing-step-card">
+                  <div className="landing-step-meta">
+                    <span className="landing-step-icon">
+                      <step.icon aria-hidden="true" />
+                    </span>
+                    <strong>{String(index + 1).padStart(2, '0')}</strong>
+                  </div>
+                  <h3>{step.title}</h3>
+                  <p>{step.body}</p>
+                  <span className="landing-step-progress" aria-hidden="true">
+                    <i style={{ width: `${((index + 1) / STEPS.length) * 100}%` }} />
+                  </span>
+                </article>
+              </Reveal>
             </li>
           ))}
         </ol>
