@@ -359,12 +359,6 @@
           img.alt = p.title;
           thumb.appendChild(img);
 
-          if (p.canTryOn) {
-            var badge = document.createElement('span');
-            badge.className = 'badge';
-            badge.textContent = '✨ AI try-on';
-            thumb.appendChild(badge);
-          }
           card.appendChild(thumb);
 
           var meta = document.createElement('div');
@@ -390,7 +384,7 @@
           var cta = document.createElement('button');
           cta.className = 'cta';
           cta.type = 'button';
-          cta.textContent = p.canTryOn ? '✨ Kiyib ko‘rish' : 'Try-on mavjud emas';
+          cta.textContent = p.canTryOn ? 'Kiyib ko‘rish' : 'Try-on mavjud emas';
           cta.disabled = !p.canTryOn;
           if (p.canTryOn) {
             cta.addEventListener('click', function () {
