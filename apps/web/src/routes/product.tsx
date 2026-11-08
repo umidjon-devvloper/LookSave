@@ -348,10 +348,6 @@ export default function Product({ loaderData }: Route.ComponentProps): JSX.Eleme
 
         {/* ── Ma'lumot ── */}
         <div className="lg:sticky lg:top-[6.5rem] lg:self-start">
-          {product.category ? (
-            <span className="product-category-pill">{product.category.name}</span>
-          ) : null}
-
           <h1 className="product-title">{product.title}</h1>
 
           <p className="product-price">
@@ -582,8 +578,10 @@ export default function Product({ loaderData }: Route.ComponentProps): JSX.Eleme
 
       {/* ── Shu do'kondan yana ── */}
       {related.length > 0 ? (
-        <section className="mt-20">
-          <h2 className="text-label font-semibold uppercase text-foreground">Shu do'kondan yana</h2>
+        <section className="product-related mt-20">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-[#171020]">
+            Shu do'kondan yana
+          </h2>
 
           <div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4 xl:gap-6">
             {related.map((item) => (
