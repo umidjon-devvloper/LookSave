@@ -76,7 +76,6 @@ export function Nav({ locale, user, cartCount }: NavProps): JSX.Element {
      * o'lchamlar, do'kon va qatlamli kiyintirish.
      */
     { to: `/${locale}/try-on`, label: 'Kiyintirish', icon: 'hanger' },
-    { to: `/${locale}/#about`, label: 'Biz haqimizda', icon: 'authentic' },
   ];
 
   return (
