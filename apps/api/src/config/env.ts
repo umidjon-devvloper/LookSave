@@ -191,6 +191,12 @@ const envSchema = z.object({
   FACEFUSION_ENHANCE: z.coerce.boolean().default(true),
   /** Faqat front burchakka qo'llash — yon/orqa surati uchun yuz ko'rinmaydi. */
   FACEFUSION_FRONT_ONLY: z.coerce.boolean().default(true),
+  /*
+   * ⚠️ PYTHON CUTOUT XIZMATI (services/cutout-py/). Bo'sh bo'lsa — eski
+   * `@imgly/background-removal-node` yo'li ishlatiladi (chekkada halo/jag
+   * ko'proq). Tavsiya: `http://127.0.0.1:7801`.
+   */
+  CUTOUT_URL: z.string().default(''),
 
   /*
    * ⚠️ CHIQISH SIFATI — ENG KATTA SIFAT RICHAGI, VA U PUL TURADI.

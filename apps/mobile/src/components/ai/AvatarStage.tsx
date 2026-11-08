@@ -210,18 +210,18 @@ const styles = StyleSheet.create({
    */
   personFrame: {
     position: 'absolute',
-    top: '6%',
+    top: '-2%',
     left: '14%',
     right: '14%',
-    bottom: '4%',
+    bottom: '12%',
   },
   personWithoutCutout: { mixBlendMode: 'multiply' } as ImageStyle,
   swipeFrame: {
     position: 'absolute',
-    top: '6%',
+    top: '-2%',
     left: '14%',
     right: '14%',
-    bottom: '4%',
+    bottom: '12%',
   },
 
   /*

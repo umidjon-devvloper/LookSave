@@ -5,6 +5,7 @@ import { dirname } from 'node:path';
 import { removeBackground } from '@imgly/background-removal-node';
 import sharp from 'sharp';
 
+import { env } from '../config/env';
 import { uploadObject } from '../integrations/r2';
 import { logger } from '../logger';
 
@@ -194,12 +195,21 @@ export async function makeCutout(url: string, prefix: string): Promise<string | 
     if (await isAlreadyTransparent(input)) return url;
 
     /*
-     * ⚠️ `medium` MODELI — PREMIUM SIFAT UCHUN (2026-11-09).
-     * `small` (default) tez, lekin chekkalarda qora halo va shovqin qoldiradi;
-     * `medium` sezilarli yaxshiroq, qo'shimcha ~1s ketadi; `large` eng toza,
-     * lekin 1GB VPS'da OOM xavfi. Natijadagi halo'ni `refineAlpha` tagida
-     * yana tozalaymiz (threshold + yengil erode).
+     * ⚠️ PYTHON CUTOUT XIZMATI AVVAL (2026-11-09).
+     * CUTOUT_URL sozlangan bo'lsa, `services/cutout-py` (rembg + isnet) ga
+     * yuboramiz — chekkalari ancha silliq, qora halo yo'q. Xizmat yo'q
+     * yoki javob bermasa, pastdagi `@imgly` fallback ishga tushadi, oqim
+     * uzilmaydi.
      */
+    const viaPy = await tryPythonCutout(input, contentType);
+    if (viaPy) {
+      return await uploadObject({
+        key: `${prefix}/${randomUUID()}.png`,
+        body: viaPy,
+        contentType: 'image/png',
+      });
+    }
+
     const out = await removeBackground(new Blob([input], { type: contentType }), {
       publicPath: RESOURCE_PATH,
       model: 'medium',
@@ -215,6 +225,35 @@ export async function makeCutout(url: string, prefix: string): Promise<string | 
     });
   } catch (err) {
     logger.warn({ err, url }, 'kesim yasalmadi');
+    return null;
+  }
+}
+
+/*
+ * services/cutout-py xizmatiga xom rasm POST qiladi. Muvaffaqiyatsiz bo'lsa
+ * null qaytaradi — chaqiruvchi eski @imgly yo'liga o'tadi.
+ */
+async function tryPythonCutout(input: Buffer, contentType: string): Promise<Buffer | null> {
+  const base = env().CUTOUT_URL;
+  if (!base) return null;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 60_000);
+    const res = await fetch(`${base.replace(/\/+$/, '')}/cutout`, {
+      method: 'POST',
+      body: input,
+      headers: { 'Content-Type': contentType },
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timer));
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      logger.warn({ status: res.status, body: body.slice(0, 200) }, 'cutout-py: xato');
+      return null;
+    }
+    const buf = Buffer.from(await res.arrayBuffer());
+    return buf.byteLength > 1024 ? buf : null;
+  } catch (err) {
+    logger.warn({ err }, 'cutout-py: chaqiruv muvaffaqiyatsiz');
     return null;
   }
 }

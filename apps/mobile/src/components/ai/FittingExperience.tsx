@@ -70,7 +70,7 @@ const TRYON_HERO_STRETCH = 560;
  * fon rasm bilan qoplanadi. Ilgari 72% edi — manikenning oyoq qismi fon rasm
  * chegarasidan pastda qolib, oq fon ko'rinib qolar edi.
  */
-const TRYON_HERO_HEIGHT = Math.round(Dimensions.get('window').height * 0.85);
+const TRYON_HERO_HEIGHT = Math.round(Dimensions.get('window').height * 0.78);
 
 /**
  * AI kiyintirish — ekranning butun tanasi.
