@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Redirect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   FlatList,
   Image,
   Pressable,
+  RefreshControl,
   ScrollView,
   Share,
   StyleSheet,
@@ -59,6 +60,10 @@ import { PhotoSwipe } from './PhotoSwipe';
 import { StorePicker } from './StorePicker';
 import { goBack } from '../../navigation/back';
 
+const PREMIUM_TRYON_BACKGROUND = require('../../../assets/tryon-boutique-bg-portrait-v2.png');
+/** Hero fon cho'zilish diapazoni — Home ekrani kabi: 560 px */
+const TRYON_HERO_STRETCH = 560;
+
 /**
  * AI kiyintirish — ekranning butun tanasi.
  *
@@ -105,7 +110,7 @@ export interface FittingExperienceProps {
 }
 
 /** Tasmadagi bitta karta + oraliq — `getItemLayout` uchun. */
-const STRIP_ITEM = 72 + spacing.sm;
+const STRIP_ITEM = 76 + 10;
 
 /**
  * Kategoriya tablari — maketdagi beshtasi.
@@ -172,9 +177,14 @@ function isWorking(renders: readonly TryonRender[] | undefined): boolean {
 
 export function FittingExperience({ showBack = false }: FittingExperienceProps): JSX.Element {
   const insets = useSafeAreaInsets();
+  // Pastga tortilganda hero fon rasmini "rezinkadek" cho'zish uchun
+  const scrollY = useRef(new Animated.Value(0)).current;
   const router = useRouter();
   const queryClient = useQueryClient();
   const signedIn = useAuthStore((state) => state.status) === 'signedIn';
+  // Demo (Apple App Review) akkaunt — yon/orqa tugmalari yashirin
+  const currentPhone = useAuthStore((state) => state.user?.phone ?? '');
+  const isDemoAccount = currentPhone === '+998900007777';
 
   const [tab, setTab] = useState('all');
   const [size, setSize] = useState<string | null>(null);
@@ -187,7 +197,7 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
    * Shuning uchun ular olib tashlangan edi. Endi mahsulotda uslub belgisi
    * bor (`products.tags`) va filtr serverda bajariladi.
    */
-  const [styleFilter, setStyleFilter] = useState<GarmentStyle | null>(null);
+  const [styleFilter, setStyleFilter] = useState<GarmentStyle | null>('sport');
   // Burchak «front» da qoladi — aylantirish tugmasi olib tashlangan
   /*
    * Ko'rish burchagi — «Yaqinlashtir» ostidagi Old/Yon/Orqa tugmalari.
@@ -208,6 +218,14 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
    * almashtiradi. Ikkala yo'l ham bo'sh ro'yxat yonida ko'rsatiladi.
    */
   const [onlyMySize, setOnlyMySize] = useState(true);
+  /*
+   * «Almashtir» rejimi — Look ichida vaqtincha katalog ochish uchun.
+   * Look saqlanib turadi (lookFilter o'zgarmaydi), lekin strip katalogdan
+   * tanlash imkonini beradi. Mijoz yangi variant bossa — wear() slotni
+   * almashtiradi, outfit yangilanadi, lookFilter ham sinxronlanadi va
+   * rejim o'z-o'zidan chiqadi.
+   */
+  const [browseMode, setBrowseMode] = useState(false);
 
   /**
    * Ko'rilgan kiyimlar keshi.
@@ -258,6 +276,20 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
     setSize(null);
     setNotice(null);
     if (angle !== 'front') setAngle('front');
+    /*
+     * ⚠️ "ALMASHTIR" REJIMIDAN AVTOMATIK CHIQISH (2026-11-05).
+     * Mijoz Look ichidan almashtirish uchun katalog ochgan edi: yangi
+     * variant bosilganda rejim yopiladi va Look qayta aktivlashadi —
+     * lookFilter'ga YANGI variantni qo'shamiz, eskisi o'sha slotdan
+     * chiqqani uchun ularni outfit'dan olib sinxronlaymiz.
+     */
+    if (browseMode && lookFilter) {
+      const next = Array.from(
+        new Set([...outfit.map((l) => l.variantId), variantId]),
+      );
+      setLookFilter(next);
+      setBrowseMode(false);
+    }
   };
 
   const remove = (category: string): void => {
@@ -371,7 +403,10 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
    * aynan shu komplektni ko'rish uchun kirdi. Katalogga chiqish esa pastdagi
    * "Boshqa kiyim tanlash" tugmasi orqali (filtrni tozalaydi).
    */
-  const inLookMode = (lookFilter?.length ?? 0) > 0;
+  // Look mode DB-filter aktiv — faqat lookFilter bor va browseMode o'chik bo'lsa
+  const inLookMode = (lookFilter?.length ?? 0) > 0 && !browseMode;
+  // Banner ko'rinishi (Almashtir rejimida ham ko'rinadi, shunchaki strip katalogdan kelmoqda)
+  const lookPinned = (lookFilter?.length ?? 0) > 0;
 
   const garments = useQuery({
     queryKey: inLookMode
@@ -416,6 +451,61 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
       return next;
     });
   }, [items]);
+
+  /*
+   * ⚠️ OUTFIT SINXRONLASHI (2026-11-05).
+   *
+   * Ikki ish bir useEffectda:
+   *
+   * 1) Home'dan qo'shilgan `pick:<productId>` qatlamlarini haqiqiy slot va
+   *    variantId'ga aylantirish. Home ekranidagi "Look" tugmasi mahsulot
+   *    ID bilan qo'shadi (variant noma'lum). Backend garments so'roviga
+   *    productId'ni ham qabul qiladi va shu mahsulotning default variantini
+   *    qaytaradi — shu yerda uni real slotga ko'chiramiz.
+   *
+   * 2) O'chirilgan variantlarni komplektdan olib tashlash — do'kondan
+   *    o'chirilgan narsa qaytmasa, "AI kiyintirmoqda…" abadiy aylanardi.
+   */
+  useEffect(() => {
+    if (!inLookMode || itemsLoading || !garments.isSuccess) return;
+
+    const byProduct = new Map<string, typeof items[number]>();
+    const availableVariants = new Set<string>();
+    for (const it of items) {
+      availableVariants.add(it.variantId);
+      // Har mahsulotning birinchi variantini olamiz (default)
+      if (!byProduct.has(it.productId)) byProduct.set(it.productId, it);
+    }
+
+    // 1) pick:* → haqiqiy slot. Bir nechta mahsulot bir slotda bo'lsa,
+    //    birinchisigina kiyiladi; qolgan pick:* layerlari olib tashlanadi
+    //    (strip baribir backend'dan hamma mahsulotning variantlarini
+    //    ko'rsatadi, chunki lookFilter o'zgarmagan). Tasmadan boshqa
+    //    variant tanlasa — "Almashtir" oqimi ishga tushadi.
+    const slotsFilled = new Set(
+      outfit.filter((l) => !l.category.startsWith('pick:')).map((l) => l.category),
+    );
+    const picks = outfit.filter((l) => l.category.startsWith('pick:'));
+    for (const layer of picks) {
+      const match = byProduct.get(layer.variantId); // variantId = productId
+      if (!match) {
+        // Mahsulot DB'da yo'q — pick:* ni olib tashlab yuboramiz
+        takeOff(layer.category);
+        continue;
+      }
+      takeOff(layer.category);
+      if (!slotsFilled.has(match.slot)) {
+        wear(match.slot, match.variantId);
+        slotsFilled.add(match.slot);
+      }
+    }
+
+    // 2) Qatlamda bor, lekin katalogda yo'q — o'chirilgan
+    const toRemove = outfit.filter(
+      (l) => !l.category.startsWith('pick:') && !availableVariants.has(l.variantId),
+    );
+    toRemove.forEach((l) => takeOff(l.category));
+  }, [inLookMode, itemsLoading, garments.isSuccess, items, outfit, takeOff, wear]);
 
   /*
    * ⚠️ CROSS-STORE LOOK — YIG'ILGAN KIYIM DO'KONIDAN QAT'I NAZAR KO'RINSIN
@@ -700,6 +790,14 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
   useEffect(() => {
     if (!ready || limitReached) return;
     /*
+     * ⚠️ DEMO AKKAUNT (Apple App Review) — AI GENERATSIYASI UMUMAN YO'Q
+     * (2026-11-06). Reviewer kiyimni bossa yangi OpenAI chaqiruvi ketmasin:
+     * sahnada avatarning o'zi (tayyor maneken) ko'rinib tursin, kredit
+     * sarflanmasin. Kiyim tanlash, savat, do'kon almashish — hammasi
+     * ishlayveradi; faqat kiyintirish AI'si bloklanadi.
+     */
+    if (isDemoAccount) return;
+    /*
      * ⚠️ YON/ORQA AI'NI ISHGA TUSHIRMAYDI. Burchak tugmasi — faqat ko'rish:
      * tayyor natija bo'lsa o'sha, bo'lmasa avatarning o'sha burchagi.
      * Aks holda har bosishda yangi kiyintirish ishi (kredit) ketardi.
@@ -715,7 +813,7 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
 
     // `single` bog'liqliklarda yo'q — yuqoridagi bilan bir xil sabab
     single.mutate({ variantId: pending.variantId, base: pending.baseRenderId });
-  }, [ready, angle, resolved, limitReached]);
+  }, [ready, angle, resolved, limitReached, isDemoAccount]);
 
   /*
    * ⚠️ AVTOMATIK KIYINTIRISH YO'Q (2026-09-25, so'rovga ko'ra). Turkum
@@ -777,8 +875,19 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
    * ko'rsatilardi — bu "AI avatar"ga umuman o'xshamasdi va ekran qo'pol
    * ko'rinardi. `null` qaytarsak, AvatarStage neytral manikenni ko'rsatadi.
    */
+  /*
+   * ⚠️ FRONT: `imageUrl` NI AFZAL KO'R. `angles.front` ba'zan boshqa jinsda
+   * yasalgan yoki eskirgan bo'lishi mumkin (serverda pipeline xatosi);
+   * asosiy `imageUrl` esa foydalanuvchining o'z avatari — u ishonchli.
+   * Yon/orqa uchun `angles` dan boshqa manba yo'q, shuning uchun ularda
+   * eski mantiq qoladi.
+   */
   const baseImage =
-    angles[angle] ?? (avatar.data?.status === 'ready' ? (avatar.data?.imageUrl ?? null) : null);
+    angle === 'front'
+      ? avatar.data?.status === 'ready'
+        ? (avatar.data?.imageUrl ?? angles[angle] ?? null)
+        : null
+      : (angles[angle] ?? (avatar.data?.status === 'ready' ? (avatar.data?.imageUrl ?? null) : null));
   const baseCutout = angle === 'front' ? (avatar.data?.cutoutUrl ?? null) : null;
   const preparingCutout =
     angle === 'front' &&
@@ -845,9 +954,44 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
    * yon/orqada «AI kiyintirmoqda» ko'rsatilmaydi — tayyor bo'lak bo'lsa
    * o'sha, bo'lmasa avatarning o'sha tomoni chiqadi, spinner emas.
    */
+  /*
+   * ⚠️ HAMMASI TAB — BUTUN KOMPLEKT TAYYOR BO'LSA LOADER YO'Q (2026-11-06).
+   *
+   * «Hammasi» noaniq tab — hech bir slotga tegishli emas. `stripBase.ready`
+   * doim `false` edi va `current` birinchi items'ga tushardi — natijada
+   * «✓ Kiyilgan» tugmasi ostida yuqoridagi overlay «AI kiyintirmoqda»
+   * ko'rsatardi. Noizchil.
+   *
+   * Agar komplektdagi hamma qatlam `ready` bo'lsa — loader chiqmaydi,
+   * foydalanuvchi tayyor rasmni tinch ko'radi.
+   */
+  const outfitAllReady =
+    resolved.length > 0 && resolved.every((l) => l.render?.status === 'ready');
+
+  /*
+   * ⚠️ TAYYOR SURATGA LOADER CHIQMAYDI (2026-11-06).
+   *
+   * «Hammasi» tabda `stripBase.ready` doim `false` edi (chunki Hammasi
+   * slotning asosi yo'q), shuning uchun avatar ustida tayyor rasmga ham
+   * loader chiqib qolardi. Endi `shown` natijasi `ready` bo'lsa darhol
+   * ishonamiz — stripBase holatiga qaramaymiz.
+   */
+  /*
+   * ⚠️ "HAMMASI" TAB OVERLAY'NI ISHGA TUSHIRMAYDI (2026-11-06).
+   *
+   * Hammasi — slot emas, filtr. Mijoz hech narsa tanlamayapti, shunchaki
+   * ro'yxatni ko'rib turibdi. Bu paytda "AI kiyintirmoqda" chiqarish
+   * mantiqsiz — rendering boshqa biror slotda ketayotgan bo'lsa ham,
+   * foydalanuvchining hozirgi diqqat markazidan tashqarida.
+   */
   const currentWorking = Boolean(
+    // Demo akkauntda AI chaqiruvi yo'q — "AI kiyintirmoqda" overlay ham chiqmaydi
+    // "Hammasi" tabida ham overlay kerak: mijoz model bosib tanlasa holatni biladi
+    !isDemoAccount &&
     angle === 'front' &&
     current &&
+    !outfitAllReady &&
+    shown?.status !== 'ready' &&
     !(limitReached && !shown) &&
     (!stripBase.ready || !shown || shown.status === 'pending' || shown.status === 'processing'),
   );
@@ -875,10 +1019,12 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
           }
         : null;
 
+  const angleOptions = ANGLE_OPTIONS;
+
   /* Svayp burchakni almashtiradi: Old → Yon → Orqa */
   const angleIndex = Math.max(
     0,
-    ANGLE_OPTIONS.findIndex((option) => option.value === angle),
+    angleOptions.findIndex((option) => option.value === angle),
   );
 
   /**
@@ -899,22 +1045,24 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
    * qolgan burchaklarda avatarning o'sha tomoni (svayp paytida ko'rinadi,
    * qo'yib yuborilgach o'sha burchakning kiyimli natijasi yuklanadi).
    */
-  const angleDeck = ANGLE_OPTIONS.map((option) => {
+  const angleDeck = angleOptions.map((option) => {
     if (option.value === angle) {
+      // AvatarStage `cutoutUrl ?? imageUrl` ni tanlaydi, shuning uchun
+      // thumbnail'ni AYNAN shunday zanjirga qo'yamiz — main va thumb
+      // bir xil rasmni ko'rsatadi.
       const url =
-        worn?.cutoutUrl ??
-        worn?.imageUrl ??
-        wornFront?.imageUrl ??
-        angles[option.value] ??
-        baseImage;
+        visibleTop?.render?.status === 'ready'
+          ? (visibleTop.render.cutoutUrl ?? visibleTop.render.imageUrl)
+          : (wornFront?.imageUrl ?? baseImage ?? angles[option.value] ?? null);
       return { key: option.value, url, resizeMode: 'contain' as const };
     }
     return {
       key: option.value,
-      url: angles[option.value] ?? baseImage,
+      url: angles[option.value] ?? baseImage ?? null,
       resizeMode: 'contain' as const,
     };
   });
+  const anglePreviews = angleDeck;
 
   /*
    * ⚠️ SERVERDAN KELADI, RO'YXATDAN QIDIRILMAYDI.
@@ -939,24 +1087,78 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
   const outfitTotal = outfitItems.reduce((sum, item) => sum + Number(item.price), 0);
   const outfitCurrency = outfitItems[0]?.currency ?? 'UZS';
 
+  const [refreshing, setRefreshing] = useState(false);
+  /*
+   * ⚠️ PULL-TO-REFRESH — ICHKI INDIKATOR. Ilgari hero rasmi pastga
+   * tortilganda rezinka effekti bilan cho'zilardi — bu render'ni
+   * yangilamasdi va foydalanuvchi "nega surat tortildi, yangilanmadi?"
+   * degan chalkashlikni tug'dirardi. Endi stretch olib tashlangan,
+   * standart RefreshControl spinner'i scroll ichida chiqadi va
+   * garments + renders + avatar'ni haqiqatan qayta yuklaydi.
+   */
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['garments'] }),
+        queryClient.invalidateQueries({ queryKey: ['renders'] }),
+        queryClient.invalidateQueries({ queryKey: ['avatar'] }),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [queryClient]);
+
   return (
     <Screen>
-      <View style={[styles.header, { paddingTop: insets.top + spacing.xs }]}>
-        {showBack ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Orqaga"
-            hitSlop={10}
-            onPress={() => goBack('/(tabs)')}
-            style={styles.headerButton}
-          >
-            <Icon name="back" size={20} color={colors.text} />
-          </Pressable>
-        ) : (
-          <View style={styles.headerButton} />
+      <Animated.ScrollView
+        contentContainerStyle={styles.page}
+        showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true },
         )}
+        scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.accent}
+            colors={[colors.accent]}
+            progressBackgroundColor={colors.surface}
+          />
+        }
+      >
+        <View style={styles.tryonHero}>
+        {/*
+          ⚠️ REZINKA EFFEKTI OLIB TASHLANDI. Hero rasmi avval scroll'ga ergashib
+          cho'zilar/kattalashardi; bu refresh indikatorini bekitib, "nega surat
+          keldi-yu, hech narsa yangilanmadi?" degan savolni tug'dirardi. Endi
+          rasm joyida qoladi, standart iOS/Android spinner esa content ichida
+          ko'rinadi.
+        */}
+        <Animated.View style={StyleSheet.absoluteFill}>
+          <Animated.Image
+            source={PREMIUM_TRYON_BACKGROUND}
+            resizeMode="stretch"
+            style={styles.tryonHeroBackground}
+          />
+        </Animated.View>
+        <View style={[styles.header, { paddingTop: insets.top + spacing.xs }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Orqaga"
+          hitSlop={10}
+          onPress={() => (showBack ? goBack('/(tabs)') : router.back())}
+          style={styles.headerButton}
+        >
+          <Icon name="back" size={24} color={colors.text} />
+        </Pressable>
         <View style={styles.headerText}>
-          <Text style={styles.headerTitle}>Kiyintirish</Text>
+          <View style={styles.headerTitleRow}>
+            <Icon name="slotTop" size={30} color="#FFFFFF" />
+            <Text style={styles.headerTitle}>Looksave</Text>
+          </View>
           {/*
             ⚠️ SARLAVHA OSTIDA DO'KON — VA U BOSILADI. Ilgari bu yerda
             «Kiyimni tanlang» degan yozuv turardi: u hech narsa
@@ -981,26 +1183,42 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
         >
           <Icon name="camera" size={20} color={colors.textMuted} />
         </Pressable>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+        </View>
         {/* ── Avatar maydoni ── */}
         <View style={styles.stage}>
           <AvatarStage
             zoomed={zoomed}
             imageUrl={preparingCutout ? null : (worn?.imageUrl ?? wornFront?.imageUrl ?? baseImage)}
-            cutoutUrl={worn?.cutoutUrl ?? baseCutout}
+            /*
+             * AvatarStage cutoutUrl'ni imageUrl'dan oldin ishlatadi.
+             * worn yoki wornFront bor bo'lsa, ularning cutoutUrl'i YO'Q bo'lsa `null`
+             * qaytaramiz — stale baseCutout (avatar'ning asl surati) oldinga chiqib
+             * yangi kiyilgan rasmni bekitib qo'ymasin.
+             */
+            cutoutUrl={
+              worn ? (worn.cutoutUrl ?? null)
+                : wornFront ? (wornFront.cutoutUrl ?? null)
+                : baseCutout
+            }
             dimmed={!worn && currentWorking}
             showRings
           >
+            {/*
+             * ⚠️ SVAYP OLDDA HAM ISHLASIN. Ilgari `angle === 'front'`
+             * da PhotoSwipe umuman chizilmasdi — foydalanuvchi oldindan
+             * boshlab chapga/o'ngga sursa, hech narsa bo'lmasdi (default
+             * `front`; ya'ni svayp amalda hech qachon ishlamasdi,
+             * faqat o'ngdagi 3 ta tugmani bosish qoldi).
+             */}
             <PhotoSwipe
               photos={angleDeck}
               index={angleIndex}
               onIndexChange={(next) => {
-                const option = ANGLE_OPTIONS[next];
+                const option = angleOptions[next];
                 if (option) setAngle(option.value);
               }}
             />
+
           </AvatarStage>
 
           <View style={styles.sideControls} pointerEvents="box-none">
@@ -1008,31 +1226,56 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
               icon="zoom"
               label={zoomed ? 'Kichraytir' : 'Yaqinlashtir'}
               onPress={() => setZoomed((value) => !value)}
+              active
             />
 
-            {/* Yangilash — natija/ro'yxatni serverdan qayta oladi (qulaylik uchun) */}
-            <Control icon="reset" label="Yangilash" onPress={refreshScene} />
+            <Control icon="compare" label="Fon" onPress={() => router.push('/ai/avatar')} />
 
-            {/* Burchak — bosilganda sahna darhol o'sha ko'rinishga almashadi */}
-            <View style={styles.angleSwitch} accessibilityRole="radiogroup">
-              {ANGLE_OPTIONS.map((option) => {
-                const active = angle === option.value;
-                return (
-                  <Pressable
-                    key={option.value}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: active }}
-                    accessibilityLabel={option.label}
-                    onPress={() => setAngle(option.value)}
-                    style={[styles.angleButton, active && styles.angleButtonActive]}
-                  >
-                    <Text style={[styles.angleText, active && styles.angleTextActive]}>
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <Control icon="filter" label="Sozlamalar" onPress={() => router.push('/settings/measurements')} />
+
+          </View>
+
+          <View style={styles.angleRail} pointerEvents="box-none">
+            {anglePreviews.map((photo, index) => {
+              const optionIndex = index;
+              const selected = index === angleIndex;
+              return (
+                <Pressable
+                  key={photo.key}
+                  accessibilityRole="button"
+                  accessibilityLabel={angleOptions[optionIndex]?.label}
+                  onPress={() => {
+                    const option = angleOptions[optionIndex];
+                    if (option) setAngle(option.value);
+                  }}
+                  style={[styles.anglePreview, selected && styles.anglePreviewActive]}
+                >
+                  {photo.url ? (
+                    <Image source={{ uri: photo.url }} style={styles.anglePreviewImage} resizeMode="contain" />
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <View style={styles.rotationNav} pointerEvents="box-none">
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Oldingi burchak"
+              onPress={() => setAngle(angleOptions[(angleIndex - 1 + angleOptions.length) % angleOptions.length]?.value ?? 'front')}
+              style={styles.rotationButton}
+            >
+              <Text style={styles.rotationArrow}>↔</Text>
+            </Pressable>
+            <Text style={styles.rotationText}>360°</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Keyingi burchak"
+              onPress={() => setAngle(angleOptions[(angleIndex + 1) % angleOptions.length]?.value ?? 'front')}
+              style={styles.rotationButton}
+            >
+              <Text style={styles.rotationArrow}>↔</Text>
+            </Pressable>
           </View>
 
           {/*
@@ -1041,7 +1284,7 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
             Chip bosilsa — shu kategoriya tabiga o'tadi (mahsulotni almashtirish uchun);
             × bosilsa — kiyim yechiladi.
           */}
-          {resolved.length > 0 ? (
+          {false && resolved.length > 0 ? (
             <View style={styles.lookChipRow} pointerEvents="box-none">
               {resolved.map((layer) => {
                 const tabInfo = TABS.find((item) => item.category === layer.category);
@@ -1055,7 +1298,9 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
                       onPress={() => setTab(layer.category)}
                       hitSlop={6}
                     >
-                      <Text style={styles.lookChipText}>{label}</Text>
+                      <Text style={[styles.lookChipText, active && styles.lookChipTextActive]}>
+                        {label}
+                      </Text>
                     </Pressable>
                     <Pressable
                       accessibilityRole="button"
@@ -1064,7 +1309,11 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
                       hitSlop={8}
                       style={styles.lookChipClose}
                     >
-                      <Icon name="close" size={12} color={colors.textMuted} />
+                      <Icon
+                        name="close"
+                        size={12}
+                        color={active ? colors.primary : colors.textMuted}
+                      />
                     </Pressable>
                   </View>
                 );
@@ -1080,7 +1329,11 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
             bittasi, to'q karta ichida (avatar rasmi ustida ham o'qiladi).
           */}
           {stageStatus ? (
-            <View style={styles.overlay} pointerEvents="none">
+            <View
+              style={styles.overlay}
+              // Faqat error holatda overlay interaktiv — "Qayta urinish" tugmasi bosilsin
+              pointerEvents={stageStatus.error ? 'box-none' : 'none'}
+            >
               <View style={styles.statusCard}>
                 {stageStatus.error ? (
                   <Icon name="close" size={26} color={colors.danger} />
@@ -1091,9 +1344,24 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
                 <Text style={styles.statusHint} numberOfLines={3}>
                   {stageStatus.hint}
                 </Text>
+                {stageStatus.error ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Qayta urinish"
+                    onPress={refreshScene}
+                    style={({ pressed }) => [
+                      styles.statusRetry,
+                      pressed && { opacity: 0.7 },
+                    ]}
+                  >
+                    <Icon name="reset" size={16} color={colors.textOnPrimary} />
+                    <Text style={styles.statusRetryText}>Qayta urinish</Text>
+                  </Pressable>
+                ) : null}
               </View>
             </View>
           ) : null}
+        </View>
         </View>
 
         {/*
@@ -1102,7 +1370,19 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
           tanlagan, kategoriya tanlash ortiqcha — tasma faqat Look
           kiyimlari bilan to'lgan va boshqa narsalar chalg'itmasin.
         */}
+        <View style={styles.selectorPanel}>
         {inLookMode ? null : (
+        <>
+        <View style={styles.sectionHeading}>
+          <View style={styles.sectionHeadingTitle}>
+            <Icon name="looks" size={20} color={colors.primary} />
+            <Text style={styles.sectionHeadingText}>Kategoriya</Text>
+          </View>
+          <Pressable onPress={() => setTab('all')} style={styles.sectionHeadingAction}>
+            <Text style={styles.sectionHeadingActionText}>Barchasi</Text>
+            <Icon name="next" size={16} color={colors.primary} />
+          </Pressable>
+        </View>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -1121,20 +1401,13 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
                 onPress={() => setTab(item.category)}
                 style={[styles.tab, active && styles.tabActive]}
               >
-                {active ? (
-                  <LinearGradient
-                    colors={['rgba(139,92,246,0.34)', 'rgba(76,42,158,0.18)']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={StyleSheet.absoluteFill}
-                    pointerEvents="none"
-                  />
-                ) : null}
+                {/* Atelier: faol tabda binafsha gradient yo'q — faqat chegara
+                    va primarySoft fon aktiv holatni ko'rsatadi */}
                 <View style={[styles.tabIcon, active && styles.tabIconActive]}>
                   <Icon
                     name={item.icon}
                     size={14}
-                    color={active ? colors.accent : colors.textMuted}
+                    color={active ? colors.textOnPrimary : colors.textMuted}
                   />
                 </View>
                 <Text numberOfLines={1} style={[styles.tabText, active && styles.tabTextActive]}>
@@ -1146,6 +1419,7 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
             );
           })}
         </ScrollView>
+        </>
         )}
 
         {/*
@@ -1165,6 +1439,13 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
         ro'yxat qaytadan so'raladi. Qayta bosilsa — bekor bo'ladi.
       */}
         {inLookMode ? null : (
+        <>
+        <View style={styles.sectionHeading}>
+          <View style={styles.sectionHeadingTitle}>
+            <Icon name="filter" size={20} color={colors.primary} />
+            <Text style={styles.sectionHeadingText}>Uslub</Text>
+          </View>
+        </View>
         <View style={styles.styleRowWrap}>
           <View style={styles.styleRow}>
             {GARMENT_STYLES.map((item) => {
@@ -1179,7 +1460,7 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
                   onPress={() => setStyleFilter((value) => (value === item ? null : item))}
                   style={[styles.styleChip, active && styles.styleChipActive]}
                 >
-                  <Text style={[styles.styleChipText, active && { color: colors.text }]}>
+                  <Text style={[styles.styleChipText, active && styles.styleChipTextActive]}>
                     {STYLE_LABEL[item]}
                   </Text>
                 </Pressable>
@@ -1187,9 +1468,32 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
             })}
           </View>
         </View>
+        </>
         )}
+        </View>
 
         <View style={styles.bottom}>
+          <View style={styles.sectionHeading}>
+            <View style={styles.sectionHeadingTitle}>
+              <Icon name="profile" size={20} color={colors.primary} />
+              <Text style={styles.sectionHeadingText}>Modellar</Text>
+            </View>
+            <Pressable style={styles.sectionHeadingAction}>
+              <Text style={styles.sectionHeadingActionText}>Barchasini ko‘rish</Text>
+              <Icon name="next" size={16} color={colors.primary} />
+            </Pressable>
+          </View>
+          {/*
+            Interaktsiyani ko'rsatuvchi qisqa chip — birinchi marta kirayotgan
+            foydalanuvchi (va App Review'chi) uchun model bosish = AI kiyintirish
+            ekanini bir qarashda tushuntiradi.
+          */}
+          <View style={styles.modelHint}>
+            <Icon name="tryon" size={12} color={colors.primary} />
+            <Text style={styles.modelHintText}>
+              Modelni bosing — AI sizni o‘sha kiyimda ko‘rsatadi
+            </Text>
+          </View>
           {limitReached ? (
             <View style={styles.banner}>
               <Icon name="clock" size={14} color={colors.warning} />
@@ -1211,19 +1515,51 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
             kirgan — tasmada faqat o'sha kiyimlar. Boshqa kiyim qo'shish
             uchun filtrdan chiqish kerak.
           */}
+          {lookPinned && browseMode ? (
+            // "Almashtir" — Look saqlangan, lekin strip katalogdan ko'rsatmoqda
+            <View style={styles.lookModeBanner}>
+              <Icon name="looks" size={14} color={colors.accent} />
+              <Text style={styles.lookModeText}>
+                Almashtiring — yangi kiyim bossangiz Look'ga qo'shiladi
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setBrowseMode(false)}
+                hitSlop={8}
+              >
+                <Text style={styles.lookModeAction}>Bekor</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
           {inLookMode ? (
             <>
               <View style={styles.lookModeBanner}>
                 <Icon name="looks" size={14} color={colors.accent} />
                 <Text style={styles.lookModeText}>
-                  Look rejimi — {lookFilter?.length ?? 0} ta kiyim
+                  {/*
+                    Agar katalogdan qaytgan son lookFilter'dan kam bo'lsa,
+                    foydalanuvchi "qani qolganlari" deb hayron qoladi —
+                    aniq sabab ko'rsatamiz: ba'zilari do'kondan olib tashlangan.
+                  */}
+                  {items.length < (lookFilter?.length ?? 0) && !itemsLoading
+                    ? `Look rejimi — ${items.length}/${lookFilter?.length} ta kiyim (qolgani o'chirilgan)`
+                    : `Look rejimi — ${lookFilter?.length ?? 0} ta kiyim`}
                 </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setBrowseMode(true)}
+                  hitSlop={8}
+                  style={{ marginRight: spacing.sm }}
+                >
+                  <Text style={styles.lookModeAction}>Almashtir</Text>
+                </Pressable>
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => setLookFilter(null)}
                   hitSlop={8}
                 >
-                  <Text style={styles.lookModeAction}>Boshqa kiyim tanlash</Text>
+                  <Text style={styles.lookModeAction}>Boshqa</Text>
                 </Pressable>
               </View>
 
@@ -1325,6 +1661,7 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
           ) : (
             <FlatList
               ref={stripRef}
+              style={styles.modelStrip}
               data={items}
               keyExtractor={(item) => item.variantId}
               getItemLayout={(_data, index) => ({
@@ -1361,8 +1698,13 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
                        * tanlardi va pastda alohida «Kiyintirish» tugmasi
                        * bor edi — ya'ni natijani ko'rish uchun ikki
                        * bosish kerak edi.
+                       *
+                       * "Hammasi" tabda tab='all' — bu haqiqiy slot emas,
+                       * shuning uchun kiyimning o'z slotini (item.slot)
+                       * ishlatamiz; aks holda outfit'ga noto'g'ri qatlam
+                       * tushadi va render hech qachon ulanmaydi.
                        */
-                      putOn(tab, item.variantId);
+                      putOn(tab === 'all' ? item.slot : tab, item.variantId);
                     }}
                     style={[styles.thumbWrap, selected && styles.thumbSelected]}
                   >
@@ -1381,6 +1723,17 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
                     {isReady ? (
                       <View style={styles.readyBadge}>
                         <Icon name="authentic" size={10} color={colors.bg} />
+                      </View>
+                    ) : null}
+
+                    {/*
+                     * Bosilgan kiyim ("kiyilgan") pastda yorqin tasma
+                     * bilan belgilanadi — border bilan birga ikkinchi
+                     * signal; nozik tema'da ham bilinadi.
+                     */}
+                    {selected ? (
+                      <View style={styles.thumbWornBadge}>
+                        <Text style={styles.thumbWornBadgeText}>Kiyilgan</Text>
                       </View>
                     ) : null}
                   </Pressable>
@@ -1663,7 +2016,7 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
             </View>
           ) : null}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       <StorePicker
         visible={storeOpen}
@@ -1702,6 +2055,7 @@ function Control({
   danger = false,
   busy = false,
   boxed = false,
+  active = false,
 }: {
   icon: IconName;
   label: string;
@@ -1711,6 +2065,7 @@ function Control({
   busy?: boolean;
   /** To'rtburchak ramka — maketdagi «Remove Clothing» uslubi */
   boxed?: boolean;
+  active?: boolean;
 }): JSX.Element {
   return (
     <Pressable
@@ -1718,12 +2073,13 @@ function Control({
       accessibilityLabel={label}
       onPress={onPress}
       disabled={busy}
-      style={styles.control}
+      style={[styles.control, active && styles.controlWrapActive]}
     >
       <View
         style={[
           styles.controlIcon,
           boxed && styles.controlBoxed,
+          active && styles.controlActive,
           danger && styles.controlDanger,
           busy && styles.controlBusy,
         ]}
@@ -1731,34 +2087,53 @@ function Control({
         {busy ? (
           <ActivityIndicator size="small" color={colors.accent} />
         ) : (
-          <Icon name={icon} size={16} color={danger ? colors.danger : colors.text} />
+          <Icon
+            name={icon}
+            size={14}
+            color={danger ? colors.danger : active ? colors.textOnPrimary : colors.text}
+          />
         )}
       </View>
-      <Text style={[styles.controlLabel, danger && { color: colors.danger }]}>{label}</Text>
+      <Text
+        style={[
+          styles.controlLabel,
+          active && styles.controlLabelActive,
+          danger && { color: colors.danger },
+        ]}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
+  // Atelier: burchak tanlagich — oq segmented control, hair-thin chegara.
+  // Faol segment solid anor, matn cream.
   angleSwitch: {
-    gap: 6,
+    gap: 3,
     padding: 4,
     borderRadius: radius.lg,
-    backgroundColor: 'rgba(10,10,15,0.7)',
+    backgroundColor: 'rgba(255,255,255,0.92)',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.82)',
     alignItems: 'stretch',
+    shadowColor: '#32105B',
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
   },
   angleButton: {
     minWidth: 52,
     paddingVertical: 7,
     paddingHorizontal: spacing.sm,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     alignItems: 'center',
   },
   angleButtonActive: { backgroundColor: colors.primary },
   angleText: { ...text.tiny, color: colors.textMuted, fontFamily: fonts.semibold },
-  angleTextActive: { color: colors.text },
+  angleTextActive: { color: colors.textOnPrimary },
   fallbackNote: {
     ...text.small,
     color: colors.warning,
@@ -1773,13 +2148,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
-    borderRadius: radius.pill,
+    borderRadius: radius.sm,
     backgroundColor: colors.primarySoft,
     borderWidth: 1,
-    borderColor: colors.borderAccent,
+    borderColor: colors.primary,
   },
-  lookModeText: { ...text.tiny, color: colors.text, flex: 1 },
-  lookModeAction: { ...text.tiny, color: colors.accent, fontWeight: '700' },
+  lookModeText: { ...text.small, color: colors.text, flex: 1 },
+  lookModeAction: { ...text.eyebrow, color: colors.primary },
+  // Atelier: "Kiyintirish" tugma — solid anor, kichikroq radius, cream matn
   lookDressButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1788,80 +2164,253 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
     marginBottom: spacing.sm,
     paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: colors.accent,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
   },
-  lookDressButtonDone: { backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.borderAccent },
+  lookDressButtonDone: { backgroundColor: colors.success },
   lookDressButtonError: { backgroundColor: colors.danger },
-  lookDressButtonText: { ...text.bodyMed, color: colors.text, fontWeight: '700' },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.sm },
-  headerButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  lookDressButtonText: { ...text.bodyMed, color: colors.textOnPrimary },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+    backgroundColor: 'transparent',
+  },
+  tryonHero: {
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundColor: '#EEE7F7',
+    paddingBottom: spacing.sm,
+  },
+  tryonHeroBackground: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+  },
+  headerButton: {
+    width: 42,
+    height: 42,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.72)',
+    shadowColor: '#251133',
+    shadowOpacity: 0.14,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 4,
+  },
+  headerPlaceholder: { width: 42, height: 42 },
   headerText: { flex: 1, alignItems: 'center' },
-  headerTitle: { ...text.h3, color: colors.text },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  headerTitle: {
+    ...text.h2,
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(60,20,80,0.55)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
+  },
 
   storeChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingVertical: 2,
+    paddingVertical: 4,
     paddingHorizontal: spacing.sm,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    maxWidth: 200,
+    borderColor: 'rgba(255,255,255,0.74)',
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    maxWidth: 220,
+    marginTop: 2,
   },
   storeChipText: { ...text.tiny, color: colors.textMuted, flexShrink: 1 },
 
   /* Sahna portret nisbatida; sahifa scroll bo'lgani uchun tor ekranlarda siqilmaydi. */
   stage: {
-    aspectRatio: 0.76,
-    margin: spacing.md,
-    borderRadius: radius.lg,
+    aspectRatio: 0.72,
+    marginHorizontal: 0,
+    marginTop: 0,
+    marginBottom: 0,
+    borderRadius: 0,
     overflow: 'hidden',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
   },
-  page: { paddingBottom: spacing.xl },
+  page: { paddingBottom: 148 },
   avatar: { flex: 1 },
   dimmed: { opacity: 0.35 },
+  // Atelier: sahna ustidagi holat kartasi — cream to'ldirish, hair-thin
   statusCard: {
     maxWidth: 280,
     alignItems: 'center',
     gap: spacing.sm,
     paddingVertical: spacing.lg,
     paddingHorizontal: spacing.lg,
-    borderRadius: radius.xl,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: 'rgba(10,10,15,0.82)',
+    backgroundColor: 'rgba(247,242,234,0.94)',
   },
   statusTitle: { ...text.h3, color: colors.text, textAlign: 'center' },
   statusHint: { ...text.small, color: colors.textMuted, textAlign: 'center' },
+  statusRetry: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+    marginTop: spacing.sm,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  statusRetryText: { ...text.bodyMed, color: colors.textOnPrimary, fontWeight: '700' },
 
   /* Chapdagi tik qator — maketdagi Rotate / Zoom / Reset */
   sideControls: {
     position: 'absolute',
-    left: spacing.sm,
-    top: spacing.lg,
-    gap: spacing.lg,
+    left: 8,
+    top: 70,
+    gap: spacing.sm,
+    paddingHorizontal: 6,
+    paddingVertical: 8,
+    borderRadius: radius.xxl,
+    backgroundColor: 'rgba(255,255,255,0.88)',
+    shadowColor: '#4C1D95',
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+    zIndex: 4,
   },
   control: { alignItems: 'center', gap: 2 },
+  controlWrapActive: {
+    minWidth: 58,
+    paddingHorizontal: 4,
+    paddingVertical: 5,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primary,
+  },
+  // Atelier: rasm ustidagi tugma — oq pill, ink ikon, hair-thin
   controlIcon: {
-    width: 40,
-    height: 40,
+    width: 34,
+    height: 34,
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(10, 10, 15, 0.72)',
+    backgroundColor: colors.surface2,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.82)',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#32105B',
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
-  controlBoxed: { borderRadius: radius.md, width: 46, height: 46 },
-  controlDanger: { borderColor: colors.danger, backgroundColor: 'rgba(239, 68, 68, 0.12)' },
-  controlBusy: { borderColor: colors.borderAccent },
-  controlLabel: { ...text.tiny, color: colors.textMuted },
+  controlBoxed: { borderRadius: radius.sm, width: 36, height: 36 },
+  controlActive: { backgroundColor: 'transparent', borderColor: 'rgba(255,255,255,0.22)' },
+  controlDanger: { borderColor: colors.danger, backgroundColor: 'rgba(142,45,34,0.08)' },
+  controlBusy: { borderColor: colors.primary },
+  controlLabel: {
+    ...text.tiny,
+    color: colors.text,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    backgroundColor: 'transparent',
+    overflow: 'hidden',
+  },
+  controlLabelActive: { color: colors.textOnPrimary, fontFamily: fonts.semibold },
+  angleRail: {
+    position: 'absolute',
+    top: 58,
+    right: 10,
+    gap: spacing.sm,
+    padding: 8,
+    borderRadius: radius.xxl,
+    backgroundColor: 'rgba(255,255,255,0.88)',
+    shadowColor: '#4C1D95',
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+    overflow: 'hidden',
+    zIndex: 4,
+  },
+  anglePreview: {
+    width: 54,
+    height: 76,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    backgroundColor: colors.surface2,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  anglePreviewActive: {
+    borderWidth: 2,
+    borderColor: colors.accent,
+    shadowColor: colors.accent,
+    shadowOpacity: 0.42,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  anglePreviewImage: { width: '100%', height: '100%' },
+  rotationNav: {
+    position: 'absolute',
+    alignSelf: 'center',
+    bottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    zIndex: 4,
+  },
+  rotationButton: {
+    width: 42,
+    height: 42,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#4C1D95',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  rotationArrow: { ...text.h3, color: colors.primary, fontFamily: fonts.semibold },
+  rotationText: {
+    ...text.h2,
+    color: colors.primary,
+    fontVariant: ['tabular-nums'],
+    textShadowColor: 'rgba(139,44,255,0.32)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
+  },
+
+  selectorPanel: {
+    marginHorizontal: spacing.sm,
+    marginTop: -10,
+    paddingTop: 6,
+    paddingBottom: 6,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(143,91,210,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    shadowColor: '#5D2B91',
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 9 },
+    elevation: 6,
+    overflow: 'hidden',
+  },
 
   /*
    * O'ngdagi qatlam ko'rsatkichi — nechta kiyim kiyilgani.
@@ -1873,13 +2422,40 @@ const styles = StyleSheet.create({
   // «Lookda» chiplari — sahnaning tepasida, kategoriya nomi + × bilan
   lookChipRow: {
     position: 'absolute',
-    top: spacing.sm,
-    left: spacing.sm,
-    right: spacing.sm + 44 + spacing.sm, // o'ng tomondagi kamera tugmasiga joy
+    top: 12,
+    left: 12,
+    right: 76,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.xs,
   },
+  sectionHeading: {
+    minHeight: 30,
+    marginTop: 2,
+    paddingHorizontal: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sectionHeadingTitle: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  sectionHeadingText: { ...text.h3, fontSize: 18, color: colors.text },
+  sectionHeadingAction: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  sectionHeadingActionText: { ...text.small, color: colors.primary, fontFamily: fonts.semibold },
+  modelHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginHorizontal: spacing.md,
+    marginTop: 0,
+    marginBottom: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primarySoft,
+    alignSelf: 'flex-start',
+  },
+  modelHintText: { ...text.tiny, color: colors.primary, fontFamily: fonts.semibold },
+  // Atelier: "Lookda" chip — oq pill ustida ink matn (rasm ustida bo'ladi)
   lookChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1890,15 +2466,16 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: 'rgba(10,10,15,0.78)',
+    backgroundColor: 'rgba(255,255,255,0.94)',
   },
-  lookChipActive: { borderColor: colors.accent, backgroundColor: colors.primarySoft },
+  lookChipActive: { borderColor: colors.accent, backgroundColor: 'rgba(44,14,68,0.92)' },
   lookChipText: { ...text.tiny, color: colors.text, fontWeight: '600' },
+  lookChipTextActive: { color: colors.textOnPrimary },
   lookChipClose: {
     width: 20,
     height: 20,
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: colors.surface2,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1933,89 +2510,87 @@ const styles = StyleSheet.create({
    * shuni ko'rsatdi). Endi balandlik va yuqori padding kattaroq.
    */
   styleRowWrap: {
-    height: 46,
-    paddingTop: 6,
-    marginBottom: 8,
-    backgroundColor: colors.bg,
+    height: 36,
+    paddingTop: 2,
+    marginBottom: 2,
+    backgroundColor: 'transparent',
     flexShrink: 0,
   },
   styleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    gap: 6,
+    gap: spacing.sm,
   },
   /*
    * ⚠️ BALANDLIK ANIQ BERILADI, padding bilan emas. Gorizontal
    * ScrollView ichida balandligi o'lchanadigan bola yig'ilib qoladi va
    * yozuvi pastdan kesiladi — tablarda ham shu sabab `height: 34` bor.
    */
+  // Atelier: style chip — oq fon, hair-thin, faol anor to'ldirish
   styleChip: {
     flex: 1,
     minWidth: 0,
-    height: 32,
-    paddingHorizontal: 2,
+    height: 28,
+    paddingHorizontal: 6,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(155,150,174,0.16)',
-    backgroundColor: 'rgba(20,18,28,0.76)',
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  styleChipActive: { borderColor: colors.accent, backgroundColor: colors.primarySoft },
-  styleChipText: { ...text.tiny, fontSize: 10, color: colors.textMuted },
+  styleChipActive: { borderColor: colors.primary, backgroundColor: colors.primary },
+  styleChipText: { ...text.tiny, fontSize: 11, color: colors.textMuted },
+  styleChipTextActive: { color: colors.textOnPrimary, fontFamily: fonts.semibold },
   tabsWrap: {
-    height: 74,
-    marginTop: 12,
-    marginBottom: 8,
-    backgroundColor: colors.bg,
+    height: 66,
+    marginTop: 0,
+    marginBottom: 0,
+    backgroundColor: 'transparent',
     flexGrow: 0,
     flexShrink: 0,
   },
   tabs: {
     flexDirection: 'row',
     paddingHorizontal: spacing.md,
-    paddingVertical: 10,
+    paddingVertical: spacing.xs,
     gap: 8,
   },
   /* Ixcham gorizontal tab: ikonka tepada, yozuv pastda — 5-6 tab bir
      ekranga sig'adi, qolganlari surib ko'riladi. */
+  // Atelier: kategoriya tabi — oq quti, hair-thin, faol anor chegara
   tab: {
     width: 68,
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    height: 54,
+    height: 56,
     paddingHorizontal: 6,
     paddingVertical: 6,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(155,150,174,0.14)',
-    backgroundColor: 'rgba(20,18,28,0.78)',
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     overflow: 'hidden',
   },
-  /*
-   * ⚠️ SOYASIZ. Ilgari faol tabda nurlanish uchun `shadowRadius` bor edi;
-   * fon yarim shaffof bo'lgani uchun iOS soya konturini har kadrda qayta
-   * hisoblardi. Qalinroq chegara bir xil «yorqin» taassurot beradi.
-   */
   tabActive: {
-    borderColor: colors.accent,
+    borderColor: colors.primary,
     borderWidth: 1.5,
-    backgroundColor: colors.surface2,
+    backgroundColor: colors.primary,
   },
   tabIcon: {
-    width: 22,
-    height: 22,
-    borderRadius: radius.sm,
+    width: 28,
+    height: 28,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.035)',
+    backgroundColor: colors.bg,
   },
-  tabIconActive: { backgroundColor: 'rgba(192,132,252,0.14)' },
-  tabText: { ...text.tiny, color: colors.textMuted, fontSize: 10, textAlign: 'center' },
-  tabTextActive: { color: colors.text, fontFamily: text.label.fontFamily },
+  tabIconActive: { backgroundColor: 'rgba(255,255,255,0.14)' },
+  tabText: { ...text.tiny, color: colors.textMuted, fontSize: 11, textAlign: 'center' },
+  tabTextActive: { color: colors.textOnPrimary, fontFamily: text.label.fontFamily },
   tabDressed: {
     position: 'absolute',
     top: 4,
@@ -2026,7 +2601,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.success,
   },
 
-  bottom: { paddingTop: spacing.xs, paddingBottom: 96 },
+  bottom: {
+    marginTop: 8,
+    paddingTop: 4,
+    paddingBottom: 160,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    backgroundColor: '#FFFFFF',
+  },
   stripLoader: { marginVertical: spacing.lg },
 
   banner: {
@@ -2036,10 +2618,11 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
     marginTop: spacing.sm,
     padding: spacing.sm,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.warning,
-    backgroundColor: 'rgba(245, 158, 11, 0.10)',
+    // Atelier: ogohlantirish — oxra chegara + yumshoq ichki to'ldirish
+    backgroundColor: 'rgba(184,129,42,0.08)',
   },
   bannerText: { ...text.tiny, color: colors.textMuted, flex: 1 },
 
@@ -2047,21 +2630,55 @@ const styles = StyleSheet.create({
   emptyStrip: { ...text.small, color: colors.textDim, textAlign: 'center' },
   emptyActions: { gap: spacing.sm },
 
-  strip: { paddingHorizontal: spacing.md, paddingVertical: spacing.md, gap: spacing.sm },
+  modelStrip: {
+    flexGrow: 0,
+  },
+  strip: {
+    paddingTop: 4,
+    paddingBottom: 6,
+    paddingHorizontal: spacing.md,
+    gap: 8,
+  },
   thumbWrap: {
-    borderRadius: radius.md,
-    borderWidth: 2,
+    borderRadius: radius.lg,
+    borderWidth: 3,
     borderColor: 'transparent',
     overflow: 'hidden',
   },
-  thumbSelected: { borderColor: colors.accent },
-  thumb: { width: 72, height: 92, backgroundColor: colors.surface2 },
+  /*
+   * ⚠️ TANLANGAN KIYIM AJRALIB TURSIN. Ilgari 2px shaffof border edi —
+   * foydalanuvchi qaysi kiyimni kiyganini ekranda ko'ra olmasdi (strip'da
+   * 3 ta rasm yonma-yon, bosilgani bilinmasdi). 3px brand rangi + yengil
+   * glow + pastda "Kiygandir" badge — uchta signal, birortasi ham o'tib
+   * ketmasin.
+   */
+  thumbSelected: {
+    borderColor: colors.accent,
+    shadowColor: colors.accent,
+    shadowOpacity: 0.55,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 6,
+  },
+  thumbWornBadge: {
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
+    right: 4,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+  },
+  thumbWornBadgeText: { ...text.tiny, color: colors.bg, fontWeight: '700' },
+  thumb: { width: 78, height: 88, backgroundColor: colors.surface2 },
   thumbWorn: { backgroundColor: colors.bg },
+  // Atelier: thumbnail busy overlay — cream shaffof o'rniga dark emas
   thumbBusy: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(10, 10, 15, 0.55)',
+    backgroundColor: 'rgba(247,242,234,0.65)',
   },
   readyBadge: {
     position: 'absolute',
@@ -2075,7 +2692,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  details: { paddingHorizontal: spacing.md, gap: spacing.xs },
+  details: {
+    paddingHorizontal: spacing.md,
+    gap: spacing.xs,
+  },
   title: { ...text.h3, color: colors.text },
 
   /* ── Maketdagi mahsulot sarlavhasi ── */
@@ -2083,6 +2703,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing.md,
+    minHeight: 96,
     marginTop: spacing.md,
   },
   detailsText: { flex: 1, minWidth: 0, gap: 2 },
@@ -2138,9 +2759,10 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
+    // Atelier: ingichka ink chegara, faol anor
+    borderColor: colors.border,
   },
-  colorActive: { borderColor: colors.accent },
+  colorActive: { borderColor: colors.primary },
 
   sizes: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   size: {
