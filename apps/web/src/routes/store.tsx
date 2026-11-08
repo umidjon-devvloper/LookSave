@@ -1,14 +1,19 @@
 import { Link, data } from 'react-router';
 
-import { Card, Icon, ImageFrame, ProductCard } from '@looksave/ui-web';
+import { Icon, ProductCard } from '@looksave/ui-web';
 
 import { ApiError } from '@/api/client';
 import { getStore, getStoreProducts, type ProductCard as Card2 } from '@/api/endpoints';
+import storesStyles from '@/components/stores/stores.css?url';
 import { isLocale, type Locale } from '@/i18n/locale';
 import { distance, money, phone as formatPhone } from '@/lib/format';
 import { guest } from '@/session.server';
 
 import type { Route } from './+types/store';
+
+export function links() {
+  return [{ rel: 'stylesheet', href: storesStyles }];
+}
 
 export function meta({ data: loaded }: Route.MetaArgs): Route.MetaDescriptors {
   if (!loaded?.store) return [{ title: "Do'kon — LookSave" }];
@@ -44,53 +49,172 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
 }
 
+const DAYS = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];
+
 export default function Store({ loaderData }: Route.ComponentProps): JSX.Element {
   const { locale, store, products } = loaderData;
   const away = distance(store.distanceM ?? null);
+  const letter = store.name.trim().charAt(0).toUpperCase() || '?';
 
   return (
-    <div className="shell-wide section-y">
-      <ImageFrame src={store.logoUrl} alt={store.name} ratio="16/9" className="max-h-80" />
+    <div className="store-detail shell-wide pb-[clamp(4rem,8vw,7rem)]">
+      {/* ── Muqova ── */}
+      <div className="store-detail-cover">
+        {store.coverUrl ? (
+          <img src={store.coverUrl} alt="" />
+        ) : (
+          <div
+            style={{
+              width: '100%',
+              height: '100%',
+              background:
+                'linear-gradient(135deg, #a926ff 0%, #7516e7 40%, #4b176c 100%)',
+            }}
+            aria-hidden="true"
+          />
+        )}
+        <div className="store-detail-cover-overlay" />
 
-      <header className="mt-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-h1 font-bold">{store.name}</h1>
-          <p className="mt-2 flex items-center gap-2 text-small">
-            <span className={store.isOpen ? 'text-success' : 'text-dim'}>
-              {store.isOpen ? 'Ochiq' : 'Yopiq'}
-            </span>
-            {away ? <span className="text-dim">· {away}</span> : null}
-          </p>
+        {store.isOpen ? (
+          <span className="store-detail-cover-chip" style={{ color: '#22c55e' }}>
+            Ochiq
+          </span>
+        ) : (
+          <span className="store-detail-cover-chip" style={{ color: '#ef4444' }}>
+            Yopiq
+          </span>
+        )}
+
+        <button type="button" className="store-detail-cover-fav" aria-label="Sevimlilarga qo'shish">
+          <Icon name="favorite" size={20} />
+        </button>
+      </div>
+
+      {/* ── Shapka: logo + nom + amallar ── */}
+      <div className="store-detail-header">
+        <div className={`store-detail-logo${store.logoUrl ? '' : ' -letter'}`}>
+          {store.logoUrl ? <img src={store.logoUrl} alt="" /> : letter}
         </div>
 
-        {store.phone ? (
-          <Card className="flex items-center gap-2 px-4 py-3">
-            <Icon name="chat" size={16} className="text-brand" />
-            <a href={`tel:${store.phone}`} className="text-body hover:text-brand">
-              {formatPhone(store.phone)}
+        <div className="store-detail-head-info">
+          <h1 className="store-detail-name">
+            {store.name}
+            <span className="store-detail-check" aria-label="Rasmiy do'kon">
+              ✓
+            </span>
+          </h1>
+
+          <div className="store-detail-metarow">
+            <span className={store.isOpen ? 'pill -open' : 'pill -closed'}>
+              <Icon name="clock" size={14} />
+              {store.isOpen
+                ? store.closesAt
+                  ? `${store.closesAt} gacha`
+                  : 'Ochiq'
+                : store.opensAt
+                  ? `${store.opensAt} da ochiladi`
+                  : 'Yopiq'}
+            </span>
+            {away ? (
+              <span className="pill">
+                <Icon name="location" size={14} />
+                {away}
+              </span>
+            ) : null}
+            {store.productCount > 0 ? (
+              <span className="pill">
+                <Icon name="hanger" size={14} />
+                {store.productCount} mahsulot
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="store-detail-head-actions">
+          {store.phone ? (
+            <a href={`tel:${store.phone}`} className="-primary">
+              <Icon name="chat" size={16} />
+              Bog'lanish
             </a>
-          </Card>
-        ) : null}
-      </header>
+          ) : null}
+          <button type="button">
+            <Icon name="favorite" size={16} />
+            Sevimli
+          </button>
+        </div>
+      </div>
 
-      {store.description ? (
-        <p className="mt-4 max-w-[68ch] text-body leading-relaxed text-muted-foreground">
-          {store.description}
-        </p>
-      ) : null}
+      {/* ── Asosiy tanasi: tavsif + yon ustun ── */}
+      <div className="store-detail-body">
+        <div className="flex flex-col gap-6">
+          {store.description ? (
+            <div className="store-detail-card">
+              <h2>
+                <span className="ico">
+                  <Icon name="authentic" size={14} />
+                </span>
+                Do'kon haqida
+              </h2>
+              <p className="store-detail-text">{store.description}</p>
+            </div>
+          ) : null}
 
-      {store.address ? (
-        <p className="mt-3 flex items-start gap-2 text-small text-dim">
-          <Icon name="stores" size={15} className="mt-0.5" />
-          {store.address}
-        </p>
-      ) : null}
+          {store.hours && store.hours.length > 0 ? (
+            <div className="store-detail-card">
+              <h2>
+                <span className="ico">
+                  <Icon name="clock" size={14} />
+                </span>
+                Ish vaqti
+              </h2>
+              <div>
+                {store.hours.map((h) => (
+                  <div key={h.day} className="store-detail-info-row">
+                    <span className="label">{DAYS[h.day] ?? `Kun ${h.day}`}</span>
+                    <span className="value">
+                      {h.open && h.close ? `${h.open} — ${h.close}` : 'Yopiq'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
 
+        <div className="flex flex-col gap-6">
+          <div className="store-detail-card">
+            <h2>
+              <span className="ico">
+                <Icon name="location" size={14} />
+              </span>
+              Aloqa
+            </h2>
+            {store.address ? (
+              <div className="store-detail-info-row">
+                <span className="label">Manzil</span>
+                <span className="value">{store.address}</span>
+              </div>
+            ) : null}
+            {store.phone ? (
+              <div className="store-detail-info-row">
+                <span className="label">Telefon</span>
+                <a href={`tel:${store.phone}`} className="value text-[#9d12ec]">
+                  {formatPhone(store.phone)}
+                </a>
+              </div>
+            ) : null}
+            {!store.address && !store.phone ? (
+              <p className="store-detail-text">Aloqa ma'lumotlari ko'rsatilmagan.</p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Mahsulotlar ── */}
       {products.length > 0 ? (
-        <section className="mt-12">
-          <h2 className="text-label font-semibold uppercase text-foreground">Mahsulotlar</h2>
-
-          <div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:gap-6">
+        <section className="store-detail-products">
+          <h2>Mahsulotlar</h2>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:gap-6">
             {products.map((product) => (
               <ProductCard
                 key={product.id}
