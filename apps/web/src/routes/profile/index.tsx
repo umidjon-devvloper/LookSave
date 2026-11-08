@@ -62,27 +62,9 @@ export default function ProfileIndex({ actionData }: Route.ComponentProps): JSX.
         />
 
         <div className="relative z-10">
-          {/* Right: 3D card floating absolutely — does not compress the form */}
-          <div className="absolute end-0 top-0 hidden lg:block">
-            <div className="relative w-52 xl:w-64">
-              <div
-                aria-hidden="true"
-                className="absolute inset-0 rounded-full bg-primary/25 blur-[60px]"
-              />
-              <img
-                src="/img/profile-hero-card.jpg"
-                alt="Profile security card"
-                className="relative w-full object-contain drop-shadow-[0_10px_40px_rgba(139,92,246,0.5)] mix-blend-lighten pointer-events-none select-none"
-                style={{
-                  maskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)',
-                  WebkitMaskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)',
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Left: Form — padded on the right so it doesn't overlap the card */}
-          <div className="lg:pe-56 xl:pe-72">
+          {/* Form — oldin o'ngda 3D kartochka turardi, yorug' temaga mos emas,
+              olib tashlandi; shu bois padding ham tiklandi. */}
+          <div>
             <p className="text-xs font-bold uppercase tracking-widest text-brand">Ma'lumotlar</p>
 
             <Form method="post" className="mt-5 flex flex-col gap-5">
