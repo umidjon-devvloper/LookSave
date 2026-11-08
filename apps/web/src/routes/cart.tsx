@@ -11,11 +11,16 @@ import {
   type CartGroup,
   type CartItem,
 } from '@/api/endpoints';
+import profileStyles from '@/components/profile/profile-page.css?url';
 import { isLocale, type Locale } from '@/i18n/locale';
 import { money } from '@/lib/format';
 import { auth, requireAuth } from '@/session.server';
 
 import type { Route } from './+types/cart';
+
+export function links() {
+  return [{ rel: 'stylesheet', href: profileStyles }];
+}
 
 /**
  * Savat — docs/15-sayt-dizayn.md §4.7.
@@ -87,7 +92,7 @@ export default function CartPage({ loaderData }: Route.ComponentProps): JSX.Elem
 
   if (!signedIn) {
     return (
-      <div className="shell py-24">
+      <div className="cart-page shell py-24">
         <div className="flex flex-col items-center gap-6 text-center">
           <CartArt size={170} />
           <div>
@@ -106,7 +111,7 @@ export default function CartPage({ loaderData }: Route.ComponentProps): JSX.Elem
 
   if (!cart || cart.stores.length === 0) {
     return (
-      <div className="shell py-24">
+      <div className="cart-page shell py-24">
         <div className="flex flex-col items-center gap-6 text-center">
           {/* Ilovadagi bo'sh savat rasmi bilan AYNAN bir xil (§4.7) */}
           <CartArt size={190} />
@@ -129,7 +134,7 @@ export default function CartPage({ loaderData }: Route.ComponentProps): JSX.Elem
   const mixedCurrency = new Set(cart.stores.map((group) => group.store.currency)).size > 1;
 
   return (
-    <div className="shell-wide section-y">
+    <div className="cart-page shell-wide section-y">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-h1 font-bold">Savat</h1>

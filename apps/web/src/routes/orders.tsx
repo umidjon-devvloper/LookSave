@@ -4,11 +4,16 @@ import { Button, Card, Empty, ImageFrame, StatusBadge } from '@looksave/ui-web';
 
 import { getOrders, type OrderCard, type OrderTab } from '@/api/endpoints';
 import { Deadline } from '@/components/Deadline';
+import profileStyles from '@/components/profile/profile-page.css?url';
 import { isLocale, type Locale } from '@/i18n/locale';
 import { money } from '@/lib/format';
 import { requireAuth } from '@/session.server';
 
 import type { Route } from './+types/orders';
+
+export function links() {
+  return [{ rel: 'stylesheet', href: profileStyles }];
+}
 
 /**
  * Buyurtmalar ro'yxati — docs/15-sayt-dizayn.md §4.9.
@@ -64,7 +69,7 @@ export default function Orders({ loaderData }: Route.ComponentProps): JSX.Elemen
   const empty = EMPTY_HINT[tab];
 
   return (
-    <div className="shell section-y">
+    <div className="orders-page shell section-y">
       <h1 className="text-h1 font-bold">Buyurtmalar</h1>
 
       <div className="mt-6 flex gap-2" role="tablist">
