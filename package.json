@@ -57,6 +57,7 @@
     "@tensorflow/tfjs-converter": "^4.22.0",
     "@tensorflow/tfjs-core": "^4.22.0",
     "@vladmandic/human": "^3.3.6",
-    "patch-package": "^8.0.1"
+    "patch-package": "^8.0.1",
+    "three": "^0.166.1"
   }
 }
