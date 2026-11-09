@@ -1022,14 +1022,14 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
    * birinchi kiyimda qotib qolardi. Endi tabni 'all' bo'lsa, outfit
    * ichidagi ENG TEPA qatlamning variantId'si bilan topamiz.
    */
-  const topOutfitLayer = useMemo(
-    () =>
-      outfit.reduce<typeof outfit[number] | null>(
-        (best, cur) =>
-          !best || layerRank(cur.category) > layerRank(best.category) ? cur : best,
-        null,
-      ),
-    [outfit],
+  /*
+   * ⚠️ useMemo EMAS — early return'lardan keyin bo'lgani uchun hooks
+   * tartibini buzadi (React hooks rules). Oddiy reduce, outfit qisqa.
+   */
+  const topOutfitLayer = outfit.reduce<typeof outfit[number] | null>(
+    (best, cur) =>
+      !best || layerRank(cur.category) > layerRank(best.category) ? cur : best,
+    null,
   );
   const wornHere =
     outfit.find((layer) => layer.category === tab)?.variantId
