@@ -70,7 +70,7 @@ const TRYON_HERO_STRETCH = 560;
  * fon rasm bilan qoplanadi. Ilgari 72% edi — manikenning oyoq qismi fon rasm
  * chegarasidan pastda qolib, oq fon ko'rinib qolar edi.
  */
-const TRYON_HERO_HEIGHT = Math.round(Dimensions.get('window').height * 0.78);
+const TRYON_HERO_HEIGHT = Math.round(Dimensions.get('window').height * 0.85);
 
 /**
  * AI kiyintirish — ekranning butun tanasi.
@@ -637,6 +637,36 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
     staleTime: 30_000,
   });
 
+  /**
+   * HAR qanday base ustidagi renderlarni oladi — faqat aniq (variantId+base)
+   * emas, variantId uchun mavjud BARCHASI.
+   *
+   * ⚠️ NEGA (2026-11-09, so'rovga ko'ra): foydalanuvchi oldin kiyintirgan
+   * kiyimni qayta bosganda u YANA navbatga ketardi, chunki stripBase
+   * o'zgargan bo'lishi mumkin (masalan boshqa kiyim bosilgandan keyin).
+   * Server allaqachon tayyor renderni keshdan qaytaradi, lekin mijoz tomoni
+   * uni "topa olmay" qayta mutatsiya yuborardi — ekranda "generating..."
+   * ko'rinardi. Endi avval HAR qanday render borligini tekshiramiz.
+   */
+  const anyStripRenders = useQuery({
+    queryKey: ['renders', 'strip-any', angle, stripIds.join(',')],
+    queryFn: () => getRenders(stripIds, angle, null, 'all'),
+    enabled: ready && stripIds.length > 0,
+    staleTime: 30_000,
+  });
+
+  /** variantId → eng yangi tayyor render (har qanday base) */
+  const anyRenderByVariant = useMemo(() => {
+    const map = new Map<string, TryonRender>();
+    for (const render of anyStripRenders.data ?? []) {
+      if (render.status !== 'ready') continue;
+      const existing = map.get(render.variantId);
+      // `getRenders` created_at DESC — birinchisi eng yangisi
+      if (!existing) map.set(render.variantId, render);
+    }
+    return map;
+  }, [anyStripRenders.data]);
+
   /*
    * ⚠️ QOLGAN BURCHAKLARNI OLDINDAN YUKLASH (2026-09-25). Uch burchak
    * (old · yon · orqa) bitta varaqdan keladi va bir vaqtda tayyor bo'ladi.
@@ -815,13 +845,22 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
     const pending = nextPending(resolved);
     if (!pending) return;
 
+    /*
+     * ⚠️ QAYTA SO'RAMAYMIZ (2026-11-09, so'rovga ko'ra). Agar shu kiyim
+     * uchun biror tayyor render bor bo'lsa (hatto boshqa base ustida),
+     * yangi generatsiyaga chiqarmaymiz — foydalanuvchi oldin yasagan
+     * natijasini qayta ko'ryapti xolos. Server baribir keshdan qaytarardi,
+     * lekin mutatsiya ketgani uchun UI "pending" ko'rsatardi.
+     */
+    if (anyRenderByVariant.has(pending.variantId)) return;
+
     const key = `one:${angle}:${renderKey(pending.variantId, pending.baseRenderId)}`;
     if (asked.current.has(key)) return;
     asked.current.add(key);
 
     // `single` bog'liqliklarda yo'q — yuqoridagi bilan bir xil sabab
     single.mutate({ variantId: pending.variantId, base: pending.baseRenderId });
-  }, [ready, angle, resolved, limitReached, isDemoAccount]);
+  }, [ready, angle, resolved, limitReached, isDemoAccount, anyRenderByVariant]);
 
   /*
    * ⚠️ AVTOMATIK KIYINTIRISH YO'Q (2026-09-25, so'rovga ko'ra). Turkum
@@ -946,8 +985,15 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
    *
    * Endi u faqat KO'RINAYOTGAN narsa kutilayotganda chiqadi.
    */
+  /*
+   * ⚠️ FALLBACK — HAR QANDAY BAZADAGI RENDER (2026-11-09).
+   * Avval faqat aniq base'ga mos render topilardi. Endi topilmasa, shu
+   * variant uchun MAVJUD bo'lgan har qanday renderga tushadi — foydalanuvchi
+   * oldin kiyintirgan natijani qayta ko'radi, "pending" indicator yo'q.
+   */
   const shown = current
     ? renderIndex.get(renderKey(current.variantId, stripBase.baseRenderId))
+      ?? anyRenderByVariant.get(current.variantId)
     : undefined;
 
   /*
@@ -1725,7 +1771,8 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
               renderItem={({ item }) => {
                 // Faqat haqiqatan KIYILGANI ajratiladi — kiyim bosilmaguncha hech biri
                 const selected = item.variantId === wornHere;
-                const render = renderIndex.get(renderKey(item.variantId, stripBase.baseRenderId));
+                const render = renderIndex.get(renderKey(item.variantId, stripBase.baseRenderId))
+                  ?? anyRenderByVariant.get(item.variantId);
                 const isReady = render?.status === 'ready';
                 const busy = render?.status === 'pending' || render?.status === 'processing';
 
