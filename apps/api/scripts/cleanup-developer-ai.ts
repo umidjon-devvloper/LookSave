@@ -40,31 +40,34 @@ async function main(): Promise<void> {
   console.log('\nO\'chiriladigan tasklar (status bo\'yicha):');
   for (const row of taskCount.rows) console.log(`  ${row.status}: ${row.count}`);
 
-  // 2. Bog'liq tryon_renders va ularning URL'lari
+  // 2. Bog'liq tryon_renders — parent VA bolalari (base_render_id orqali).
+  // Multi-angle rendering 023 migratsiyasida qo'shilgan: har burchak alohida
+  // qator, child.base_render_id → parent.id. CASCADE o'chiradi, lekin URL'larni
+  // oldindan to'plab olishimiz kerak R2 uchun.
   const renders = await pool.query<{
     id: string;
     result_url: string | null;
     cutout_url: string | null;
-    angles: Record<string, string> | null;
+    angle: string;
   }>(
-    `SELECT r.id, r.result_url, r.cutout_url, r.angles
+    `SELECT r.id, r.result_url, r.cutout_url, r.angle
        FROM tryon_renders r
-       JOIN developer_ai_tasks t
-         ON t.kind = 'render' AND t.ref_id = r.id
-      WHERE t.status IN ('done', 'failed', 'expired')`,
+      WHERE r.id IN (
+              SELECT t.ref_id FROM developer_ai_tasks t
+               WHERE t.kind = 'render' AND t.status IN ('done', 'failed', 'expired')
+            )
+         OR r.base_render_id IN (
+              SELECT t.ref_id FROM developer_ai_tasks t
+               WHERE t.kind = 'render' AND t.status IN ('done', 'failed', 'expired')
+            )`,
   );
-  console.log(`\nO'chiriladigan tryon_renders: ${renders.rowCount}`);
+  console.log(`\nO'chiriladigan tryon_renders (barcha burchaklar): ${renders.rowCount}`);
 
   // 3. R2'dagi fayllarni to'plash
   const urls = new Set<string>();
   for (const row of renders.rows) {
     if (row.result_url) urls.add(row.result_url);
     if (row.cutout_url) urls.add(row.cutout_url);
-    if (row.angles) {
-      for (const u of Object.values(row.angles)) {
-        if (u) urls.add(u);
-      }
-    }
   }
   console.log(`O'chiriladigan R2 fayllari: ${urls.size}`);
 
