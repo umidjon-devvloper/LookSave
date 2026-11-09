@@ -1,7 +1,6 @@
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { WebView } from 'react-native-webview';
 
 import { Icon } from '../src/components/Icon';
 import { Screen } from '../src/components/ui';
@@ -16,15 +15,30 @@ import { colors, radius, spacing, text } from '../src/theme/tokens';
  * va foydalanuvchi "try on" bossa, kameradan surat olib virtual tryon
  * chiqaradi (real vaqt).
  *
- * `domain=looksave.uz` parametri widget serveriga qaysi hisob
- * ulanayotganini aytadi — hisob sozlamalarida `looksave.uz` ruxsat
- * berilgan bo'lishi kerak.
+ * ⚠️ NATIVE MODUL YUKLASH — LAZY (2026-11-09).
  *
- * ⚠️ NATIVE MODUL: `react-native-webview` Expo autolinking bilan avtomatik
- * qo'shiladi, lekin faqat prebuild+rebuild'dan keyin native binary'ga
- * kiradi. Agar dev-client build'da modul yo'q bo'lsa — yangi EAS build.
+ * `react-native-webview` Expo Go'da yo'q (custom native module) — top-level
+ * `import` bilan yuklasak, butun ekran yuklanganda crash. Yechim:
+ * require'ni try/catch bilan runtime'da chaqiramiz. Module topilmasa,
+ * tashqi brauzerda ochish tugmasini ko'rsatamiz (fallback).
+ *
+ * Dev build (EAS build) ichida WebView bor — shu yerda to'liq ishlaydi.
  */
 const ANYWEAR_URL = 'https://looksave.uz/anywear.html';
+
+// Lazy load: faqat module borligini tekshiramiz, component yuklanadigan
+// paytda top-level crash emas.
+function loadWebView(): React.ComponentType<Record<string, unknown>> | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require('react-native-webview') as { WebView?: React.ComponentType<Record<string, unknown>> };
+    return mod.WebView ?? null;
+  } catch {
+    return null;
+  }
+}
+
+const WebViewComponent = loadWebView();
 
 export default function AnywearScreen(): JSX.Element {
   const insets = useSafeAreaInsets();
@@ -49,22 +63,40 @@ export default function AnywearScreen(): JSX.Element {
         <View style={styles.backBtn} />
       </View>
 
-      <WebView
-        source={{ uri: ANYWEAR_URL }}
-        originWhitelist={['*']}
-        javaScriptEnabled
-        domStorageEnabled
-        allowsInlineMediaPlayback
-        mediaPlaybackRequiresUserAction={false}
-        style={styles.web}
-        startInLoadingState
-        renderLoading={() => (
-          <View style={styles.loading}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Widget yuklanmoqda…</Text>
-          </View>
-        )}
-      />
+      {WebViewComponent ? (
+        <WebViewComponent
+          source={{ uri: ANYWEAR_URL }}
+          originWhitelist={['*']}
+          javaScriptEnabled
+          domStorageEnabled
+          allowsInlineMediaPlayback
+          mediaPlaybackRequiresUserAction={false}
+          style={styles.web}
+          startInLoadingState
+          renderLoading={() => (
+            <View style={styles.loading}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.loadingText}>Widget yuklanmoqda…</Text>
+            </View>
+          )}
+        />
+      ) : (
+        <View style={styles.fallback}>
+          <Icon name="tryon" size={48} color={colors.primary} />
+          <Text style={styles.fallbackTitle}>Real-time widget</Text>
+          <Text style={styles.fallbackHint}>
+            Bu ekran dev build ichida ochiladi. Expo Go'da WebView qo'llab-quvvatlanmaydi —
+            widget'ni brauzerda oching.
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void Linking.openURL(ANYWEAR_URL)}
+            style={({ pressed }) => [styles.openBtn, pressed && { opacity: 0.8 }]}
+          >
+            <Text style={styles.openBtnText}>Brauzerda ochish</Text>
+          </Pressable>
+        </View>
+      )}
     </Screen>
   );
 }
@@ -101,4 +133,21 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   loadingText: { ...text.small, color: colors.textMuted },
+  fallback: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.lg,
+    gap: spacing.md,
+    backgroundColor: '#FBF7FF',
+  },
+  fallbackTitle: { ...text.h3, color: colors.text, fontWeight: '700' },
+  fallbackHint: { ...text.small, color: colors.textMuted, textAlign: 'center', maxWidth: 320 },
+  openBtn: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+  },
+  openBtnText: { ...text.bodyMed, color: '#FFFFFF', fontWeight: '700' },
 });
