@@ -59,9 +59,37 @@ async function isAlreadyTransparent(input: Buffer): Promise<boolean> {
     const alphaAt = (x: number, y: number): number =>
       data[(y * info.width + x) * info.channels + 3] ?? 255;
     const last = info.width - 1;
-    return [alphaAt(0, 0), alphaAt(last, 0), alphaAt(0, last), alphaAt(last, last)].every(
-      (alpha) => alpha < 16,
-    );
+    const mid = Math.floor(info.width / 2);
+
+    /*
+     * ⚠️ BURCHAK + CHET + MARKAZ. Avval faqat 4 burchak tekshirilardi.
+     * `storeAvatarSheet` yon'dan kesgan panellarda burchaklar shaffof,
+     * lekin figura o'rtasida QORA fon qolgan — shunday hol "shaffof"
+     * deb hisoblanib, kesim o'tkazib yuborilardi. Endi 4 burchak PLUS
+     * 4 chetkning o'rtasi shaffof bo'lishi KERAK, VA markaziy piksel
+     * opaque bo'lsa — bu haqiqiy shaffof emas, kesim qilish kerak.
+     */
+    const corners = [
+      alphaAt(0, 0),
+      alphaAt(last, 0),
+      alphaAt(0, last),
+      alphaAt(last, last),
+    ];
+    const edges = [
+      alphaAt(mid, 0),
+      alphaAt(mid, last),
+      alphaAt(0, mid),
+      alphaAt(last, mid),
+    ];
+    const center = alphaAt(mid, mid);
+
+    const bordersTransparent = [...corners, ...edges].every((a) => a < 16);
+    const centerOpaque = center > 200;
+
+    // Burchak + chetlar shaffof VA markaz opak bo'lsa — haqiqiy shaffof PNG
+    // (figurali, atrofi bo'sh). Markaz ham shaffof bo'lsa — bu bo'sh rasm
+    // yoki anomaliya, kesim qilib ham foydasi yo'q.
+    return bordersTransparent && centerOpaque;
   } catch {
     return false;
   }
@@ -185,14 +213,16 @@ export async function makeCutout(url: string, prefix: string): Promise<string | 
     const contentType = response.headers.get('content-type') ?? 'image/jpeg';
 
     /*
-     * ⚠️ FONI ALLAQACHON SHAFFOF BO'LSA — MODEL ISHLATILMAYDI (2026-09-25).
-     * Avatar va kiyintirish natijalari endi shaffof PNG bo'lib keladi.
-     * Fon olib tashlash modeli (ONNX) 1 GB li VPS'da CPU va xotirani
-     * butunlay egallab, shu paytdagi so'rovlarni 504 ga tushirardi —
-     * kengaytmaning kiyim navbati aynan shundan yiqilgan. Tayyor
-     * shaffof surat kesimning o'zi, uni qayta ishlashning ma'nosi yo'q.
+     * ⚠️ `isAlreadyTransparent` SHORTCUT OLIB TASHLANDI (2026-11-09).
+     *
+     * Avval 4 burchak shaffof bo'lsa — rasm tayyor deb o'tkazib yuborilardi.
+     * Operator rejimida `storeAvatarSheet` yon'dan kesgan panellarning
+     * BURCHAKLARI SHAFFOF (bo'sh joy), lekin markazda FIGURA + QORA FON
+     * qolgan. Shortcut shu holda ham `true` qaytarib, kesim qilmasdan
+     * asl URL'ni cutout_url deb yozardi — mijoz ekranida qora to'rtburchak
+     * ko'rinardi. Endi har doim Python/imgly ishlaydi — shaffof PNG ham
+     * qayta ishlanadi, bu ~2-3s qo'shadi lekin natija har doim toza.
      */
-    if (await isAlreadyTransparent(input)) return url;
 
     /*
      * ⚠️ PYTHON CUTOUT XIZMATI AVVAL (2026-11-09).
