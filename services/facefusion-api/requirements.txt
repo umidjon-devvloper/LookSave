@@ -1,0 +1,13 @@
+# Faqat API wrapper uchun qo'shimcha paketlar.
+# Facefusion o'z venv'ida (/app/facefusion/.venv) alohida o'rnatiladi.
+# API wrapper esa tizim python'ida ishlaydi.
+
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9
+
+# Cutout uchun:
+rembg==2.0.61
+onnxruntime>=1.17.0,<1.30.0
+Pillow>=10.3.0
+numpy>=1.24.0
