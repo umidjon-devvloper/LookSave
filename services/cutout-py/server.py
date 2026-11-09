@@ -45,6 +45,7 @@ MODELLAR (yangidan eskigacha, sifatdan tezgacha):
 
 from __future__ import annotations
 
+import gc
 import io
 import logging
 import os
@@ -64,8 +65,8 @@ log = logging.getLogger("cutout")
 # chekka sifati deyarli bir xil (odam/kiyim uchun mukammal yetarli).
 MODEL = os.environ.get("CUTOUT_MODEL", "birefnet-general-lite")
 
-# Kiruvchi rasmda maksimum o'lcham. 1600 — balanslangan sifat/tezlik/RAM.
-MAX_SIDE = int(os.environ.get("CUTOUT_MAX_SIDE", "1600"))
+# Kiruvchi rasmda maksimum o'lcham. 1280 — kamroq RAM, mobile ekran uchun yetarli.
+MAX_SIDE = int(os.environ.get("CUTOUT_MAX_SIDE", "1280"))
 
 # Alfa normallashtirish — chekkadagi yarim-shaffof piksellar aniqlashtirish uchun.
 # LO past (10) → fon qoldig'i to'liq o'chadi; HI yuqori (245) → figura ichi to'liq opak.
@@ -73,8 +74,11 @@ ALPHA_LO = int(os.environ.get("CUTOUT_ALPHA_LO", "10"))
 ALPHA_HI = int(os.environ.get("CUTOUT_ALPHA_HI", "245"))
 
 # Alpha matting — rembg ichidagi professional chekka tozalash.
-# Bu birefnet bilan birga ishlatilsa rasm studiodan chiqqandek bo'ladi.
-ALPHA_MATTING = os.environ.get("CUTOUT_ALPHA_MATTING", "1") == "1"
+# ⚠️ DEFAULT O'CHIQ (2026-11-09) — pymatting juda ko'p RAM yeydi (matrix
+# operations rasm o'lchamiga mutanosib). VPS 8GB RAM'da 96% to'lar edi.
+# Flood-fill + edge erode + edge blur allaqachon toza chekka beradi.
+# Yoqish kerak bo'lsa: CUTOUT_ALPHA_MATTING=1
+ALPHA_MATTING = os.environ.get("CUTOUT_ALPHA_MATTING", "0") == "1"
 AM_FG = int(os.environ.get("CUTOUT_AM_FG", "240"))  # 0-255, qancha yuqori — figura ichi shuncha ishonchli
 AM_BG = int(os.environ.get("CUTOUT_AM_BG", "10"))   # 0-255, qancha past — fon shuncha ishonchli
 AM_ERODE = int(os.environ.get("CUTOUT_AM_ERODE", "10"))  # chekka erozi (px) — halo olib tashlash
@@ -274,9 +278,15 @@ def cutout() -> Any:
         out = _soften_alpha(out)
         buf = io.BytesIO()
         out.save(buf, format="PNG", optimize=True, compress_level=6)
-        return Response(buf.getvalue(), mimetype="image/png")
+        result = buf.getvalue()
+        # ⚠️ RAM tozalash: har bir cutout tugashi bilan oraliq bufferlarni
+        # darhol bo'shatish (Python GC o'z-o'zidan sekinroq bo'shatadi).
+        del out, src, buf
+        gc.collect()
+        return Response(result, mimetype="image/png")
     except Exception as exc:  # noqa: BLE001
         log.exception("cutout muvaffaqiyatsiz")
+        gc.collect()
         return jsonify({"error": str(exc)}), 500
 
 
