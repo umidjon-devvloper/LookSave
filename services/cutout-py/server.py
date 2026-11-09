@@ -78,8 +78,8 @@ AM_FG = int(os.environ.get("CUTOUT_AM_FG", "240"))  # 0-255, qancha yuqori — f
 AM_BG = int(os.environ.get("CUTOUT_AM_BG", "10"))   # 0-255, qancha past — fon shuncha ishonchli
 AM_ERODE = int(os.environ.get("CUTOUT_AM_ERODE", "10"))  # chekka erozi (px) — halo olib tashlash
 
-# Chekka silliqlash — Gauss blur radiusi (0 = o'chirilgan, 0.5-1.5 — tabiiy)
-EDGE_BLUR = float(os.environ.get("CUTOUT_EDGE_BLUR", "1.2"))
+# Chekka silliqlash — Gauss blur radiusi (0 = o'chirilgan, 0.5-1.5 — tabiiy, 2+ yumshoq)
+EDGE_BLUR = float(os.environ.get("CUTOUT_EDGE_BLUR", "2.0"))
 
 # Qora fonni oldindan olib tashlash (operator panellari uchun).
 # 0 = o'chirilgan. 70 — antialiasing kulrang piksellarini ham ushlaydi.

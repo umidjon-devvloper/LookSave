@@ -119,12 +119,29 @@ export async function faceSwap(input: FaceSwapInput): Promise<Buffer> {
       const origMeta = await sharp(input.target).metadata();
       if (origMeta.hasAlpha) {
         const origAlpha = await sharp(input.target).ensureAlpha().extractChannel('alpha').toBuffer();
+        /*
+         * ⚠️ RESIZE KERNEL: default lanczos3 chekkalarda "ringing" artefaktini
+         * qoldiradi — alpha bilan birlashtirilsa qo'pol pikselli ko'rinadi.
+         * Lanczos2 — joyida muvozanat: aniq lekin silliq.
+         */
         const swappedRgb = await sharp(swapped)
           .removeAlpha()
-          .resize(origMeta.width, origMeta.height, { fit: 'fill' })
+          .resize(origMeta.width, origMeta.height, {
+            fit: 'fill',
+            kernel: sharp.kernel.lanczos2,
+          })
+          .toBuffer();
+        /*
+         * Alpha kanalni yengil blur qilib birlashtiramiz — chekka yengil
+         * antialias bo'ladi, pixelli stupeni yo'qoladi.
+         */
+        const smoothAlpha = await sharp(origAlpha, {
+          raw: { width: origMeta.width!, height: origMeta.height!, channels: 1 },
+        })
+          .blur(0.8)
           .toBuffer();
         const combined = await sharp(swappedRgb)
-          .joinChannel(origAlpha)
+          .joinChannel(smoothAlpha)
           .png({ compressionLevel: 9 })
           .toBuffer();
         return combined;
