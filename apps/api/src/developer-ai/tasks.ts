@@ -763,14 +763,19 @@ function secondsSince(date: Date): number {
  */
 async function attachRenderCutout(renderId: string, url: string): Promise<void> {
   try {
+    logger.info({ renderId, url: url.slice(0, 80) }, 'cutout: attach boshlanmoqda');
     const cutout = await makeCutout(url, 'tryon');
-    if (!cutout) return;
+    if (!cutout) {
+      logger.warn({ renderId }, 'cutout: makeCutout null qaytardi');
+      return;
+    }
+    logger.info({ renderId, cutout: cutout.slice(0, 80) }, 'cutout: PNG tayyor, UPDATE');
 
-    await pool.query(`UPDATE tryon_renders SET cutout_url = $2 WHERE id = $1 AND result_url = $3`, [
-      renderId,
-      cutout,
-      url,
-    ]);
+    const res = await pool.query(
+      `UPDATE tryon_renders SET cutout_url = $2 WHERE id = $1 AND result_url = $3`,
+      [renderId, cutout, url],
+    );
+    logger.info({ renderId, rowCount: res.rowCount }, 'cutout: UPDATE tugadi');
   } catch (err) {
     logger.warn({ err, renderId }, 'developer_ai: kiyintirish kesimi yasalmadi');
   }
