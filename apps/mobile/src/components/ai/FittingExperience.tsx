@@ -721,6 +721,29 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
     if (ff?.imageUrl) void Image.prefetch(ff.imageUrl);
   }, [ready, outfit, outfitRenders.data, frontFallback.data]);
 
+  /*
+   * ⚠️ STRIP TAYYOR RENDERLARINI OLDINDAN YUKLASH (2026-11-09).
+   *
+   * Thumbnail bosilganda sahnada rasm darhol almashsin — foydalanuvchi
+   * svayp qilib tez-tez boshqa manikenlarni ko'rmoqchi bo'ladi. Oldin
+   * faqat joriy komplektning yuqori qatlami prefetch qilinardi, strip
+   * ichidagi tayyor kiyimlar esa bosilgandan keyin tarmoqdan kelishini
+   * kutar edi (~1-2s "sekin kelmoqda" holati).
+   */
+  useEffect(() => {
+    if (!ready) return;
+    for (const render of stripRenders.data ?? []) {
+      if (render.status !== 'ready') continue;
+      if (render.cutoutUrl) void Image.prefetch(render.cutoutUrl);
+      if (render.imageUrl) void Image.prefetch(render.imageUrl);
+    }
+    for (const render of anyStripRenders.data ?? []) {
+      if (render.status !== 'ready') continue;
+      if (render.cutoutUrl) void Image.prefetch(render.cutoutUrl);
+      if (render.imageUrl) void Image.prefetch(render.imageUrl);
+    }
+  }, [ready, stripRenders.data, anyStripRenders.data]);
+
   /**
    * Ikkala ro'yxat bitta jadvalga qo'shiladi.
    *
@@ -1790,8 +1813,18 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
               contentContainerStyle={styles.strip}
               removeClippedSubviews
               renderItem={({ item }) => {
-                // Faqat haqiqatan KIYILGANI ajratiladi — kiyim bosilmaguncha hech biri
-                const selected = item.variantId === wornHere;
+                /*
+                 * KIYILGANNI ANIQLASH (2026-11-09 — "Hammasi" tabi tuzatildi).
+                 *
+                 * ⚠️ `wornHere` faqat joriy tab'ning slotiga qaraydi — tab='all'
+                 * bo'lsa hech narsa topmaydi va hech biri belgilanmasdan qolar
+                 * edi. Endi ANY outfit layer'da shu variantId bor bo'lsa,
+                 * uni belgilaymiz — foydalanuvchi qaysi manikenni kiyib
+                 * turganini doim ko'radi.
+                 */
+                const selected =
+                  item.variantId === wornHere
+                  || outfit.some((layer) => layer.variantId === item.variantId);
                 const render = renderIndex.get(renderKey(item.variantId, stripBase.baseRenderId))
                   ?? anyRenderByVariant.get(item.variantId);
                 const isReady = render?.status === 'ready';
