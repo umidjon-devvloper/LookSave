@@ -25,7 +25,7 @@ RUN git clone https://github.com/facefusion/facefusion.git /app/facefusion && \
     cd /app/facefusion && \
     python -m venv .venv && \
     .venv/bin/pip install --upgrade pip && \
-    .venv/bin/python install.py --onnxruntime cpu --skip-conda
+    .venv/bin/python install.py --onnxruntime default --skip-conda
 
 # 2) API wrapper paketlari (tizim python'da)
 COPY requirements.txt /app/requirements.txt
