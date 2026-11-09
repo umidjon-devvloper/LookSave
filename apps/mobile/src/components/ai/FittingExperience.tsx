@@ -995,8 +995,28 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
 
   const failed = resolved.find((layer) => layer.render?.status === 'failed');
 
-  /* ── Joriy turkumdagi tanlov ── */
-  const wornHere = outfit.find((layer) => layer.category === tab)?.variantId ?? null;
+  /* ── Joriy turkumdagi tanlov ──
+   *
+   * ⚠️ "HAMMASI" TABINING TUZATISHI (2026-11-09).
+   *
+   * tab='all' uchun `wornHere` har doim null edi (outfit layer'da
+   * `category='all'` yo'q), natijada `current` har doim `items[0]`
+   * bo'lib qolar edi — foydalanuvchi boshqa kiyimni bossa ham sahna
+   * birinchi kiyimda qotib qolardi. Endi tabni 'all' bo'lsa, outfit
+   * ichidagi ENG TEPA qatlamning variantId'si bilan topamiz.
+   */
+  const topOutfitLayer = useMemo(
+    () =>
+      outfit.reduce<typeof outfit[number] | null>(
+        (best, cur) =>
+          !best || layerRank(cur.category) > layerRank(best.category) ? cur : best,
+        null,
+      ),
+    [outfit],
+  );
+  const wornHere =
+    outfit.find((layer) => layer.category === tab)?.variantId
+    ?? (tab === 'all' ? topOutfitLayer?.variantId ?? null : null);
   const current: Garment | undefined =
     items.find((item) => item.variantId === wornHere) ?? items[0];
 
