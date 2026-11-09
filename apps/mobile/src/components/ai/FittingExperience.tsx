@@ -798,7 +798,11 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
   const single = useMutation({
     mutationFn: (input: { variantId: string; base: string | null }) =>
       requestRender(input.variantId, angle, input.base),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['renders'] }),
+    onMutate: () => setNotice('AI yuborildi — kiyintiryapti…'),
+    onSuccess: () => {
+      setNotice(null);
+      void queryClient.invalidateQueries({ queryKey: ['renders'] });
+    },
     onError: (err) => {
       if (err instanceof ApiError && err.code === 'RATE_LIMITED') setLimitReached(true);
       else setNotice(err instanceof ApiError ? err.message : 'Kiyintirib bo`lmadi');
@@ -1840,7 +1844,8 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
 
                     {busy ? (
                       <View style={styles.thumbBusy}>
-                        <ActivityIndicator size="small" color={colors.accent} />
+                        <ActivityIndicator size="large" color={colors.accent} />
+                        <Text style={styles.thumbBusyLabel}>AI kiyintiryapti</Text>
                       </View>
                     ) : null}
 
@@ -2800,11 +2805,13 @@ const styles = StyleSheet.create({
    */
   thumbSelected: {
     borderColor: colors.accent,
+    borderWidth: 4,
     shadowColor: colors.accent,
-    shadowOpacity: 0.55,
-    shadowRadius: 10,
+    shadowOpacity: 0.85,
+    shadowRadius: 14,
     shadowOffset: { width: 0, height: 0 },
-    elevation: 6,
+    elevation: 10,
+    transform: [{ scale: 1.06 }],
   },
   thumbWornBadge: {
     position: 'absolute',
@@ -2819,12 +2826,21 @@ const styles = StyleSheet.create({
   thumbWornBadgeText: { ...text.tiny, color: colors.bg, fontWeight: '700' },
   thumb: { width: 78, height: 88, backgroundColor: colors.surface2 },
   thumbWorn: { backgroundColor: colors.bg },
-  // Atelier: thumbnail busy overlay — cream shaffof o'rniga dark emas
+  // Thumbnail busy overlay — kiyim bosilgani aniq ko'rinsin
   thumbBusy: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(247,242,234,0.65)',
+    gap: 4,
+    backgroundColor: 'rgba(247,242,234,0.88)',
+  },
+  thumbBusyLabel: {
+    ...text.tiny,
+    color: colors.accent,
+    fontWeight: '800',
+    fontSize: 9,
+    textAlign: 'center',
+    paddingHorizontal: 4,
   },
   readyBadge: {
     position: 'absolute',
