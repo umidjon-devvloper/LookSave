@@ -187,6 +187,75 @@ export interface PromptInput {
   gender?: string | null;
 }
 
+/**
+ * Ko'p kiyimni BIR CHAQIRUVDA kiyintirish (2026-11-06, Look rejimi).
+ *
+ * Mijoz 3-4 kiyim tanlab «Birdaniga kiyintir» bossa, serverda bitta GPT
+ * chaqiruvi bilan hammasi birga kiyintiriladi — ketma-ket zanjir o'rniga.
+ * Natija: ~15 soniya, barcha kiyimlar bitta kadrda, bir xil nur va poza.
+ *
+ * Fayl tartibi: [gavda, kiyim1, kiyim2, …, kiyimN, (yuz)]. Promptda har
+ * qaysi kiyim qaysi slotga qo'yilishi aniq aytilganidan tartib raqamlari
+ * modelga MUHIM — fayllarni shu tartibda biriktiring.
+ */
+export interface OutfitPromptInput {
+  garments: Array<{ kind: GarmentKind }>;
+  face: boolean;
+  measurements: Measurements;
+  gender?: string | null;
+}
+
+export function buildOutfitTryonPrompt(input: OutfitPromptInput): string {
+  const person = input.gender === 'female' ? 'woman' : input.gender === 'male' ? 'man' : 'person';
+
+  const lines = [
+    `Full-body fashion portrait of the same ${person} as in the reference image, photorealistic.`,
+    POSE,
+    faceLock(false),
+    'Do NOT redraw or re-generate the face in any way — only the clothing changes.',
+  ];
+
+  const fit = fitLine(input.measurements);
+  if (fit) lines.push(fit);
+
+  /*
+   * Har kiyim o'z joyida: second image -> upper body, third -> lower body, ...
+   * Model `PLACEMENT` tavsifi bilan aniq joyini biladi.
+   */
+  const ORDINAL = ['second', 'third', 'fourth', 'fifth', 'sixth', 'seventh'];
+  input.garments.forEach((g, i) => {
+    const n = ORDINAL[i] ?? `${i + 2}nd`;
+    lines.push(
+      `The ${n} image is a garment to wear ${PLACEMENT[g.kind]}.`,
+      `Reproduce it EXACTLY: same colour, pattern, cut, details and any printed artwork — it is a real product being sold.`,
+    );
+  });
+
+  lines.push(
+    'Put ALL of these garments on the person at the SAME TIME, as a complete outfit.',
+    'Each garment goes to its own body region — do not substitute, merge or drop any of them.',
+    'Respect natural layering: lower garments are visible where the upper ones do not cover; footwear sits on the feet; outerwear sits on top of tops.',
+  );
+
+  if (input.face) {
+    const n = ORDINAL[input.garments.length] ?? `${input.garments.length + 2}nd`;
+    lines.push(
+      `The ${n} image is a close-up reference of the same person's face.`,
+      'Match the facial features, bone structure and skin tone to that reference exactly.',
+      `Use the ${n} image ONLY for the face — take the body and build from the first image.`,
+      'If the face in the first image looks AI-generated or slightly off, restore the true identity from that reference.',
+    );
+  }
+
+  lines.push(
+    SCENE,
+    'Natural fabric folds and realistic fit. No text or watermarks added.',
+    'Output exactly one image. Do not ask questions, do not explain, do not offer alternatives.',
+  );
+
+  return lines.join(' ');
+}
+
 export function buildTryonPrompt(input: PromptInput): string {
   const person = input.gender === 'female' ? 'woman' : input.gender === 'male' ? 'man' : 'person';
 
@@ -415,6 +484,61 @@ function bodyLine(person: string, measurements: Measurements): string {
         'these proportions; the garment must drape as their true size would, neither tighter ' +
         'nor looser.'
     : `BODY: a ${person} of average, healthy build.`;
+}
+
+/**
+ * Kiyintirish — YAKKA OLD KO'RINISH (2026-11-09, so'rovga ko'ra).
+ *
+ * Ilgari uch panelli varaq (old/yon/orqa) edi — endi faqat bitta old
+ * portret. Image tartibi varaq bilan bir xil: 3 yuz nusxa + kiyim.
+ * Chiqadigan rasm esa YAKKA vertikal portret.
+ *
+ * ⚠️ POZA VA YUZ QULFI SHEETDAN KO'CHIRILGAN — natija bir xil bo'lsin.
+ */
+export function buildFrontTryonPrompt(input: {
+  kind: GarmentKind;
+  measurements: Measurements;
+  gender?: string | null;
+}): string {
+  const person = input.gender === 'female' ? 'woman' : input.gender === 'male' ? 'man' : 'person';
+
+  return [
+    '🔒 YOU ARE EDITING A PHOTO OF A REAL PERSON. The first three images are the SAME face of ' +
+      'that real person — I attached it three times because this is the single most important ' +
+      'input. If the output face does not match these reference images, you have FAILED the task.',
+
+    'Create ONE single image: a photorealistic full-body FRONT view fashion portrait of ONE real person.',
+
+    'IMAGES: the FIRST, SECOND and THIRD images are the SAME face of the person — three copies of ' +
+      'the one and only reference you may use for identity. CROP the face from these images and ' +
+      'PASTE it unchanged into the portrait. The FOURTH image is the garment being sold.',
+
+    faceLock(false),
+
+    bodyLine(person, input.measurements),
+
+    `CLOTHING: dress the person in the garment from the FOURTH image, ` +
+      `${PLACEMENT[input.kind]}. Reproduce it EXACTLY: same colour, same pattern, same cut, ` +
+      `same details and any printed artwork — it is a real product being sold. ${REST_OF_OUTFIT[input.kind]}`,
+
+    `POSE: ${SHEET_FRONT}`,
+
+    'FRAMING: vertical full-body shot — entire body from head to feet with a little space above ' +
+      'the head and below the feet, nothing cropped. Eye-level camera, straight on, no tilt. ' +
+      'The figure fills about 85-90% of the image height, centered horizontally.',
+
+    'BACKGROUND: fully TRANSPARENT PNG with an alpha channel — no background colour, no floor, ' +
+      'no wall, no ground shadow, no text or watermarks. Soft even studio lighting, natural ' +
+      'fabric folds, photorealistic.',
+
+    /* ⚠️ FAQAT BRAUZER VERSIYASIDA — chat interfeysi matn bilan javob bermasin. */
+    'Output exactly ONE image — the single front portrait — vertical portrait PNG with transparency. ' +
+      'Do not ask questions, do not explain, do not offer alternatives.',
+
+    '🔒 REMEMBER: the face MUST be the exact face from image 1. If the final face differs in ANY ' +
+      'feature, the output is wrong. Do not idealise, do not beautify, do not "improve" — copy ' +
+      'image 1 as-is.',
+  ].join('\n\n');
 }
 
 export function buildTryonSheetPrompt(input: {

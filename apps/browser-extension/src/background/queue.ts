@@ -8,6 +8,7 @@ import {
 } from '../shared/messages';
 import {
   buildAvatarRequestPrompt,
+  buildFrontTryonPrompt,
   buildTryonSheetPrompt,
   isSheetPrompt,
   garmentKindForSlot,
@@ -323,6 +324,24 @@ async function assertSheet(image: { mime: string; base64: string }): Promise<voi
   }
 }
 
+/**
+ * Natija vertikal portretmi.
+ *
+ * ⚠️ NEGA (2026-11-09): kiyintirish endi uch panelli varaq emas, faqat
+ * OLD ko'rinishli bitta portret (so'rovga ko'ra). Agar GPT noto'g'ri
+ * bo'lak qaytarsa (landshaft yoki matn), bu tekshir uni to'xtatadi.
+ */
+async function assertPortrait(image: { mime: string; base64: string }): Promise<void> {
+  const bitmap = await createImageBitmap(fromBase64(image.base64, image.mime));
+  const { width, height } = bitmap;
+  bitmap.close();
+  if (height < width * 1.1) {
+    throw new Error(
+      `AI vertikal portret qaytarmadi (${width}×${height}) — natija yuborilmadi, ishni qayta boshlang`,
+    );
+  }
+}
+
 async function runRenderTask(task: Task, tabId: number, adapter: AdapterId): Promise<void> {
   const garment = task.previews['garmentImageUrl'];
   /*
@@ -350,9 +369,13 @@ async function runRenderTask(task: Task, tabId: number, adapter: AdapterId): Pro
   const slot = typeof task.payload['slot'] === 'string' ? task.payload['slot'] : '';
 
   /*
-   * ⚠️ FAQAT YUZ + KIYIM (2026-09-25). Gavda surati berilmaydi — gavda
-   * o'lchamlardan quriladi, natija esa uch panelli varaq (server uni
-   * old/yon/orqa qilib bo'ladi).
+   * ⚠️ FAQAT OLD KO'RINISH (2026-11-09, so'rovga ko'ra). Ilgari uch
+   * panelli varaq (old/yon/orqa) edi — endi faqat bitta old portret.
+   * Yon va orqa foydalanuvchi uchun ortiqcha, token ham tejaladi.
+   *
+   * Server `storeAvatarSheet` yakka portretni ko'rsa `null` qaytaradi,
+   * natija `result_url` bo'lib bemalol yoziladi — alohida moslashtirish
+   * shart emas.
    *
    * ⚠️ YUZ UCH MARTA BIRIKTIRILADI (2026-10-30). Modellar ko'p marta
    * ko'rilgan rasmga ko'proq e'tibor beradi — bitta yuz surati bilan model
@@ -367,14 +390,14 @@ async function runRenderTask(task: Task, tabId: number, adapter: AdapterId): Pro
     { name: 'garment.jpg', ...(await fetchImage(garment)) },
   ];
 
-  const prompt = buildTryonSheetPrompt({
+  const prompt = buildFrontTryonPrompt({
     kind: garmentKindForSlot(slot),
     measurements: measurementsOf(task.payload),
     gender: genderOf(task.payload),
   });
 
   const result = await generate(tabId, adapter, prompt, images);
-  await assertSheet(result);
+  await assertPortrait(result);
   await completeTask(task.id, await store(result));
 
   status = { ...status, finished: status.finished + 1, current: null };
