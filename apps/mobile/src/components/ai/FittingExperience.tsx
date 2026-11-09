@@ -1657,10 +1657,7 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
               <Icon name="profile" size={20} color={colors.primary} />
               <Text style={styles.sectionHeadingText}>Modellar</Text>
             </View>
-            <Pressable style={styles.sectionHeadingAction}>
-              <Text style={styles.sectionHeadingActionText}>Barchasini ko‘rish</Text>
-              <Icon name="next" size={16} color={colors.primary} />
-            </Pressable>
+            {/* "Barchasini ko'rish" tugmasi olib tashlandi (2026-11-09). */}
           </View>
           {/*
             Interaktsiyani ko'rsatuvchi qisqa chip — birinchi marta kirayotgan
