@@ -51,8 +51,9 @@ import os
 from functools import lru_cache
 from typing import Any
 
+import numpy as np
 from flask import Flask, Response, jsonify, request
-from PIL import Image, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter
 from rembg import new_session, remove
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -79,6 +80,11 @@ AM_ERODE = int(os.environ.get("CUTOUT_AM_ERODE", "10"))  # chekka erozi (px) —
 
 # Chekka silliqlash — Gauss blur radiusi (0 = o'chirilgan, 0.5-1.5 — tabiiy)
 EDGE_BLUR = float(os.environ.get("CUTOUT_EDGE_BLUR", "0.6"))
+
+# Qora fonni oldindan olib tashlash (operator panellari uchun).
+# 0 = o'chirilgan, 30 = standart (RGB har bir kanal < 30 bo'lsa qora deb hisoblanadi).
+# Flood-fill chetdan boshlanadi — ichkaridagi qora (masalan qora kiyim) saqlanadi.
+BLACK_BG_THRESHOLD = int(os.environ.get("CUTOUT_BLACK_BG_THRESHOLD", "30"))
 
 
 @lru_cache(maxsize=1)
@@ -113,6 +119,69 @@ def _soften_alpha(image: Image.Image) -> Image.Image:
     return image
 
 
+def _strip_edge_black(image: Image.Image, threshold: int = 30) -> Image.Image:
+    """
+    Chetdan boshlab qora fonni shaffof qiladi.
+
+    ⚠️ NEGA KERAK:
+    Operator paneli sheet'dan kesilgan panellarda chet qismlar shaffof,
+    lekin figura atrofidagi joy QORA (rgba(0,0,0,255)). birefnet bu
+    qora figurani ba'zan "fon" emas "ob'ekt" deb o'tkazib yuboradi,
+    ayniqsa qiyin konturlar bo'lsa.
+
+    Yechim: birefnet'dan oldin chetdan 4 burchakdan flood-fill qilamiz —
+    chetga bog'langan qora piksel = fon, shaffof bo'ladi. Ichkaridagi
+    qora (qora kiyim, soch) saqlanadi — bog'lanmagan.
+
+    Algoritm:
+      1. RGBA'ga o'tkazamiz
+      2. "Qora" mask: har 3 kanal < threshold
+      3. PIL floodfill 4 burchakdan — faqat chetga bog'langan qora
+      4. Shu zonaning alpha'sini 0 qilamiz
+    """
+    if threshold <= 0:
+        return image
+    if image.mode != "RGBA":
+        image = image.convert("RGBA")
+
+    arr = np.array(image)
+    rgb = arr[..., :3]
+    # Qora mask: hamma kanal thresholddan past
+    is_black = np.all(rgb < threshold, axis=2)
+
+    # PIL floodfill'siz, numpy orqali oddiy BFS katta rasm uchun sekin.
+    # Yechim: morphological flood — scipy.ndimage'siz, tez numpy orqali:
+    # chet pikselalarni boshlang'ich qilib, qora maskdan quraman.
+    h, w = is_black.shape
+    seed = np.zeros_like(is_black, dtype=bool)
+    seed[0, :] = is_black[0, :]
+    seed[-1, :] = is_black[-1, :]
+    seed[:, 0] = is_black[:, 0]
+    seed[:, -1] = is_black[:, -1]
+
+    # Tez flood-fill: bir necha marta "dilate" qilib, qora mask bilan kesib ketamiz.
+    # Konvergensiyaga 10-30 iteratsiya kifoya (odatda).
+    prev_count = -1
+    for _ in range(200):
+        count = seed.sum()
+        if count == prev_count:
+            break
+        prev_count = count
+        # 4-connected dilation: numpy roll + or
+        expanded = (
+            seed
+            | np.roll(seed, 1, axis=0)
+            | np.roll(seed, -1, axis=0)
+            | np.roll(seed, 1, axis=1)
+            | np.roll(seed, -1, axis=1)
+        )
+        seed = expanded & is_black
+
+    # seed — chetga bog'langan qora. Alpha'sini 0 ga tushiramiz.
+    arr[..., 3] = np.where(seed, 0, arr[..., 3])
+    return Image.fromarray(arr, mode="RGBA")
+
+
 def _downscale(image: Image.Image) -> Image.Image:
     """MAX_SIDE dan katta bo'lsa nisbatni saqlab kichraytirish."""
     w, h = image.size
@@ -131,7 +200,15 @@ app = Flask(__name__)
 def health() -> Any:
     try:
         session()
-        return jsonify({"ok": True, "model": MODEL, "alpha_matting": ALPHA_MATTING, "max_side": MAX_SIDE})
+        s = session()
+        return jsonify({
+            "ok": True,
+            "model": MODEL,
+            "session_class": type(s).__name__,
+            "alpha_matting": ALPHA_MATTING,
+            "max_side": MAX_SIDE,
+            "black_bg_threshold": BLACK_BG_THRESHOLD,
+        })
     except Exception as exc:  # noqa: BLE001
         return jsonify({"ok": False, "error": str(exc)}), 500
 
@@ -149,6 +226,12 @@ def cutout() -> Any:
         if src.mode not in ("RGB", "RGBA"):
             src = src.convert("RGBA")
         src = _downscale(src)
+
+        # Operator panellari uchun: chetdan boshlab qora fonni shaffof qilish.
+        # Bu birefnet'ga "mana, bu fon" deb ishora beradi — model qora fonni
+        # oson tashlab, faqat figurani ushlab qoladi.
+        if BLACK_BG_THRESHOLD > 0:
+            src = _strip_edge_black(src, threshold=BLACK_BG_THRESHOLD)
 
         # Alpha matting — rembg ichidagi premium chekka tozalash.
         # birefnet bilan birga ishlatilsa: chekka silliq, halo yo'q, fon qoldig'i yo'q.
