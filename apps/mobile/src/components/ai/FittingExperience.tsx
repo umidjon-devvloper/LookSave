@@ -1038,6 +1038,14 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
    * mantiqsiz — rendering boshqa biror slotda ketayotgan bo'lsa ham,
    * foydalanuvchining hozirgi diqqat markazidan tashqarida.
    */
+  /*
+   * Hozirgi bosilgan kiyim uchun mutatsiya ketayotgan bo'lsa ham "ishda" deymiz —
+   * server javob kelgunicha overlay darrov chiqadi (2026-11-09).
+   */
+  const currentInFlight = Boolean(
+    single.isPending && current && single.variables?.variantId === current.variantId,
+  );
+
   const currentWorking = Boolean(
     // Demo akkauntda AI chaqiruvi yo'q — "AI kiyintirmoqda" overlay ham chiqmaydi
     // "Hammasi" tabida ham overlay kerak: mijoz model bosib tanlasa holatni biladi
@@ -1047,22 +1055,31 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
     !outfitAllReady &&
     shown?.status !== 'ready' &&
     !(limitReached && !shown) &&
-    (!stripBase.ready || !shown || shown.status === 'pending' || shown.status === 'processing'),
+    (currentInFlight
+      || !stripBase.ready
+      || !shown
+      || shown.status === 'pending'
+      || shown.status === 'processing'),
   );
 
   /** Sahnadagi yagona holat — ustuvorlik: kiyintirish → sahnaga tayyorlash → xato */
   const stageStatus: { title: string; hint: string; error?: boolean } | null = currentWorking
-    ? !worn
+    ? currentInFlight
       ? {
-          title: '5 daqiqada tayyor bo`ladi',
-          hint: 'Kiyim ustingizga kiydirilyapti — ilovani ochiq qoldiring',
+          title: 'AI yuborildi — kiyintiryapti…',
+          hint: 'Server qabul qildi, kiyim ustingizga tayyorlanmoqda',
         }
-      : {
-          title: 'AI kiyintirmoqda…',
-          hint: stripBase.ready
-            ? 'Har qatlam 10–20 soniya'
-            : 'Avval ostidagi qatlam tayyorlanmoqda',
-        }
+      : !worn
+        ? {
+            title: '5 daqiqada tayyor bo`ladi',
+            hint: 'Kiyim ustingizga kiydirilyapti — ilovani ochiq qoldiring',
+          }
+        : {
+            title: 'AI kiyintirmoqda…',
+            hint: stripBase.ready
+              ? 'Har qatlam 10–20 soniya'
+              : 'Avval ostidagi qatlam tayyorlanmoqda',
+          }
     : preparingCutout
       ? { title: 'Avatar sahnaga tayyorlanmoqda…', hint: 'Fon bir marta ajratiladi' }
       : failed
@@ -1774,7 +1791,18 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
                 const render = renderIndex.get(renderKey(item.variantId, stripBase.baseRenderId))
                   ?? anyRenderByVariant.get(item.variantId);
                 const isReady = render?.status === 'ready';
-                const busy = render?.status === 'pending' || render?.status === 'processing';
+                /*
+                 * ⚠️ MUTATSIYA KETAYOTGANI HAM "BUSY" (2026-11-09).
+                 * Foydalanuvchi bossa, server javob kelgunicha ham thumbnail
+                 * belgilansin — "bosdim lekin hech narsa bo'lmadi" hissi
+                 * yo'qoladi. `single.variables.variantId` — hozir qaysi kiyim
+                 * mutatsiyada ekani.
+                 */
+                const inFlight =
+                  single.isPending && single.variables?.variantId === item.variantId;
+                const busy = inFlight
+                  || render?.status === 'pending'
+                  || render?.status === 'processing';
 
                 /*
                  * ⚠️ KARTOCHKADA ODAMNING O'ZI — MAKETDAGI ASOSIY FIKR.
