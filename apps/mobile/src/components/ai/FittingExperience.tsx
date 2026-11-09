@@ -1369,15 +1369,17 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
         <View style={styles.stage}>
           <AvatarStage
             zoomed={zoomed}
-            imageUrl={preparingCutout ? null : (worn?.imageUrl ?? wornFront?.imageUrl ?? baseImage)}
             /*
-             * AvatarStage cutoutUrl'ni imageUrl'dan oldin ishlatadi.
-             * worn yoki wornFront bor bo'lsa, ularning cutoutUrl'i YO'Q bo'lsa `null`
-             * qaytaramiz — stale baseCutout (avatar'ning asl surati) oldinga chiqib
-             * yangi kiyilgan rasmni bekitib qo'ymasin.
+             * ⚠️ `shown` FALLBACK (2026-11-09). Asosiy sahna faqat chain-matched
+             * render emas, variant uchun har qanday mavjud render bilan ham
+             * mos kelsin — thumbnail va sahna sinxron qoladi. Aks holda
+             * foydalanuvchi "Kiyilgan" ni Varsity'da ko'radi, lekin sahnada
+             * eski Tommy Jeans rasm turadi.
              */
+            imageUrl={preparingCutout ? null : (shown?.imageUrl ?? worn?.imageUrl ?? wornFront?.imageUrl ?? baseImage)}
             cutoutUrl={
-              worn ? (worn.cutoutUrl ?? null)
+              shown?.status === 'ready' ? (shown.cutoutUrl ?? null)
+                : worn ? (worn.cutoutUrl ?? null)
                 : wornFront ? (wornFront.cutoutUrl ?? null)
                 : baseCutout
             }
