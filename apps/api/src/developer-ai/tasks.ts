@@ -560,33 +560,50 @@ function sheetError(err: unknown): never {
  * hal qiladi.
  */
 async function applyFaceSwapForOperatorResult(
-  renderId: string,
+  kind: 'render' | 'avatar',
+  refId: string,
   resultUrl: string,
   angles: Record<string, string> | null,
 ): Promise<{ url: string; angles: Record<string, string> | null }> {
-  if (!isFacefusionEnabled()) return { url: resultUrl, angles };
-  // Operator paneli uchun face swap env flag orqali boshqariladi.
-  // Default o'chiq — Facefusion ba'zan yomon natija beradi va GPT yasagan
-  // yuz asl userdan farq qiladi. Yoqish uchun: FACEFUSION_FOR_MANUAL=1
-  if (process.env.FACEFUSION_FOR_MANUAL !== '1') {
-    logger.info({ renderId }, 'operator face swap o\'chiq (FACEFUSION_FOR_MANUAL=1 bilan yoqing)');
+  if (!isFacefusionEnabled()) {
+    logger.info({ refId, kind }, 'facefusion o\'chiq — face swap o\'tkazilmadi');
     return { url: resultUrl, angles };
   }
+
+  /*
+   * ⚠️ FACE REFERENCE QAYERDAN:
+   * - `render` ishi: refId = tryon_renders.id → shu userning face_texture_url/avatar
+   * - `avatar` ishi: refId = profiles.user_id → to'g'ridan-to'g'ri face_texture_url
+   *
+   * ⚠️ `avatar_image_url` FALLBACK EMAS AVATAR ISHIDA — avatar aynan
+   * o'sha payt yasalayapti, eskisini ishlatish mantiqsiz. Faqat
+   * `face_texture_url` (foydalanuvchi selfie yuklagan) kerak.
+   */
+  const faceQuery = kind === 'render'
+    ? {
+        sql: `SELECT COALESCE(p.face_texture_url, p.avatar_image_url) AS face_reference_url,
+                     r.angle
+                FROM tryon_renders r
+                JOIN profiles p ON p.user_id = r.user_id
+               WHERE r.id = $1`,
+        param: refId,
+      }
+    : {
+        sql: `SELECT face_texture_url AS face_reference_url, 'front'::text AS angle
+                FROM profiles WHERE user_id = $1`,
+        param: refId,
+      };
 
   const { rows } = await pool.query<{
     face_reference_url: string | null;
     angle: string;
-  }>(
-    `SELECT COALESCE(p.face_texture_url, p.avatar_image_url) AS face_reference_url,
-            r.angle
-       FROM tryon_renders r
-       JOIN profiles p ON p.user_id = r.user_id
-      WHERE r.id = $1`,
-    [renderId],
-  );
+  }>(faceQuery.sql, [faceQuery.param]);
   const faceReferenceRaw = rows[0]?.face_reference_url;
   const mainAngle = (rows[0]?.angle ?? 'front') as 'front' | 'side' | 'back';
-  if (!faceReferenceRaw) return { url: resultUrl, angles };
+  if (!faceReferenceRaw) {
+    logger.info({ refId, kind }, 'face referens topilmadi — face swap o\'tkazilmadi');
+    return { url: resultUrl, angles };
+  }
 
   const faceReferenceUrl = (await presignRead(faceReferenceRaw)) ?? faceReferenceRaw;
 
@@ -660,13 +677,18 @@ export async function completeTask(
    * Tranzaksiyadan OLDIN qilinadi — ish qulflanib turmasin. Avatar
    * ishida yuz almashtirish o'rinsiz: aynan yuz skanining o'zi.
    */
-  if (pending && pending.kind === 'render') {
+  if (pending) {
     try {
-      const swapped = await applyFaceSwapForOperatorResult(pending.ref_id, resultUrl, angles);
+      const swapped = await applyFaceSwapForOperatorResult(
+        pending.kind,
+        pending.ref_id,
+        resultUrl,
+        angles,
+      );
       finalResultUrl = swapped.url;
       angles = swapped.angles;
     } catch (err) {
-      logger.warn({ err, taskId }, 'operator face swap yiqildi — asl rasm qoladi');
+      logger.warn({ err, taskId, kind: pending.kind }, 'operator face swap yiqildi — asl rasm qoladi');
     }
   }
 
