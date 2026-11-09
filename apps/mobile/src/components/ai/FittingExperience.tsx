@@ -1556,10 +1556,11 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
             <Icon name="looks" size={20} color={colors.primary} />
             <Text style={styles.sectionHeadingText}>Kategoriya</Text>
           </View>
-          <Pressable onPress={() => setTab('all')} style={styles.sectionHeadingAction}>
-            <Text style={styles.sectionHeadingActionText}>Barchasi</Text>
-            <Icon name="next" size={16} color={colors.primary} />
-          </Pressable>
+          {/*
+           * ⚠️ "Barchasi" tugmasi olib tashlandi (2026-11-09).
+           * Tab ro'yxatida "Hammasi" tabi bor — foydalanuvchi uni
+           * to'g'ridan-to'g'ri bosadi, qo'shimcha tugma ortiqcha edi.
+           */}
         </View>
         <ScrollView
           horizontal
