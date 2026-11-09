@@ -18,12 +18,22 @@ ISHGA TUSHIRISH (VPS):
     cd services/cutout-py
     python3 -m venv .venv && source .venv/bin/activate
     pip install -r requirements.txt
-    gunicorn -w 1 -b 127.0.0.1:7801 --timeout 240 --access-logfile - server:app
+    gunicorn -w 1 -b 127.0.0.1:7801 --timeout 240 \
+        --max-requests 20 --max-requests-jitter 5 \
+        --access-logfile - server:app
 
-yoki pm2 bilan (ecosystem.config.cjs ichida):
-    name: 'looksave-cutout', script: 'services/cutout-py/.venv/bin/gunicorn',
-    args: '-w 1 -b 127.0.0.1:7801 --timeout 240 server:app',
-    cwd: 'services/cutout-py'
+⚠️ `--max-requests 20`: worker har 20 so'rovdan keyin qayta tug'iladi.
+Bu ONNX runtime RAM leaki muammosini hal qiladi — buferlar OS ga qaytadi.
+Jitter 5: ko'p worker bir vaqtda qayta ishga tushmasin.
+
+yoki pm2 bilan:
+    pm2 delete looksave-cutout
+    pm2 start services/cutout-py/.venv/bin/gunicorn \
+        --name looksave-cutout --interpreter none \
+        --cwd services/cutout-py -- \
+        -w 1 -b 127.0.0.1:7801 --timeout 240 \
+        --max-requests 20 --max-requests-jitter 5 \
+        --access-logfile - server:app
 
 MODELNI BIRINCHI MAROTABA YUKLASH:
     birefnet-general ~440MB model yuklab oladi (~/.u2net/ ga). Oldindan:
@@ -65,8 +75,9 @@ log = logging.getLogger("cutout")
 # chekka sifati deyarli bir xil (odam/kiyim uchun mukammal yetarli).
 MODEL = os.environ.get("CUTOUT_MODEL", "birefnet-general-lite")
 
-# Kiruvchi rasmda maksimum o'lcham. 1280 — kamroq RAM, mobile ekran uchun yetarli.
-MAX_SIDE = int(os.environ.get("CUTOUT_MAX_SIDE", "1280"))
+# Kiruvchi rasmda maksimum o'lcham. 1024 — mobile ekran uchun yetarli,
+# birefnet ONNX runtime RAM cho'qqisi 2x kamayadi (buffer size nisbati).
+MAX_SIDE = int(os.environ.get("CUTOUT_MAX_SIDE", "1024"))
 
 # Alfa normallashtirish — chekkadagi yarim-shaffof piksellar aniqlashtirish uchun.
 # LO past (10) → fon qoldig'i to'liq o'chadi; HI yuqori (245) → figura ichi to'liq opak.
