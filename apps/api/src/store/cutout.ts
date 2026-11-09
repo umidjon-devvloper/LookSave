@@ -260,19 +260,51 @@ export async function makeCutout(url: string, prefix: string): Promise<string | 
 }
 
 /*
- * services/cutout-py xizmatiga xom rasm POST qiladi. Muvaffaqiyatsiz bo'lsa
- * null qaytaradi — chaqiruvchi eski @imgly yo'liga o'tadi.
+ * Cutout xizmatiga xom rasm POST qiladi. Muvaffaqiyatsiz bo'lsa null
+ * qaytaradi — chaqiruvchi @imgly fallback'ga o'tadi.
+ *
+ * ⚠️ 2026-11-09 — endi FLY.IO Facefusion API orqali (bitta birlashgan
+ * xizmat). `FACEFUSION_URL` sozlangan bo'lsa, uning `/cutout` endpoint'i
+ * ishlatiladi (birefnet-general-lite). Eski `CUTOUT_URL` lokal Python
+ * xizmat ham qo'llab-quvvatlanadi — tranzitsiya davrida ikkalasi ham
+ * bir xil interfeysga ega.
  */
 async function tryPythonCutout(input: Buffer, contentType: string): Promise<Buffer | null> {
+  // Avval fly.io Facefusion API'ni sinab ko'ramiz (yangi, yagona xizmat)
+  const facefusionBase = env().FACEFUSION_URL;
+  if (facefusionBase) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 180_000);
+      const form = new FormData();
+      form.append('image', new Blob([input], { type: contentType }), 'image.jpg');
+      const headers: Record<string, string> = {};
+      const token = env().FACEFUSION_TOKEN;
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(`${facefusionBase.replace(/\/+$/, '')}/cutout`, {
+        method: 'POST',
+        body: form,
+        headers,
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timer));
+
+      if (res.ok) {
+        const buf = Buffer.from(await res.arrayBuffer());
+        if (buf.byteLength > 1024) return buf;
+      } else {
+        const body = await res.text().catch(() => '');
+        logger.warn({ status: res.status, body: body.slice(0, 200) }, 'facefusion /cutout: xato');
+      }
+    } catch (err) {
+      logger.warn({ err }, 'facefusion /cutout: chaqiruv muvaffaqiyatsiz — CUTOUT_URL fallback');
+    }
+  }
+
+  // Legacy: lokal Python xizmat (services/cutout-py)
   const base = env().CUTOUT_URL;
   if (!base) return null;
   try {
-    /*
-     * ⚠️ 180s TIMEOUT. VPS'da CPU inference isnet-general-use bilan ~30-90s
-     * oladi, ba'zan RAM tirband bo'lsa 120s gacha cho'ziladi. 60s yetmay
-     * qolar edi va `cutout-py: chaqiruv muvaffaqiyatsiz` AbortError bilan
-     * fallback'ga o'tar edi, lekin fallback ham yiqilib kesim bo'lmasdi.
-     */
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 180_000);
     const res = await fetch(`${base.replace(/\/+$/, '')}/cutout`, {

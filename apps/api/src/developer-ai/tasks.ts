@@ -5,7 +5,7 @@ import type { PoolClient } from 'pg';
 import { env } from '../config/env';
 import { pool } from '../db/pool';
 import { ApiError } from '../http/api-error';
-import { faceSwap, isFacefusionEnabled } from '../integrations/facefusion';
+import { isFacefusionEnabled, swapAndCutout } from '../integrations/facefusion';
 import { isOwnCdnUrl, presignRead, uploadObject } from '../integrations/r2';
 import { logger } from '../logger';
 import { makeCutout } from '../store/cutout';
@@ -611,14 +611,17 @@ async function applyFaceSwapForOperatorResult(
     const res = await fetch(url);
     if (!res.ok) return url;
     const target = Buffer.from(await res.arrayBuffer());
-    const swapped = await faceSwap({ target, sourceFaceUrl: faceReferenceUrl, angle });
-    // Facefusion o'tkazib yuborgan yoki xato qaytargan hol — asl buffer qaytadi,
-    // referens bilan tenglikni tekshirish shart emas, baribir qayta yozamiz
+    /*
+     * ⚠️ `swapAndCutout` (2026-11-09): fly.io'da bitta chaqiruv —
+     * face swap + background removal birgalikda. Natija SHAFFOF PNG
+     * bo'ladi, VPS'da qo'shimcha cutout kerak emas.
+     */
+    const swapped = await swapAndCutout({ target, sourceFaceUrl: faceReferenceUrl, angle });
     if (swapped === target) return url;
     return uploadObject({
-      key: `tryon/manual/${randomUUID()}.webp`,
+      key: `tryon/manual/${randomUUID()}.png`,
       body: swapped,
-      contentType: 'image/webp',
+      contentType: 'image/png',
     });
   }
 

@@ -33,6 +33,115 @@ export function isFacefusionEnabled(): boolean {
 }
 
 /**
+ * Face swap VA cutout — birgalikda 1 ta HTTP call.
+ *
+ * ⚠️ NEGA YANGI ENDPOINT (2026-11-09): avval 2 ta chaqiruv edi:
+ *   1. VPS → fly.io/swap → yuz almashadi, JPEG qaytadi
+ *   2. VPS → lokal Python → cutout qilib shaffof PNG
+ * Bu VPS RAM'ni 2GB+ eyar edi (Python cutout service doim ishlab turardi).
+ *
+ * Endi fly.io bitta so'rovda ikkalasini bajaradi va **shaffof PNG**
+ * qaytaradi. VPS yengillashadi, lokal Python cutout service kerak emas.
+ *
+ * Xato bo'lsa — asl target qaytadi (fallback), pipeline buzilmaydi.
+ */
+export async function swapAndCutout(input: FaceSwapInput): Promise<Buffer> {
+  const url = env().FACEFUSION_URL;
+  if (!url) return input.target;
+
+  // Front_only — yon/orqa uchun yuz swap qilinmaydi, lekin cutout kerak
+  if (env().FACEFUSION_FRONT_ONLY && input.angle !== 'front') {
+    return cutoutOnly(input.target);
+  }
+
+  try {
+    const sourceBuffer = await fetchFaceSource(input.sourceFaceUrl);
+    if (!sourceBuffer) return cutoutOnly(input.target);
+
+    const form = new FormData();
+    form.append('source', new Blob([sourceBuffer], { type: 'image/jpeg' }), 'source.jpg');
+    form.append('target', new Blob([input.target], { type: 'image/jpeg' }), 'target.jpg');
+    form.append('model', env().FACEFUSION_MODEL);
+    form.append('pixel_boost', env().FACEFUSION_PIXEL_BOOST);
+    form.append('enhance', env().FACEFUSION_ENHANCE ? 'true' : 'false');
+
+    const headers: Record<string, string> = {};
+    const token = env().FACEFUSION_TOKEN;
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 240_000);
+
+    const response = await fetch(`${url.replace(/\/+$/, '')}/swap-and-cutout`, {
+      method: 'POST',
+      body: form,
+      headers,
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timer));
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      logger.warn(
+        { status: response.status, body: body.slice(0, 200) },
+        'swap-and-cutout: xato — cutout-only fallback',
+      );
+      return cutoutOnly(input.target);
+    }
+
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!contentType.startsWith('image/')) {
+      logger.warn({ contentType }, 'swap-and-cutout: rasm emas javob — cutout-only fallback');
+      return cutoutOnly(input.target);
+    }
+
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.byteLength < 1024) {
+      logger.warn({ size: bytes.byteLength }, 'swap-and-cutout: juda kichik — cutout-only fallback');
+      return cutoutOnly(input.target);
+    }
+
+    return Buffer.from(bytes);
+  } catch (err) {
+    logger.warn({ err }, 'swap-and-cutout: chaqiruv muvaffaqiyatsiz — cutout-only fallback');
+    return cutoutOnly(input.target);
+  }
+}
+
+/**
+ * Faqat cutout — face swap qilmasdan shaffof PNG qaytaradi.
+ * Yon/orqa burchaklar yoki face reference yo'q holatlar uchun.
+ */
+async function cutoutOnly(target: Buffer): Promise<Buffer> {
+  const url = env().FACEFUSION_URL;
+  if (!url) return target;
+  try {
+    const form = new FormData();
+    form.append('image', new Blob([target], { type: 'image/jpeg' }), 'target.jpg');
+    const headers: Record<string, string> = {};
+    const token = env().FACEFUSION_TOKEN;
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 180_000);
+
+    const response = await fetch(`${url.replace(/\/+$/, '')}/cutout`, {
+      method: 'POST',
+      body: form,
+      headers,
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timer));
+
+    if (!response.ok) return target;
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.byteLength < 1024) return target;
+    return Buffer.from(bytes);
+  } catch (err) {
+    logger.warn({ err }, 'cutout-only: chaqiruv muvaffaqiyatsiz');
+    return target;
+  }
+}
+
+/**
  * Yuzni almashtiradi. Xato bo'lsa — asl target'ni qaytaradi (pipeline
  * to'xtamaydi). Rasm bo'lmasa — asl target.
  */
