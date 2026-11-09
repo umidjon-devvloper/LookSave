@@ -280,6 +280,23 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
    * yonga o'tsa bo'ladi.
    */
   const putOn = (category: string, variantId: string): void => {
+    /*
+     * ⚠️ USTIDAGI QATLAMLAR YECHILADI (2026-11-09).
+     *
+     * Foydalanuvchi futbolka bossa, hoodie uning ustida qolsa — avatar
+     * hoodie'ni ko'rsatadi va foydalanuvchi "futbolka qani?" deb hayron
+     * bo'ladi. Pastki qatlam bosilganda uning ustidagi qatlamlarni
+     * yechamiz — bosilgan kiyim ko'rinsin.
+     *
+     * Komplekt yig'mo'qchi bo'lsa — PASTDAN tepaga bossin (avval
+     * futbolka, keyin hoodie). Bu tabiiy tartib.
+     */
+    const myRank = layerRank(category);
+    for (const layer of outfit) {
+      if (layerRank(layer.category) > myRank) {
+        takeOff(layer.category);
+      }
+    }
     wear(category, variantId);
     setSize(null);
     setNotice(null);
