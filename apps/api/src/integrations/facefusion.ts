@@ -1,3 +1,5 @@
+import sharp from 'sharp';
+
 import { env } from '../config/env';
 import { logger } from '../logger';
 
@@ -46,8 +48,18 @@ export async function faceSwap(input: FaceSwapInput): Promise<Buffer> {
     if (!sourceBuffer) return input.target;
 
     const form = new FormData();
+    /*
+     * ⚠️ TARGET VA OUTPUT KENGAYTMASI MOS BO'LSIN. Facefusion CLI output
+     * faylni target nomidan kengaytmasini meros qilib oladi; agar u
+     * ichki pipeline (model/pixel_boost) kutgan formatdan farq qilsa,
+     * "match the target and output extension!" degan xato bilan rc=1
+     * qaytadi. Shuning uchun ikkala tomondan ham `.jpg` ishlatiladi —
+     * OpenAI natijasi PNG bo'lsa ham MIME'si o'zgarmaydi (facefusion
+     * bytes'dan formatni avtomatik aniqlaydi), lekin fayl nomi .jpg
+     * bo'lishi shart.
+     */
     form.append('source', new Blob([sourceBuffer], { type: 'image/jpeg' }), 'source.jpg');
-    form.append('target', new Blob([input.target], { type: 'image/png' }), 'target.png');
+    form.append('target', new Blob([input.target], { type: 'image/jpeg' }), 'target.jpg');
     form.append('model', env().FACEFUSION_MODEL);
     form.append('pixel_boost', env().FACEFUSION_PIXEL_BOOST);
     form.append('enhance', env().FACEFUSION_ENHANCE ? 'true' : 'false');
@@ -87,7 +99,41 @@ export async function faceSwap(input: FaceSwapInput): Promise<Buffer> {
       return input.target;
     }
 
-    return Buffer.from(bytes);
+    /*
+     * ⚠️ ASL SHAFFOFLIKNI TIKLASH (2026-11-09).
+     *
+     * MUAMMO: Facefusion'ga target .jpg sifatida yuboriladi (CLI talabi) —
+     * alpha kanali yo'qoladi. Natijada GPT yasagan shaffof PNG → Facefusion
+     * ichida qora fonli JPEG bo'ladi va cutout qayta ishlagunga qadar
+     * mijoz ekraninda qora to'rtburchak ko'rinadi.
+     *
+     * YECHIM: asl target'ning alpha kanalini olib, Facefusion natijasiga
+     * (RGB) qo'yamiz. Natija: yuzi almashtirilgan + original shaffof fon.
+     * Cutout keyin yana yaxshilashi mumkin, lekin asosiy qora yo'q.
+     *
+     * Asl target'da alpha bo'lmasa (RGB JPEG) — swap natijasini o'z holicha
+     * qaytaramiz.
+     */
+    try {
+      const swapped = Buffer.from(bytes);
+      const origMeta = await sharp(input.target).metadata();
+      if (origMeta.hasAlpha) {
+        const origAlpha = await sharp(input.target).ensureAlpha().extractChannel('alpha').toBuffer();
+        const swappedRgb = await sharp(swapped)
+          .removeAlpha()
+          .resize(origMeta.width, origMeta.height, { fit: 'fill' })
+          .toBuffer();
+        const combined = await sharp(swappedRgb)
+          .joinChannel(origAlpha)
+          .png({ compressionLevel: 9 })
+          .toBuffer();
+        return combined;
+      }
+      return swapped;
+    } catch (err) {
+      logger.warn({ err }, 'facefusion: alpha tiklab bo\'lmadi — swap natijasi o\'z holicha qaytdi');
+      return Buffer.from(bytes);
+    }
   } catch (err) {
     logger.warn({ err }, 'facefusion: chaqiruv muvaffaqiyatsiz — asl natija qaytarildi');
     return input.target;
