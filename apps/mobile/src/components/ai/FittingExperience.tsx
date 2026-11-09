@@ -1817,14 +1817,19 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
                  * KIYILGANNI ANIQLASH (2026-11-09 — "Hammasi" tabi tuzatildi).
                  *
                  * ⚠️ `wornHere` faqat joriy tab'ning slotiga qaraydi — tab='all'
-                 * bo'lsa hech narsa topmaydi va hech biri belgilanmasdan qolar
-                 * edi. Endi ANY outfit layer'da shu variantId bor bo'lsa,
-                 * uni belgilaymiz — foydalanuvchi qaysi manikenni kiyib
-                 * turganini doim ko'radi.
+                 * bo'lsa hech narsa topmaydi. Endi faqat ENG TEPA outfit qatlami
+                 * (visible) belgilanadi — barcha qatlamlarni emas, aks holda
+                 * foydalanuvchi "nimaga ikkitasi" deb hayron qoladi (futbolka
+                 * va uning ustidagi hoodie ikkalasi ham outfitda, lekin faqat
+                 * hoodie ko'rinadi).
                  */
-                const selected =
-                  item.variantId === wornHere
-                  || outfit.some((layer) => layer.variantId === item.variantId);
+                /* Eng tepa qatlam — layerRank bo'yicha eng katta. */
+                const topLayer = outfit.reduce<typeof outfit[number] | null>(
+                  (best, cur) =>
+                    !best || layerRank(cur.category) > layerRank(best.category) ? cur : best,
+                  null,
+                );
+                const selected = item.variantId === (wornHere ?? topLayer?.variantId);
                 const render = renderIndex.get(renderKey(item.variantId, stripBase.baseRenderId))
                   ?? anyRenderByVariant.get(item.variantId);
                 const isReady = render?.status === 'ready';
