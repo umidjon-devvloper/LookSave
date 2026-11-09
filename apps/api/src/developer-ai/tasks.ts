@@ -565,6 +565,13 @@ async function applyFaceSwapForOperatorResult(
   angles: Record<string, string> | null,
 ): Promise<{ url: string; angles: Record<string, string> | null }> {
   if (!isFacefusionEnabled()) return { url: resultUrl, angles };
+  // Operator paneli uchun face swap env flag orqali boshqariladi.
+  // Default o'chiq — Facefusion ba'zan yomon natija beradi va GPT yasagan
+  // yuz asl userdan farq qiladi. Yoqish uchun: FACEFUSION_FOR_MANUAL=1
+  if (process.env.FACEFUSION_FOR_MANUAL !== '1') {
+    logger.info({ renderId }, 'operator face swap o\'chiq (FACEFUSION_FOR_MANUAL=1 bilan yoqing)');
+    return { url: resultUrl, angles };
+  }
 
   const { rows } = await pool.query<{
     face_reference_url: string | null;

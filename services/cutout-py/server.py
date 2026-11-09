@@ -79,12 +79,16 @@ AM_BG = int(os.environ.get("CUTOUT_AM_BG", "10"))   # 0-255, qancha past — fon
 AM_ERODE = int(os.environ.get("CUTOUT_AM_ERODE", "10"))  # chekka erozi (px) — halo olib tashlash
 
 # Chekka silliqlash — Gauss blur radiusi (0 = o'chirilgan, 0.5-1.5 — tabiiy)
-EDGE_BLUR = float(os.environ.get("CUTOUT_EDGE_BLUR", "0.6"))
+EDGE_BLUR = float(os.environ.get("CUTOUT_EDGE_BLUR", "1.2"))
 
 # Qora fonni oldindan olib tashlash (operator panellari uchun).
-# 0 = o'chirilgan, 30 = standart (RGB har bir kanal < 30 bo'lsa qora deb hisoblanadi).
+# 0 = o'chirilgan. 70 — antialiasing kulrang piksellarini ham ushlaydi.
 # Flood-fill chetdan boshlanadi — ichkaridagi qora (masalan qora kiyim) saqlanadi.
-BLACK_BG_THRESHOLD = int(os.environ.get("CUTOUT_BLACK_BG_THRESHOLD", "30"))
+BLACK_BG_THRESHOLD = int(os.environ.get("CUTOUT_BLACK_BG_THRESHOLD", "70"))
+
+# Flood tugagandan keyin chet "erode" — figura ichkariga kirgan halo'ni olib tashlash.
+# 0 = o'chirilgan, 2-4 = o'rtacha, 5+ = kuchli (figura chetidan yesh qoldiradi).
+EDGE_ERODE = int(os.environ.get("CUTOUT_EDGE_ERODE", "3"))
 
 
 @lru_cache(maxsize=1)
@@ -179,6 +183,25 @@ def _strip_edge_black(image: Image.Image, threshold: int = 30) -> Image.Image:
 
     # seed — chetga bog'langan qora. Alpha'sini 0 ga tushiramiz.
     arr[..., 3] = np.where(seed, 0, arr[..., 3])
+
+    # Chet "erode" — halo olib tashlash.
+    # Shaffof seed'ni EDGE_ERODE marta kengaytiramiz — figura chekkasini
+    # ichkariga torayitadi, kulrang shabah yo'qoladi.
+    if EDGE_ERODE > 0:
+        halo = seed.copy()
+        for _ in range(EDGE_ERODE):
+            halo = (
+                halo
+                | np.roll(halo, 1, axis=0)
+                | np.roll(halo, -1, axis=0)
+                | np.roll(halo, 1, axis=1)
+                | np.roll(halo, -1, axis=1)
+            )
+        # Kengaytirilgan zona ichida alpha'ni asta pasaytiramiz (butun 0 emas,
+        # 50% — chet silliq o'tsin, keyin blur bilan tabiiy ko'rinadi).
+        new_halo = halo & ~seed
+        arr[..., 3] = np.where(new_halo, arr[..., 3] // 3, arr[..., 3])
+
     return Image.fromarray(arr, mode="RGBA")
 
 
