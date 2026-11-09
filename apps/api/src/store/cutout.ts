@@ -237,8 +237,14 @@ async function tryPythonCutout(input: Buffer, contentType: string): Promise<Buff
   const base = env().CUTOUT_URL;
   if (!base) return null;
   try {
+    /*
+     * ⚠️ 180s TIMEOUT. VPS'da CPU inference isnet-general-use bilan ~30-90s
+     * oladi, ba'zan RAM tirband bo'lsa 120s gacha cho'ziladi. 60s yetmay
+     * qolar edi va `cutout-py: chaqiruv muvaffaqiyatsiz` AbortError bilan
+     * fallback'ga o'tar edi, lekin fallback ham yiqilib kesim bo'lmasdi.
+     */
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 60_000);
+    const timer = setTimeout(() => controller.abort(), 180_000);
     const res = await fetch(`${base.replace(/\/+$/, '')}/cutout`, {
       method: 'POST',
       body: input,
