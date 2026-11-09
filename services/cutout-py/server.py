@@ -59,12 +59,13 @@ from rembg import new_session, remove
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("cutout")
 
-# PREMIUM default: birefnet-general — eng toza chekka.
-# VPS sekinroq bo'lsa `birefnet-general-lite` yoki `isnet-general-use` ga o'zgartirish mumkin.
-MODEL = os.environ.get("CUTOUT_MODEL", "birefnet-general")
+# PREMIUM default: birefnet-general-lite — birefnet sifati, 3x kam RAM.
+# birefnet-general 2GB RAM yeydi va 2GB VPS'da OOM bo'ladi; lite 440MB RAM,
+# chekka sifati deyarli bir xil (odam/kiyim uchun mukammal yetarli).
+MODEL = os.environ.get("CUTOUT_MODEL", "birefnet-general-lite")
 
-# Kiruvchi rasmda maksimum o'lcham. 2048 — HD sifati, 1600 — tezroq.
-MAX_SIDE = int(os.environ.get("CUTOUT_MAX_SIDE", "2048"))
+# Kiruvchi rasmda maksimum o'lcham. 1600 — balanslangan sifat/tezlik/RAM.
+MAX_SIDE = int(os.environ.get("CUTOUT_MAX_SIDE", "1600"))
 
 # Alfa normallashtirish — chekkadagi yarim-shaffof piksellar aniqlashtirish uchun.
 # LO past (10) → fon qoldig'i to'liq o'chadi; HI yuqori (245) → figura ichi to'liq opak.
