@@ -2276,12 +2276,27 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
             */}
               {outfitItems.length > 0 ? (
                 <View style={styles.outfitCard}>
-                  <View style={styles.outfitHead}>
+                  {/*
+                   * ⚠️ KOMPLEKT SARLAVHASI TAPPABLE (2026-11-10). Bosilsa
+                   * butun komplektni sahnaga qayta ko'rsatadi — foydalanuvchi
+                   * boshqa kiyimni bosib ko'rgandan keyin komplektga qaytishi
+                   * uchun. `putOnBundle` keshdan foydalanadi, yangi GPT
+                   * chaqiruv bo'lmaydi.
+                   */}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Komplektni sahnaga qaytarish"
+                    onPress={() => {
+                      const ids = outfitItems.map((item) => item.variantId);
+                      if (ids.length >= 2) putOnBundle(ids);
+                    }}
+                    style={({ pressed }) => [styles.outfitHead, pressed && { opacity: 0.7 }]}
+                  >
                     <Text style={styles.outfitTitle}>Komplekt · {outfitItems.length} ta</Text>
                     <Text style={styles.outfitTotal}>
                       {money(String(outfitTotal), outfitCurrency)}
                     </Text>
-                  </View>
+                  </Pressable>
 
                   <View style={styles.outfitRow}>
                     {resolved.map((layer) => {
