@@ -9,6 +9,7 @@ import {
 import {
   buildAvatarRequestPrompt,
   buildFrontTryonPrompt,
+  buildFrontTryonBundlePrompt,
   buildTryonSheetPrompt,
   isSheetPrompt,
   garmentKindForSlot,
@@ -343,23 +344,57 @@ async function assertPortrait(image: { mime: string; base64: string }): Promise<
 }
 
 async function runRenderTask(task: Task, tabId: number, adapter: AdapterId): Promise<void> {
-  const garment = task.previews['garmentImageUrl'];
-  /*
-   * ⚠️ YUZ MAJBURIY — ZAHIRA YO'Q (2026-11-03).
-   *
-   * Ilgari yuz surati bo'lmasa `bodyUrl` zahira sifatida GPT'ga ketardi.
-   * Lekin `bodyUrl` — bu avatar surati (`avatar_image_url`), ya'ni AI
-   * yasagan maniken ko'rinishdagi odam. Natijada GPT uning yuzini "haqiqat"
-   * deb olib, kiyintirilgan rasm MANIKEN yuzi bilan chiqardi va mijoz
-   * o'zini tanimasdi (foydalanuvchi shikoyati, 2026-11-03).
-   *
-   * Yuzsiz ish AI'ga umuman ketmasin: haqiqiy yuz bo'lmasa, operator
-   * foydalanuvchidan selfie qayta so'rab tursin, aksi holda natija har doim
-   * boshqa odam bo'ladi.
-   */
   const face = task.previews['faceUrl'] ?? null;
-
   if (!face) throw new Error('Ishda yuz surati yo`q — mijoz selfie bermagan');
+
+  /*
+   * ⚠️ BUNDLE (komplekt) OQIMI (2026-11-10). Payload.bundle bor bo'lsa, extension
+   * bir nechta kiyim rasmini bir so'rovda GPT'ga yuboradi va bitta portretda
+   * hammasini birlashtiradi. Buning uchun previews ichida bundleGarment1Url,
+   * bundleGarment2Url, ... bo'ladi — ularni tartib bo'yicha yig'amiz.
+   */
+  const bundle = task.payload['bundle'] as
+    | { garments?: Array<{ slot?: string }> }
+    | undefined
+    | null;
+  const bundleUrls = Object.keys(task.previews)
+    .filter((k) => /^bundleGarment\d+Url$/.test(k))
+    .sort((a, b) => Number(a.match(/\d+/)![0]) - Number(b.match(/\d+/)![0]))
+    .map((k) => task.previews[k])
+    .filter((u): u is string => Boolean(u));
+
+  if (bundle && bundleUrls.length >= 2) {
+    const slots = (bundle.garments ?? []).map((g) => g.slot ?? '');
+    status = { ...status, total: 1, current: { title: `Kiyintirish · komplekt (${bundleUrls.length})` } };
+
+    const faceImage = await fetchImage(face);
+    const images = [
+      { name: 'face-1.jpg', ...faceImage },
+      { name: 'face-2.jpg', ...faceImage },
+      { name: 'face-3.jpg', ...faceImage },
+      ...(await Promise.all(
+        bundleUrls.map(async (u, i) => ({
+          name: `garment-${i + 1}.jpg`,
+          ...(await fetchImage(u)),
+        })),
+      )),
+    ];
+
+    const prompt = buildFrontTryonBundlePrompt({
+      kinds: slots.map((s) => garmentKindForSlot(s)),
+      measurements: measurementsOf(task.payload),
+      gender: genderOf(task.payload),
+    });
+
+    const result = await generate(tabId, adapter, prompt, images);
+    await assertPortrait(result);
+    await completeTask(task.id, await store(result));
+    status = { ...status, finished: status.finished + 1, current: null };
+    note(`✓ Komplekt kiyintirish ${task.id.slice(0, 8)} — mijozga yuborildi`);
+    return;
+  }
+
+  const garment = task.previews['garmentImageUrl'];
   if (!garment) throw new Error('Ishda kiyim surati yo`q');
 
   const identity = face;

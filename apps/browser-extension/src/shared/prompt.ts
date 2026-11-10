@@ -542,6 +542,53 @@ export function buildFrontTryonPrompt(input: {
 }
 
 /**
+ * KOMPLEKT — FRONT ONLY. Extension bu promptni payload.bundle bor bo'lsa
+ * ishlatadi: bitta odam, hamma kiyim ustma-ust, oldindan.
+ */
+export function buildFrontTryonBundlePrompt(input: {
+  kinds: readonly GarmentKind[];
+  measurements: Measurements;
+  gender?: string | null;
+}): string {
+  const person = input.gender === 'female' ? 'woman' : input.gender === 'male' ? 'man' : 'person';
+  const garmentList = input.kinds
+    .map((k, i) => `IMAGE ${i + 4} (${k}) ${PLACEMENT[k] ?? 'in its natural position'}`)
+    .join('; ');
+
+  return [
+    '🔒 YOU ARE EDITING A PHOTO OF A REAL PERSON. The first three images are the SAME face of ' +
+      'that real person. If the output face does not match, you have FAILED the task.',
+
+    'Create ONE single image: a photorealistic full-body FRONT view of ONE real person wearing ' +
+      'ALL the garments together.',
+
+    `IMAGES: the FIRST, SECOND and THIRD images are the SAME face — the ONLY source for identity. ` +
+      `Images 4..${3 + input.kinds.length} are DIFFERENT garments the SAME person wears at once.`,
+
+    faceLock(false),
+
+    bodyLine(person, input.measurements),
+
+    `CLOTHING — WEAR ALL AT ONCE: ${garmentList}. Each garment reproduced EXACTLY from its ` +
+      'source (colour, pattern, cut, details, artwork). Combine into one complete outfit on one ' +
+      'single person.',
+
+    `POSE: ${SHEET_FRONT}`,
+
+    'FRAMING: vertical full-body shot — entire body from head to feet, little space above and ' +
+      'below. Figure fills about 85-90% of height, centered horizontally.',
+
+    'BACKGROUND: fully TRANSPARENT PNG with an alpha channel — no colour, no floor, no wall, ' +
+      'no shadow, no text. Soft even studio lighting, natural fabric folds, photorealistic.',
+
+    'Output exactly ONE image — the single front portrait — vertical portrait PNG with transparency. ' +
+      'Do not ask questions, do not explain.',
+
+    '🔒 REMEMBER: the face MUST be the exact face from image 1. Copy as-is.',
+  ].join('\n\n');
+}
+
+/**
  * BUNDLE — bir nechta kiyim birgalikda. Mobil ilovada checkbox bilan
  * tanlansa, ekstension bu promptni ishlatadi (yoki backend orqali).
  */
