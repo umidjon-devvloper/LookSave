@@ -811,7 +811,7 @@ export async function requestBundleRender(
   }
 
   const manual = isManual('render') && !isAutoAiUser(userId);
-  const first = renderRows[0]!;
+  const firstRender = renderRows[0]!;
 
   if (manual) {
     /*
@@ -821,7 +821,7 @@ export async function requestBundleRender(
      * GPT'da bundle promptini ishlatadi. Natija kelganda server bundleHash
      * bo'yicha barcha sibling renderlarni ham `ready` qiladi.
      */
-    await enqueueTask('render', userId, first.id, {
+    await enqueueTask('render', userId, firstRender.id, {
       bodyUrl,
       garmentImageUrl: sourcesList[0]!.garmentImageUrl,
       ...(faceUrl ? { faceUrl } : {}),
