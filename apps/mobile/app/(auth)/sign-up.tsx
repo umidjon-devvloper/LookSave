@@ -5,8 +5,6 @@ import * as Location from 'expo-location';
 import * as SecureStore from 'expo-secure-store';
 import { useState } from 'react';
 import {
-  Image,
-  ImageBackground,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -17,7 +15,6 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 
 import { ApiError } from '../../src/api/client';
 import { Icon } from '../../src/components/Icon';
@@ -25,16 +22,12 @@ import { useI18n } from '../../src/i18n';
 import { useAuthStore } from '../../src/store/authStore';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 
-const IMG_HERO = require('../../assets/signup-hero-icon.png');
-const IMG_BG = require('../../assets/auth-bg.jpg');
-
 /**
- * Ro'yxatdan o'tish — 5 bosqich (TZ 1-qism).
+ * Ro'yxatdan o'tish — 5 bosqich, Atelier editorial.
  *
  * ⚠️ Backend hozircha faqat `{ phone, fullName, password }` qabul qiladi.
  * Qolgan maydonlar (username, joylashuv, akkaunt turi) lokal `SecureStore`
- * ga yoziladi — keyingi qismda profilga biriktiriladi. Shu bois backend
- * shartnomasi o'zgarmaydi, migratsiya kerak emas.
+ * ga yoziladi — keyingi qismda profilga biriktiriladi.
  */
 
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -73,6 +66,7 @@ export default function SignUp(): JSX.Element {
   const [fieldErr, setFieldErr] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [focused, setFocused] = useState<string | null>(null);
 
   function next(): void {
     setFieldErr(null);
@@ -80,7 +74,6 @@ export default function SignUp(): JSX.Element {
     if (step === 1) {
       if (name.trim().length < 2) return setFieldErr(t.auth.errName);
       if (surname.trim().length < 2) return setFieldErr(t.auth.errSurname);
-      // Username ixtiyoriy — bo'sh bo'lsa ham o'tadi
       if (username.trim().length > 0 && username.trim().length < 3) {
         return setFieldErr(t.auth.errUsername);
       }
@@ -139,7 +132,6 @@ export default function SignUp(): JSX.Element {
     if (!parsed.success) {
       const first = parsed.error.issues[0];
       setError(first?.message ?? t.auth.errSignUpFailed);
-      // Xato maydoniga qaytaramiz
       const key = first?.path[0];
       if (key === 'phone' || key === 'password') setStep(2);
       else setStep(1);
@@ -147,7 +139,6 @@ export default function SignUp(): JSX.Element {
     }
     setBusy(true);
     try {
-      // Qo'shimcha maydonlar — backend keyingi qismda qabul qilgach yuboriladi
       await SecureStore.setItemAsync(
         EXTRAS_KEY,
         JSON.stringify({
@@ -159,7 +150,6 @@ export default function SignUp(): JSX.Element {
       );
       await signUp(input);
       setStep(5);
-      // Keyingi qadamni foydalanuvchi o'zi tanlaydi — avtomatik sakrash yo'q.
     } catch (err) {
       setError(
         err instanceof ApiError && err.code === 'ALREADY_EXISTS'
@@ -175,14 +165,8 @@ export default function SignUp(): JSX.Element {
   }
 
   return (
-    <ImageBackground source={IMG_BG} style={styles.bg} resizeMode="cover">
-      <StatusBar style="light" translucent />
-      <LinearGradient
-        colors={['rgba(10,10,15,0.08)', 'rgba(10,10,15,0.6)', 'rgba(10,10,15,0.97)']}
-        locations={[0, 0.38, 0.78]}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
+    <View style={styles.bg}>
+      <StatusBar style="dark" />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -190,12 +174,12 @@ export default function SignUp(): JSX.Element {
         <ScrollView
           contentContainerStyle={[
             styles.content,
-            { paddingTop: insets.top + 4, paddingBottom: insets.bottom + spacing.xl },
+            { paddingTop: insets.top + spacing.md, paddingBottom: insets.bottom + spacing.xl },
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Yuqori qator — orqa va hero */}
+          {/* Yuqori qator */}
           <View style={styles.topRow}>
             <Pressable
               style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
@@ -204,10 +188,10 @@ export default function SignUp(): JSX.Element {
             >
               <Icon name="back" size={20} color={colors.text} />
             </Pressable>
-            <Image source={IMG_HERO} style={styles.heroImg} resizeMode="contain" />
+            <Text style={styles.stepCounter}>{step} / 5</Text>
           </View>
 
-          {/* Progress — 5 ta nuqta */}
+          {/* Progress — ingichka chiziqchalar */}
           <View style={styles.dots}>
             {[1, 2, 3, 4, 5].map((n) => (
               <View
@@ -220,18 +204,22 @@ export default function SignUp(): JSX.Element {
               />
             ))}
           </View>
-          <Text style={styles.stepCounter}>{step} / 5</Text>
 
-          {/* Sarlavha — bosqichga qarab */}
-          <Text style={styles.titleWhite}>{titleFor(step, t)}</Text>
-          <Text style={styles.subtitle}>{subtitleFor(step, t)}</Text>
+          {/* Eyebrow + sarlavha */}
+          <View style={styles.header}>
+            <Text style={styles.eyebrow}>{eyebrowFor(step)}</Text>
+            <Text style={styles.title}>{titleFor(step, t)}</Text>
+            {subtitleFor(step, t) ? (
+              <Text style={styles.subtitle}>{subtitleFor(step, t)}</Text>
+            ) : null}
+          </View>
 
           {/* ====== BOSQICHLAR ====== */}
 
           {step === 1 && (
             <>
               <Text style={styles.label}>{t.auth.name}</Text>
-              <View style={styles.field}>
+              <View style={[styles.field, focused === 'name' && styles.fieldOn]}>
                 <TextInput
                   style={styles.input}
                   value={name}
@@ -239,11 +227,13 @@ export default function SignUp(): JSX.Element {
                   autoComplete="given-name"
                   placeholder="Umidjon"
                   placeholderTextColor={colors.textDim}
+                  onFocus={() => setFocused('name')}
+                  onBlur={() => setFocused(null)}
                 />
               </View>
 
               <Text style={styles.label}>{t.auth.surname}</Text>
-              <View style={styles.field}>
+              <View style={[styles.field, focused === 'surname' && styles.fieldOn]}>
                 <TextInput
                   style={styles.input}
                   value={surname}
@@ -251,13 +241,15 @@ export default function SignUp(): JSX.Element {
                   autoComplete="family-name"
                   placeholder="G'afforov"
                   placeholderTextColor={colors.textDim}
+                  onFocus={() => setFocused('surname')}
+                  onBlur={() => setFocused(null)}
                 />
               </View>
 
               <Text style={styles.label}>
                 {t.auth.username} <Text style={styles.optional}>({t.auth.optional})</Text>
               </Text>
-              <View style={styles.field}>
+              <View style={[styles.field, focused === 'username' && styles.fieldOn]}>
                 <Text style={styles.at}>@</Text>
                 <TextInput
                   style={styles.input}
@@ -266,6 +258,8 @@ export default function SignUp(): JSX.Element {
                   autoCapitalize="none"
                   placeholder="umidjon"
                   placeholderTextColor={colors.textDim}
+                  onFocus={() => setFocused('username')}
+                  onBlur={() => setFocused(null)}
                 />
               </View>
             </>
@@ -274,24 +268,23 @@ export default function SignUp(): JSX.Element {
           {step === 2 && (
             <>
               <Text style={styles.label}>{t.auth.phone}</Text>
-              <View style={styles.field}>
+              <View style={[styles.field, focused === 'phone' && styles.fieldOn]}>
+                <Text style={styles.at}>+</Text>
                 <TextInput
                   style={styles.input}
                   value={phone}
                   onChangeText={setPhone}
                   keyboardType="phone-pad"
                   autoComplete="tel"
-                  placeholder="+998"
+                  placeholder="998 90 123 45 67"
                   placeholderTextColor={colors.textDim}
+                  onFocus={() => setFocused('phone')}
+                  onBlur={() => setFocused(null)}
                 />
               </View>
-              <Text style={styles.hint}>{t.auth.noSmsHint}</Text>
 
               <Text style={styles.label}>{t.auth.password}</Text>
-              <View style={styles.field}>
-                <View style={styles.lockBox}>
-                  <Icon name="authentic" size={18} color={colors.accent} />
-                </View>
+              <View style={[styles.field, focused === 'password' && styles.fieldOn]}>
                 <TextInput
                   style={styles.input}
                   value={password}
@@ -300,6 +293,8 @@ export default function SignUp(): JSX.Element {
                   autoComplete="new-password"
                   placeholder={t.auth.passwordMinPlaceholder}
                   placeholderTextColor={colors.textDim}
+                  onFocus={() => setFocused('password')}
+                  onBlur={() => setFocused(null)}
                 />
                 <Pressable onPress={() => setShowPass((v) => !v)} hitSlop={10}>
                   <Icon name={showPass ? 'eyeOff' : 'eye'} size={18} color={colors.textMuted} />
@@ -316,7 +311,7 @@ export default function SignUp(): JSX.Element {
                 disabled={locBusy}
               >
                 <View style={styles.cardIco}>
-                  <Icon name="location" size={22} color={colors.accent} />
+                  <Icon name="location" size={20} color={colors.primary} />
                 </View>
                 <View style={styles.cardBody}>
                   <Text style={styles.cardTitle}>{t.auth.locAuto}</Text>
@@ -328,7 +323,7 @@ export default function SignUp(): JSX.Element {
                         : t.auth.locAutoDesc}
                   </Text>
                 </View>
-                {locMode === 'auto' && <Icon name="check" size={20} color={colors.accent} />}
+                {locMode === 'auto' && <Icon name="check" size={18} color={colors.primary} />}
               </Pressable>
 
               <Pressable
@@ -339,13 +334,13 @@ export default function SignUp(): JSX.Element {
                 }}
               >
                 <View style={styles.cardIco}>
-                  <Icon name="location" size={22} color={colors.accent} />
+                  <Icon name="location" size={20} color={colors.primary} />
                 </View>
                 <View style={styles.cardBody}>
                   <Text style={styles.cardTitle}>{t.auth.locManual}</Text>
                   <Text style={styles.cardDesc}>{t.auth.locManualDesc}</Text>
                 </View>
-                {locMode === 'manual' && <Icon name="check" size={20} color={colors.accent} />}
+                {locMode === 'manual' && <Icon name="check" size={18} color={colors.primary} />}
               </Pressable>
             </>
           )}
@@ -357,13 +352,13 @@ export default function SignUp(): JSX.Element {
                 onPress={() => setAccountType('buyer')}
               >
                 <View style={styles.cardIco}>
-                  <Icon name="profile" size={22} color={colors.accent} />
+                  <Icon name="profile" size={20} color={colors.primary} />
                 </View>
                 <View style={styles.cardBody}>
                   <Text style={styles.cardTitle}>{t.auth.roleBuyer}</Text>
                   <Text style={styles.cardDesc}>{t.auth.roleBuyerDesc}</Text>
                 </View>
-                {accountType === 'buyer' && <Icon name="check" size={20} color={colors.accent} />}
+                {accountType === 'buyer' && <Icon name="check" size={18} color={colors.primary} />}
               </Pressable>
 
               <Pressable
@@ -371,13 +366,13 @@ export default function SignUp(): JSX.Element {
                 onPress={() => setAccountType('seller')}
               >
                 <View style={styles.cardIco}>
-                  <Icon name="shop" size={22} color={colors.accent} />
+                  <Icon name="shop" size={20} color={colors.primary} />
                 </View>
                 <View style={styles.cardBody}>
                   <Text style={styles.cardTitle}>{t.auth.roleSeller}</Text>
                   <Text style={styles.cardDesc}>{t.auth.roleSellerDesc}</Text>
                 </View>
-                {accountType === 'seller' && <Icon name="check" size={20} color={colors.accent} />}
+                {accountType === 'seller' && <Icon name="check" size={18} color={colors.primary} />}
               </Pressable>
             </>
           )}
@@ -386,7 +381,7 @@ export default function SignUp(): JSX.Element {
             <>
               <View style={styles.doneBox}>
                 <View style={styles.doneCircle}>
-                  <Icon name="check" size={44} color={colors.accent} />
+                  <Icon name="check" size={36} color={colors.primary} />
                 </View>
                 <Text style={styles.doneTitle}>{t.auth.doneTitle}</Text>
                 <Text style={styles.doneDesc}>
@@ -400,54 +395,38 @@ export default function SignUp(): JSX.Element {
                   onPress={() => router.replace('/seller/settings')}
                 >
                   <View style={styles.cardIco}>
-                    <Icon name="shop" size={22} color={colors.accent} />
+                    <Icon name="shop" size={20} color={colors.primary} />
                   </View>
                   <View style={styles.cardBody}>
                     <Text style={styles.cardTitle}>{t.auth.gotoSellerSetup}</Text>
                     <Text style={styles.cardDesc}>{t.auth.gotoSellerSetupDesc}</Text>
                   </View>
-                  <Icon name="next" size={20} color={colors.accent} />
+                  <Icon name="next" size={18} color={colors.primary} />
                 </Pressable>
               ) : (
                 <>
+                  {/*
+                    ⚠️ XARIDOR UCHUN FAQAT BIR TUGMA — YUZ, KEYIN BOZOR.
+                    O'lchov va kiyintirish keyin ham qo'shiladi (profil
+                    sahifasida). Yangi foydalanuvchi birinchi marta nima
+                    uchun kelganini tezroq ko'rishi kerak.
+                  */}
                   <Pressable
                     style={[styles.card, styles.cardOn]}
-                    /*
-                     * ⚠️ TO'G'RIDAN-TO'G'RI KIYINTIRISHGA — asosiy mahsulot shu.
-                     * Avatar yo'q bo'lsa `FittingExperience` o'zi `/ai/avatar`
-                     * ga qaytaradi (`Redirect`). Ya'ni avatarsiz foydalanuvchi
-                     * baribir yuz skaneriga tushadi, lekin yakuniy manzil —
-                     * kiyintirish paneli, va u ro'yxatdan o'tgach darhol
-                     * nimaga keganini ko'radi.
-                     */
-                    onPress={() => router.replace('/ai/fitting')}
+                    onPress={() => router.replace('/ai/avatar?signup=1')}
                   >
                     <View style={styles.cardIco}>
-                      <Icon name="tryon" size={22} color={colors.accent} />
+                      <Icon name="camera" size={20} color={colors.primary} />
                     </View>
                     <View style={styles.cardBody}>
-                      <Text style={styles.cardTitle}>{t.auth.gotoFitting}</Text>
-                      <Text style={styles.cardDesc}>{t.auth.gotoFittingDesc}</Text>
+                      <Text style={styles.cardTitle}>{t.auth.gotoFaceScan}</Text>
+                      <Text style={styles.cardDesc}>{t.auth.gotoFaceScanDesc}</Text>
                     </View>
-                    <Icon name="next" size={20} color={colors.accent} />
+                    <Icon name="next" size={18} color={colors.primary} />
                   </Pressable>
 
                   <Pressable
-                    style={styles.card}
-                    onPress={() => router.replace('/settings/measurements')}
-                  >
-                    <View style={styles.cardIco}>
-                      <Icon name="check" size={22} color={colors.accent} />
-                    </View>
-                    <View style={styles.cardBody}>
-                      <Text style={styles.cardTitle}>{t.auth.gotoBody}</Text>
-                      <Text style={styles.cardDesc}>{t.auth.gotoBodyDesc}</Text>
-                    </View>
-                    <Icon name="next" size={20} color={colors.textMuted} />
-                  </Pressable>
-
-                  <Pressable
-                    onPress={() => router.replace('/(tabs)')}
+                    onPress={() => router.replace('/(tabs)/marketplace')}
                     style={styles.skipLink}
                   >
                     <Text style={styles.skipText}>{t.auth.skipForNow}</Text>
@@ -462,22 +441,20 @@ export default function SignUp(): JSX.Element {
 
           {step !== 5 && (
             <Pressable
-              style={({ pressed }) => [styles.submitBtn, pressed && { opacity: 0.88 }]}
+              style={({ pressed }) => [
+                styles.submitBtn,
+                pressed && { backgroundColor: colors.primaryDim },
+                busy && { opacity: 0.6 },
+              ]}
               onPress={next}
               disabled={busy}
               accessibilityRole="button"
             >
-              <LinearGradient
-                colors={[colors.primary, colors.primaryDim]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFill}
-              />
               <Text style={styles.submitText}>
                 {busy ? `${t.common.loading}…` : step === 4 ? t.auth.finish : t.auth.continueBtn}
               </Text>
               <View style={styles.submitArrow}>
-                <Icon name="next" size={18} color={colors.text} />
+                <Icon name="next" size={18} color={colors.textOnPrimary} />
               </View>
             </Pressable>
           )}
@@ -489,13 +466,14 @@ export default function SignUp(): JSX.Element {
               accessibilityRole="button"
             >
               <Text style={styles.signinText}>
-                {t.auth.haveAccountQ} <Text style={{ color: colors.accent }}>{t.auth.signIn}</Text>
+                {t.auth.haveAccountQ}{' '}
+                <Text style={{ color: colors.primary }}>{t.auth.signIn}</Text>
               </Text>
             </Pressable>
           )}
         </ScrollView>
       </KeyboardAvoidingView>
-    </ImageBackground>
+    </View>
   );
 }
 
@@ -515,151 +493,147 @@ function subtitleFor(step: Step, t: ReturnType<typeof useI18n.getState>['t']): s
   return '';
 }
 
+function eyebrowFor(step: Step): string {
+  if (step === 1) return 'Shaxs · Birinchi tanishuv';
+  if (step === 2) return 'Aloqa · Kirish ma’lumotlari';
+  if (step === 3) return 'Joylashuv · Yaqin do‘konlar';
+  if (step === 4) return 'Rol · Xaridor yoki sotuvchi';
+  return 'Tayyor';
+}
+
 const styles = StyleSheet.create({
-  bg: { flex: 1 },
+  bg: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
   content: { paddingHorizontal: spacing.lg, gap: spacing.xs },
 
   topRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
+  // Orqaga: oq doira, ink ikonka, hair-thin chegara
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    backgroundColor: 'rgba(36,31,51,0.82)',
+    width: 44,
+    height: 44,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroImg: { width: 100, height: 100, transform: [{ rotate: '-10deg' }] },
-
-  dots: { flexDirection: 'row', gap: 6, marginTop: spacing.sm },
-  dot: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.14)' },
-  dotOn: { backgroundColor: colors.accent },
-  dotDone: { backgroundColor: colors.primary },
   stepCounter: {
-    ...text.tiny,
+    ...text.eyebrow,
     color: colors.textMuted,
-    letterSpacing: 1.2,
-    marginTop: 6,
   },
 
-  titleWhite: {
-    fontSize: 30,
-    fontWeight: '800',
-    color: colors.text,
-    marginTop: spacing.sm,
-  },
-  subtitle: { ...text.small, color: colors.textMuted, lineHeight: 20, marginBottom: spacing.sm },
+  // Progress: besh ingichka chiziqcha. Faol anor, bajarilgan quyuq anor.
+  dots: { flexDirection: 'row', gap: 6, marginTop: spacing.xs },
+  dot: { flex: 1, height: 2, backgroundColor: colors.border },
+  dotOn: { backgroundColor: colors.primary, height: 3 },
+  dotDone: { backgroundColor: colors.primaryDim },
+
+  /* ── Sarlavha bloki ── */
+  header: { marginTop: spacing.lg, marginBottom: spacing.lg },
+  eyebrow: { ...text.eyebrow, color: colors.textMuted, marginBottom: spacing.xs },
+  title: { ...text.h1, color: colors.text, marginBottom: spacing.sm },
+  subtitle: { ...text.body, color: colors.textMuted, maxWidth: '92%' },
 
   label: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.4,
+    ...text.eyebrow,
     color: colors.textDim,
     marginTop: spacing.md,
     marginBottom: 6,
-    textTransform: 'uppercase',
   },
-  optional: { color: colors.textMuted, fontWeight: '500' },
+  optional: { color: colors.textMuted },
 
+  /* ── Field ── (cream fon, hair-thin chegara, fokusga anor) */
   field: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(20,18,28,0.84)',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.sm,
-    height: 58,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    height: 56,
     gap: spacing.sm,
   },
-  at: {
-    ...text.body,
-    color: colors.accent,
-    fontWeight: '700',
-    paddingLeft: spacing.xs,
-  },
-  lockBox: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  fieldOn: { borderColor: colors.primary, backgroundColor: colors.surface2 },
+  at: { ...text.h3, color: colors.primary },
   input: { flex: 1, ...text.body, color: colors.text, paddingVertical: 0 },
-  hint: { ...text.tiny, color: colors.textMuted, marginTop: 6, fontStyle: 'italic' },
+  hint: { ...text.small, color: colors.textMuted, marginTop: 6, fontStyle: 'italic' },
 
+  /* ── Tanlov kartasi ── (cream, hair-thin; tanlanganda anor chegara) */
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: 'rgba(20,18,28,0.84)',
+    gap: spacing.md,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: radius.lg,
+    borderColor: colors.border,
+    borderRadius: radius.md,
     padding: spacing.md,
     marginTop: spacing.sm,
   },
-  cardOn: { borderColor: colors.accent, backgroundColor: 'rgba(168,85,247,0.08)' },
+  cardOn: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   cardIco: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.primarySoft,
+    width: 40,
+    height: 40,
+    borderRadius: radius.sm,
+    backgroundColor: colors.bg,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardBody: { flex: 1 },
   cardTitle: { ...text.bodyMed, color: colors.text },
-  cardDesc: { ...text.tiny, color: colors.textMuted, marginTop: 2 },
+  cardDesc: { ...text.small, color: colors.textMuted, marginTop: 2 },
 
+  /* ── Yakuniy "tayyor" bloki ── */
   doneBox: { alignItems: 'center', paddingVertical: spacing.xl },
   doneCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     backgroundColor: colors.primarySoft,
-    borderWidth: 2,
-    borderColor: colors.accent,
+    borderWidth: 1,
+    borderColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
   },
-  doneTitle: { fontSize: 24, fontWeight: '800', color: colors.text, textAlign: 'center' },
+  doneTitle: { ...text.h1, color: colors.text, textAlign: 'center' },
   doneDesc: {
-    ...text.small,
+    ...text.body,
     color: colors.textMuted,
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: spacing.sm,
     paddingHorizontal: spacing.md,
   },
 
-  fErr: { ...text.tiny, color: colors.danger, marginTop: 8, textAlign: 'center' },
+  fErr: { ...text.small, color: colors.danger, marginTop: spacing.sm, textAlign: 'center' },
   error: { ...text.small, color: colors.danger, textAlign: 'center', marginTop: spacing.xs },
 
+  /* ── Submit — to'ldirilgan anor pill ── */
   submitBtn: {
-    height: 58,
-    borderRadius: radius.xxl,
+    height: 56,
+    borderRadius: radius.md,
     flexDirection: 'row',
     alignItems: 'center',
-    overflow: 'hidden',
+    backgroundColor: colors.primary,
     marginTop: spacing.lg,
     paddingLeft: spacing.lg,
     paddingRight: spacing.sm,
   },
-  submitText: { ...text.bodyMed, color: colors.text, flex: 1, textAlign: 'center' },
+  submitText: { ...text.bodyMed, color: colors.textOnPrimary, flex: 1, textAlign: 'center' },
   submitArrow: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primaryDim,
     alignItems: 'center',
     justifyContent: 'center',
   },
