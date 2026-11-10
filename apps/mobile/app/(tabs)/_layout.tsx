@@ -101,12 +101,18 @@ function PremiumTabBar({
             accessibilityState={{ selected: focused }}
             onPress={open}
             /*
-             * ⚠️ hitSlop (2026-11-09) — iPhone 17 Pro Max'da tab label'lari
-             * pastki chetga yaqin, pastki piksel'larga tap bo'lsa register
-             * bo'lmasdi. hitSlop invisible tap zonani kengaytirmaydi, faqat
-             * tap maydonini oshiradi.
+             * ⚠️ hitSlop (2026-11-10) — tap yuzasi tabBar'ning HAMMA pastki
+             * safe-area'siga va yon tomondagi 16px marginga ham yetib borsin.
+             * iPhone 17 Pro Max'da label pastki chetga yaqin edi; endi
+             * pastdan 60, chapu-o'ngdan 16, ustdan 16 — tap ishonchli ushlanadi.
              */
-            hitSlop={{ top: 12, bottom: 24, left: 4, right: 4 }}
+            hitSlop={{ top: 16, bottom: 60, left: 16, right: 16 }}
+            /*
+             * ⚠️ `pressRetentionOffset` qo'shildi (2026-11-10) — odam barmog'i
+             * bosish paytida bir piksel siljib ketsa ham Pressable gesture
+             * bekor qilmaydi; tap aniqroq register bo'ladi.
+             */
+            pressRetentionOffset={{ top: 32, bottom: 60, left: 24, right: 24 }}
             style={({ pressed }) => [styles.tabItem, pressed && styles.tabPressed]}
           >
             <View
@@ -114,6 +120,7 @@ function PremiumTabBar({
                 styles.tabInner,
                 focused && styles.tabInnerActive,
               ]}
+              pointerEvents="none"
             >
               <Icon name={TAB_ICONS[route.name] ?? 'home'} size={22} color={color} />
               <Text style={[styles.tabLabel, { color }]} numberOfLines={1}>
@@ -219,13 +226,18 @@ const styles = StyleSheet.create({
     elevation: 10,
     zIndex: 100,
   },
+  /*
+   * ⚠️ tabItem (2026-11-10): Pressable TO'LIQ tabBar balandligini egallasin.
+   * minHeight: 64 yetmas edi — tabBar 72 bo'lgani uchun 8px pastda bo'sh
+   * joy qolardi va iPhone'da shu zonaga tap register bo'lmasdi. Endi
+   * height: '100%' bilan kolonka to'liq egallanadi.
+   */
   tabItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 64,
+    height: '100%',
     paddingHorizontal: 4,
-    // Pressable vertikal to'liq joy olsin — label'ga tap ham ushlanadi
     alignSelf: 'stretch',
   },
   tabInner: {
