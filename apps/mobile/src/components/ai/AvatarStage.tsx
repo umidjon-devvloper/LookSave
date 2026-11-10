@@ -208,20 +208,33 @@ const styles = StyleSheet.create({
    * cheklovi, UI emas. Orqaroq olish podium kompozitsiyasini beradi,
    * lekin haqiqiy oyoq faqat to'liq bo'yli avatar qayta yasalganda chiqadi.
    */
+  /*
+   * ⚠️ PASTROQ TUSHIRILDI (2026-11-10). Ilgari top:-2%/bottom:12% edi — figura
+   * tepaga ko'tarilib, podium ortida qolar edi. Endi top:8%/bottom:2% —
+   * oyoqlar podium markazida turadi, aylana to'g'ri o'raydi.
+   */
   personFrame: {
     position: 'absolute',
-    top: '-2%',
+    top: '8%',
     left: '14%',
     right: '14%',
-    bottom: '12%',
+    bottom: '2%',
   },
-  personWithoutCutout: { mixBlendMode: 'multiply' } as ImageStyle,
+  /*
+   * ⚠️ MULTIPLY BLEND OLIB TASHLANDI (2026-11-09). Fon olib tashlash
+   * xizmati yiqilsa `mixBlendMode: 'multiply'` fallback'i figurani sahnaga
+   * aralashtirar, va sahna gorizontal elementlari figura orqali ko'rinib
+   * chiziqli xira effekt beradi. Endi kesim yo'q bo'lsa — rasmni oddiy
+   * to'rtburchak holida ko'rsatamiz, bu kamroq ko'rkam lekin aniq, va
+   * xato ekranda darhol seziladi.
+   */
+  personWithoutCutout: {} as ImageStyle,
   swipeFrame: {
     position: 'absolute',
-    top: '-2%',
+    top: '8%',
     left: '14%',
     right: '14%',
-    bottom: '12%',
+    bottom: '2%',
   },
 
   /*
