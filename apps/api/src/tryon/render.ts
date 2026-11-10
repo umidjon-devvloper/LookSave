@@ -756,11 +756,17 @@ export async function requestBundleRender(
   const bodyUrl = first.bodyPhotoUrl;
   const faceUrl = first.faceReferenceUrl;
 
-  // Prompt — har kiyim slot'ini olib tuzamiz
+  // Prompt — gender users'dan, measurements profiles'dan
   const { rows: profileRows } = await pool.query<{
     gender: string | null;
     measurements: Record<string, unknown> | null;
-  }>(`SELECT gender, measurements FROM profiles WHERE user_id = $1`, [userId]);
+  }>(
+    `SELECT u.gender, COALESCE(p.measurements, '{}')::jsonb AS measurements
+       FROM users u
+       LEFT JOIN profiles p ON p.user_id = u.id
+      WHERE u.id = $1`,
+    [userId],
+  );
   const gender = (profileRows[0]?.gender ?? null) as 'male' | 'female' | null;
   const measurements = (profileRows[0]?.measurements ?? {}) as Record<string, number>;
 
