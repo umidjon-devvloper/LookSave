@@ -1785,6 +1785,43 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
             </View>
           ) : null}
 
+          {/*
+            ⚠️ KOMPLEKT MODEL (2026-11-10). Komplekt yig'ilgach, barcha outfit
+            kiyimlari bir xil result_url bilan render qilinadi. Shu URL'ni
+            topib, alohida "KOMPLEKT MODEL" kartasi sifatida strip tepasida
+            ko'rsatamiz. Tap qilsa — asosiy sahnaga yuqoridan scrollab chiqadi.
+          */}
+          {(() => {
+            const bundleRender = resolved
+              .map((l) => l.render)
+              .find((r): r is TryonRender =>
+                Boolean(r && r.status === 'ready' && r.cutoutUrl) &&
+                resolved.filter((o) => o.render?.cutoutUrl === r!.cutoutUrl).length >= 2,
+              );
+            if (!bundleRender) return null;
+            return (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Komplekt modelni sahnada ko'rsatish"
+                onPress={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}
+                style={styles.bundleModelCard}
+              >
+                <Image
+                  source={{ uri: bundleRender.cutoutUrl ?? undefined }}
+                  style={styles.bundleModelImage}
+                  resizeMode="contain"
+                />
+                <View style={styles.bundleModelInfo}>
+                  <Text style={styles.bundleModelTitle}>KOMPLEKT MODEL</Text>
+                  <Text style={styles.bundleModelHint}>
+                    {outfitItems.length} ta kiyim bitta rasmda · bosing — tepada ko'ring
+                  </Text>
+                </View>
+                <Icon name="tryon" size={18} color={colors.primary} />
+              </Pressable>
+            );
+          })()}
+
           {/* ── Kiyim tasmasi ── */}
           {usingFallback && !itemsLoading ? (
             <Text style={styles.fallbackNote}>
@@ -2830,6 +2867,28 @@ const styles = StyleSheet.create({
   },
   sectionHeadingTitle: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   sectionHeadingText: { ...text.h3, fontSize: 18, color: colors.text },
+  /* Komplekt model kartasi — strip tepasida */
+  bundleModelCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    padding: spacing.sm,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
+  },
+  bundleModelImage: {
+    width: 56,
+    height: 72,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface2,
+  },
+  bundleModelInfo: { flex: 1, gap: 2 },
+  bundleModelTitle: { ...text.body, color: colors.primary, fontWeight: '800', letterSpacing: 0.4 },
+  bundleModelHint: { ...text.tiny, color: colors.textMuted },
   sectionHeadingAction: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   sectionHeadingActionText: { ...text.small, color: colors.primary, fontFamily: fonts.semibold },
   modelHint: {
