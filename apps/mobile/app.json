@@ -6,10 +6,10 @@
     "scheme": "looksave",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "_comment_newArch": "SDK 54 dan boshlab yangi arxitektura (Fabric/bridgeless) MAJBURIY: react-native-reanimated 4 va boshqa SDK 54 native kutubxonalari eski arxitekturada umuman qurilmaydi (`assertNewArchitectureEnabledTask` ishdan bo'shaydi). Ilgari expo-gl eski arxitekturani talab qilardi, lekin u 2026-10-31 da butunlay olib tashlandi (PhotoSwipe RN View'ga ko'chirildi).",
     "newArchEnabled": true,
-    "backgroundColor": "#0A0A0F",
+    "backgroundColor": "#F7F2EA",
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -22,19 +22,19 @@
         "NSLocationWhenInUseUsageDescription": "Yaqin atrofdagi do'konlarni va ularning mahsulotlarini xaritada ko'rsatish uchun joylashuvingizdan foydalanamiz.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "39"
+      "buildNumber": "56"
     },
     "android": {
       "package": "com.looksave.looksave",
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo-mark.png",
-        "backgroundColor": "#0A0A0F"
+        "backgroundColor": "#F7F2EA"
       },
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
       ],
-      "versionCode": 21
+      "versionCode": 24
     },
     "plugins": [
       "expo-router",
@@ -59,7 +59,7 @@
       [
         "expo-notifications",
         {
-          "color": "#8B5CF6",
+          "color": "#B23A2E",
           "defaultChannel": "orders"
         }
       ],
@@ -83,7 +83,7 @@
     "splash": {
       "image": "./assets/logo-mark.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0A0A0F"
+      "backgroundColor": "#0A0812"
     },
     "runtimeVersion": {
       "policy": "appVersion"
