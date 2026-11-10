@@ -663,6 +663,53 @@ export interface OpenAiTryonInput {
   layer?: boolean;
 }
 
+export interface OpenAiTryonBundleInput {
+  modelImageUrl: string;
+  /** 2+ kiyim — hammasi bir modelda. Tartib: tanlangan tartib bilan. */
+  garments: ReadonlyArray<{ imageUrl: string; kind: GarmentKind }>;
+  faceReferenceUrl?: string | null;
+  /** To'liq prompt matni (bundle variantda alohida yasalgan) */
+  prompt: string;
+}
+
+/**
+ * KOMPLEKT kiyintirish — bir nechta kiyim bitta GPT chaqiruvida.
+ *
+ * ⚠️ TARTIB: rasmlar `image[]` ga shu tartibda yuklanadi:
+ *   1) odam (model surati)
+ *   2..N+1) har bir kiyim (prompt'dagi IMAGE 2..N bilan mos)
+ *   N+2) yuz (bor bo'lsa) — oxirida
+ */
+export async function generateTryonBundle(input: OpenAiTryonBundleInput): Promise<Buffer> {
+  const key = env().OPENAI_API_KEY;
+  if (!key) throw new Error('OpenAI kaliti sozlanmagan');
+  if (input.garments.length === 0) throw new Error('Komplekt bo`sh');
+
+  const [person, garmentBlobs, face] = await Promise.all([
+    fetchAsBlob(input.modelImageUrl, 'Foydalanuvchi surati').then((b) => shrink(b, 1536)),
+    Promise.all(
+      input.garments.map((g) =>
+        fetchAsBlob(g.imageUrl, 'Kiyim surati').then((b) => shrink(b, 1024)),
+      ),
+    ),
+    input.faceReferenceUrl
+      ? fetchAsBlob(input.faceReferenceUrl, 'Yuz surati').catch(() => null)
+      : Promise.resolve(null),
+  ]);
+
+  const faceCloseup = face ? await cropFace(face).catch(() => null) : null;
+
+  const form = new FormData();
+  form.append('model', env().OPENAI_IMAGE_MODEL);
+  form.append('image[]', person, 'person.jpg');
+  garmentBlobs.forEach((g, i) => form.append('image[]', g, `garment-${i + 1}.jpg`));
+  if (face) form.append('image[]', faceCloseup ?? face, 'face.jpg');
+  form.append('prompt', input.prompt);
+  appendImageOptions(form);
+
+  return readImage(await callImagesEdit(form, key), 'komplekt-kiyintirish');
+}
+
 /**
  * Kiyintirilgan suratni yasaydi va XOM BAYT qaytaradi.
  *

@@ -793,6 +793,21 @@ export const requestRenderBatch = (
         body: { variantIds, angle, baseRenderId },
       });
 
+/**
+ * KOMPLEKT — 2+ kiyim bitta GPT chaqiruvida bitta mannequinda.
+ * Natija har variant uchun bir xil result_url bilan qaytadi.
+ */
+export const requestBundleRender = (
+  variantIds: string[],
+  angle: AvatarAngle = 'front',
+): Promise<RenderBatchResult> =>
+  variantIds.length < 2
+    ? Promise.resolve({ renders: [], limitReached: false })
+    : api<RenderBatchResult>('/tryon/render/bundle', {
+        method: 'POST',
+        body: { variantIds, angle },
+      });
+
 /** Holatni so'raydi — ilova buni tayyor bo'lguncha takrorlaydi. */
 export const getRender = (id: string): Promise<TryonRender> =>
   api<TryonRender>(`/tryon/render/${id}`);

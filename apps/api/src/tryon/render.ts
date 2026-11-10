@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { AI_TRYON_SLOTS, garmentImageForAngle, normalizeSize } from '@looksave/validation';
 
 import type { AvatarGender, AvatarMeasurements } from './avatar-prompt';
-import { buildTryonSheetPrompt } from './tryon-prompt';
+import { buildTryonSheetPrompt, buildTryonBundleSheetPrompt } from './tryon-prompt';
 
 import { enqueueTask, isAutoAiUser, isManual } from '../developer-ai/tasks';
 import { pool } from '../db/pool';
@@ -11,6 +11,7 @@ import { ApiError } from '../http/api-error';
 import {
   garmentKindForSlot,
   generateTryon,
+  generateTryonBundle,
   generationFingerprint,
   isOpenAiEnabled,
 } from '../integrations/openai';
@@ -716,6 +717,148 @@ export async function requestRender(
  * ⚠️ KETMA-KET, PARALLEL EMAS. Har chaqiruv chegarani SANAYDI, ya'ni
  * parallel ketsa hammasi bir xil sonni ko'rib chegaradan o'tib ketardi.
  */
+/**
+ * KOMPLEKT kiyintirish — 2+ kiyim bitta GPT chaqiruvida bitta mannequinda.
+ *
+ * ⚠️ FARQI `requestRender`DAN. Har kiyim uchun alohida render qator yasamaymiz —
+ * HAMMASI uchun BITTA result bo'ladi. Natija har bir variant_id uchun yaxlit
+ * tryon_renders qatoriga yoziladi (bir xil result_url + cutout_url bilan),
+ * shuning uchun ilova kiyimlarning har birini "tayyor" deb ko'radi va
+ * tanlangan outfit ichida almashtiryotganda har qatlam o'sha bitta rasmni
+ * ko'rsatadi. Chegara sanaganda esa 1 ta deb hisoblanadi (pul tejaladi).
+ */
+export async function requestBundleRender(
+  userId: string,
+  variantIds: string[],
+  angle: RenderAngle = 'front',
+): Promise<{ renders: RenderDto[]; limitReached: boolean }> {
+  if (variantIds.length < 2) {
+    throw new ApiError('VALIDATION_ERROR', 'Komplekt uchun 2 va undan ko`p kiyim kerak');
+  }
+  if (!isOpenAiEnabled()) {
+    throw new ApiError('SERVICE_UNAVAILABLE', 'AI kiyintirish hozircha sozlanmagan');
+  }
+
+  try {
+    await assertDailyLimit(userId);
+  } catch (err) {
+    if (err instanceof ApiError && err.code === 'RATE_LIMITED') {
+      return { renders: [], limitReached: true };
+    }
+    throw err;
+  }
+
+  // Har kiyim uchun source'larni yig'amiz (body bir xil — birinchidan olamiz)
+  const sourcesList = await Promise.all(
+    variantIds.map((vid) => loadSources(userId, vid, angle, null)),
+  );
+  const first = sourcesList[0]!;
+  const bodyUrl = first.bodyPhotoUrl;
+  const faceUrl = first.faceReferenceUrl;
+
+  // Prompt — har kiyim slot'ini olib tuzamiz
+  const { rows: profileRows } = await pool.query<{
+    gender: string | null;
+    measurements: Record<string, unknown> | null;
+  }>(`SELECT gender, measurements FROM profiles WHERE user_id = $1`, [userId]);
+  const gender = (profileRows[0]?.gender ?? null) as 'male' | 'female' | null;
+  const measurements = (profileRows[0]?.measurements ?? {}) as Record<string, number>;
+
+  const prompt = buildTryonBundleSheetPrompt(
+    sourcesList.map((s) => s.slot),
+    measurements as any,
+    gender as any,
+  );
+
+  // Birlashgan source hash — bundle variant'larini yagona identifikatsiya qilish
+  const bundleHash = createHash('sha256')
+    .update(variantIds.slice().sort().join(','))
+    .update(bodyUrl)
+    .digest('hex')
+    .slice(0, 32);
+
+  /*
+   * Har variant uchun pending qator yaratamiz — hammasi bir xil `source_hash`
+   * bilan (bundleHash) belgilanadi, shunda kesh keyin ishlaydi va qayta
+   * chaqirilsa yangi GPT'ga bormaydi.
+   */
+  const renderRows: RenderRow[] = [];
+  for (const variantId of variantIds) {
+    const inserted = await pool.query<RenderRow>(
+      `INSERT INTO tryon_renders (user_id, variant_id, angle, source_hash, base_render_id, status)
+       VALUES ($1, $2, $3, $4, NULL, 'pending')
+       ON CONFLICT (user_id, variant_id, angle, source_hash) DO NOTHING
+       RETURNING ${RENDER_COLUMNS}`,
+      [userId, variantId, angle, bundleHash],
+    );
+    const row = inserted.rows[0] ?? (await pool.query<RenderRow>(
+      `SELECT ${RENDER_COLUMNS} FROM tryon_renders
+        WHERE user_id = $1 AND variant_id = $2 AND angle = $3 AND source_hash = $4`,
+      [userId, variantId, angle, bundleHash],
+    )).rows[0]!;
+    renderRows.push(row);
+  }
+
+  // Agar hammasi allaqachon ready — darhol qaytaramiz
+  if (renderRows.every((r) => r.status === 'ready' && r.result_url)) {
+    return { renders: renderRows.map(toDto), limitReached: false };
+  }
+
+  // Fonda bitta GPT chaqiruv va natija barcha qatorlarga yoziladi
+  void (async () => {
+    try {
+      for (const r of renderRows) {
+        await pool.query(`UPDATE tryon_renders SET status = 'processing' WHERE id = $1`, [r.id])
+          .catch(() => {});
+      }
+
+      const buffer = await generateTryonBundle({
+        modelImageUrl: bodyUrl,
+        garments: sourcesList.map((s) => ({
+          imageUrl: s.garmentImageUrl,
+          kind: garmentKindForSlot(s.slot),
+        })),
+        faceReferenceUrl: faceUrl,
+        prompt,
+      });
+
+      // Yuzni haqiqiylashtirish (facefusion)
+      const finalBuf = faceUrl
+        ? await faceSwap({ target: buffer, sourceFaceUrl: faceUrl, angle })
+        : buffer;
+
+      // Natija R2'ga bir marta yuklanadi, keyin barcha qatorlarga URL yoziladi
+      const resultUrl = await uploadObject({
+        key: `tryon/${randomUUID()}.png`,
+        body: finalBuf,
+        contentType: 'image/png',
+      });
+      const cutout = await makeCutout(resultUrl, 'tryon');
+
+      for (const r of renderRows) {
+        await pool.query(
+          `UPDATE tryon_renders
+              SET status = 'ready', result_url = $2, cutout_url = $3, completed_at = now()
+            WHERE id = $1`,
+          [r.id, resultUrl, cutout],
+        );
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'noma`lum xato';
+      logger.error({ err, variantIds }, 'bundle: kiyintirish yiqildi');
+      for (const r of renderRows) {
+        await pool.query(
+          `UPDATE tryon_renders SET status = 'failed', error = $2, completed_at = now()
+            WHERE id = $1`,
+          [r.id, message],
+        ).catch(() => {});
+      }
+    }
+  })();
+
+  return { renders: renderRows.map(toDto), limitReached: false };
+}
+
 export async function requestRenderBatch(
   userId: string,
   variantIds: string[],

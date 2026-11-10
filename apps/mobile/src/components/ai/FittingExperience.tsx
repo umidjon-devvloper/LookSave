@@ -43,6 +43,7 @@ import {
   requestAvatarCutout,
   removeFavorite,
   requestRender,
+  requestBundleRender,
   type AvatarAngle,
   type Garment,
   type TryonRender,
@@ -342,25 +343,39 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
   };
 
   /*
-   * ⚠️ BUNDLE KIYINTIRISH (2026-11-10). Checkbox orqali bir nechta kiyim
-   * tanlangan — hammasini outfit'ga qo'shib, zanjirli render boshlaymiz.
-   * Mavjud `useEffect` (900-qator atrofida) bir qatlamni navbatma-navbat
-   * ishga tushiradi; shuning uchun shunchaki wear() chaqirish yetarli.
+   * ⚠️ BUNDLE KIYINTIRISH (2026-11-10). Checkbox orqali tanlangan kiyimlar
+   * ONE-CALL bilan backend'ga yuboriladi — bitta GPT chaqiruvi, bitta
+   * mannequin, hamma kiyim bir rasmda. Server har variant uchun bir xil
+   * result_url yozadi, shuning uchun outfit'ga wear() ham qilamiz va
+   * mavjud `useEffect` chain ishga tushmasligi uchun BIRON BIR narsa
+   * qilmaydi (chunki hamma qatorlar darhol pending→processing bo'ladi).
    */
   const putOnBundle = (variantIds: string[]): void => {
     // Avval eski outfit tozalanadi, keyin yangi qatlamlar qo'yiladi
     for (const layer of outfit) takeOff(layer.category);
     for (const id of variantIds) {
-      // `seen` keshi — tanlangan paytda kartochkada ko'ringan kiyim shu
-      // yerga tushgan bo'ladi. Bo'lmasa (kesh yo'q) o'tkazib yuboramiz.
       const item = seen[id];
       if (!item) continue;
       wear(item.slot, item.variantId);
     }
     setBundleSelection(new Set());
     setSize(null);
-    setNotice(null);
+    setNotice('Komplekt yuborildi — AI hammasini birgalikda kiyintiryapti…');
     if (angle !== 'front') setAngle('front');
+
+    // ONE-CALL backend chaqiruv
+    void (async () => {
+      try {
+        await requestBundleRender(variantIds, 'front');
+        void queryClient.invalidateQueries({ queryKey: ['renders'] });
+      } catch (err) {
+        if (err instanceof ApiError && err.code === 'RATE_LIMITED') {
+          setLimitReached(true);
+        } else {
+          setNotice(err instanceof ApiError ? err.message : 'Komplekt kiyintirib bo`lmadi');
+        }
+      }
+    })();
   };
 
   const profile = useQuery({ queryKey: ['profile'], queryFn: getFullProfile, enabled: signedIn });

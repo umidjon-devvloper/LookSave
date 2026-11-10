@@ -36,6 +36,7 @@ import {
   pollRender,
   requestRender,
   requestRenderBatch,
+  requestBundleRender,
 } from '../tryon/render';
 import { suggestLooks } from '../tryon/suggest';
 import {
@@ -311,6 +312,29 @@ tryonRouter.post(
         input.body.variantIds,
         input.body.angle,
         input.body.baseRenderId ?? null,
+      ),
+    );
+  }),
+);
+
+/**
+ * POST /v1/tryon/render/bundle — komplekt kiyintirish.
+ *
+ * ⚠️ FARQI batch'DAN: batch har kiyim uchun alohida render (3 ta GPT
+ * chaqiruv). bundle esa BITTA GPT chaqiruvida 2+ kiyimni bitta mannequinda
+ * birlashtiradi va natija har bir variant uchun yaxlit ready qatorga
+ * yoziladi. Chegara 1 ta sanaladi, GPT'ga ham 1 marta to'laymiz.
+ */
+tryonRouter.post(
+  '/tryon/render/bundle',
+  requireAuth,
+  route({ body: renderBatchSchema }, async (input, _req, res) => {
+    sendData(
+      res,
+      await requestBundleRender(
+        getAuth(res).sub,
+        input.body.variantIds,
+        input.body.angle,
       ),
     );
   }),
