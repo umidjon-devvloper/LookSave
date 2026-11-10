@@ -117,6 +117,27 @@ async function signPreviews(payload: Record<string, unknown>): Promise<Record<st
       entry[0].endsWith('Url') && typeof entry[1] === 'string' && entry[1].length > 0,
   );
 
+  /*
+   * ⚠️ BUNDLE GARMENTS (2026-11-10). Komplekt task'ida `bundle.garments[]`
+   * ichida ko'p kiyim URL'lari bo'ladi — ularni ham presign qilib,
+   * `bundleGarment1Url`, `bundleGarment2Url` kabi kalit bilan qo'shamiz.
+   * Panel UI shu kalitlarni ko'rib hamma kiyimni chiqaradi.
+   */
+  const bundle = payload['bundle'];
+  if (bundle && typeof bundle === 'object') {
+    const garments = (bundle as { garments?: unknown }).garments;
+    if (Array.isArray(garments)) {
+      garments.forEach((g, i) => {
+        if (g && typeof g === 'object') {
+          const url = (g as { imageUrl?: unknown }).imageUrl;
+          if (typeof url === 'string' && url.length > 0) {
+            entries.push([`bundleGarment${i + 1}Url`, url]);
+          }
+        }
+      });
+    }
+  }
+
   const signed = await Promise.all(
     entries.map(async ([key, url]) => [key, (await presignRead(url)) ?? url] as const),
   );

@@ -513,7 +513,31 @@ function TaskDetail({
                   />
                 </figure>
               ) : null}
-              {task.previews.garmentImageUrl ? (
+              {/*
+               * ⚠️ BUNDLE (komplekt) — payload.bundle bor bo'lsa, panel
+               * bundleGarment1Url, bundleGarment2Url ... kalitlarini oladi va
+               * HAMMA kiyimni ko'rsatadi. Aks holda eski single garmentImageUrl.
+               */}
+              {Object.keys(task.previews)
+                .filter((k) => /^bundleGarment\d+Url$/.test(k))
+                .sort().length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  <span className="label text-xs">Komplekt kiyimlari</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {Object.keys(task.previews)
+                      .filter((k) => /^bundleGarment\d+Url$/.test(k))
+                      .sort()
+                      .map((k) => (
+                        <img
+                          key={k}
+                          src={task.previews[k]}
+                          alt="Komplekt kiyim"
+                          className="aspect-[3/4] w-full rounded-md bg-surface2 object-contain"
+                        />
+                      ))}
+                  </div>
+                </div>
+              ) : task.previews.garmentImageUrl ? (
                 <figure className="space-y-1">
                   <figcaption className="label text-xs">Kiyim</figcaption>
                   <img
