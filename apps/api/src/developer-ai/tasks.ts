@@ -793,7 +793,7 @@ function secondsSince(date: Date): number {
  * almashgan bo'lishi mumkin — eski kesim yangi suratga yozilmasligi
  * kerak, aks holda odam bir kiyimda, kesimda boshqasida bo'lardi.
  */
-async function attachRenderCutout(renderId: string, url: string): Promise<void> {
+export async function attachRenderCutout(renderId: string, url: string): Promise<void> {
   try {
     logger.info({ renderId, url: url.slice(0, 80) }, 'cutout: attach boshlanmoqda');
     const cutout = await makeCutout(url, 'tryon');

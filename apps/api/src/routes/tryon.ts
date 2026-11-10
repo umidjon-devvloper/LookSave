@@ -18,6 +18,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 
 import { paginate } from '../catalog/cursor';
+import { pool } from '../db/pool';
+import { attachRenderCutout } from '../developer-ai/tasks';
 import { localeOf } from '../catalog/locale';
 import { ApiError } from '../http/api-error';
 import { getAuth, getAuthOptional, requireAuth } from '../http/auth-middleware';
@@ -178,6 +180,31 @@ tryonRouter.post(
 /** POST /v1/tryon/avatar/cutout — eski avatar fonini qayta ajratish. */
 tryonRouter.post('/tryon/avatar/cutout', requireAuth, async (_req, res) => {
   sendData(res, await ensureAvatarCutout(getAuth(res).sub));
+});
+
+/**
+ * POST /v1/tryon/renders/reprocess-cutouts — foydalanuvchining `cutout_url`
+ * null bo'lgan renderlariga qayta cutout yasash (fly.io orqali). Fon bilan
+ * kelayotgan eski renderlarni tozalash uchun.
+ *
+ * ⚠️ FONDA ISHLAYDI. Javob darhol qaytadi — `queued: N` soni bilan. Natija
+ * mobile client avtomatik polling bilan ko'rinadi.
+ */
+tryonRouter.post('/tryon/renders/reprocess-cutouts', requireAuth, async (_req, res) => {
+  const userId = getAuth(res).sub;
+  const { rows } = await pool.query<{ id: string; result_url: string }>(
+    `SELECT id, result_url FROM tryon_renders
+      WHERE user_id = $1
+        AND status = 'ready'
+        AND result_url IS NOT NULL
+        AND cutout_url IS NULL
+      LIMIT 100`,
+    [userId],
+  );
+  for (const row of rows) {
+    void attachRenderCutout(row.id, row.result_url);
+  }
+  sendData(res, { queued: rows.length });
 });
 
 /** GET /v1/tryon/avatar — holat. Ilova tayyor bo'lguncha takrorlaydi. */
