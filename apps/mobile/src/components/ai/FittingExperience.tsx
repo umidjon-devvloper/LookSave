@@ -272,6 +272,7 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
   }, []);
 
   const stripRef = useRef<FlatList<Garment>>(null);
+  const scrollRef = useRef<Animated.ScrollView>(null);
 
   const outfit = useAiFlowStore((state) => state.outfit);
   const wear = useAiFlowStore((state) => state.wear);
@@ -1383,6 +1384,7 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
       </Animated.View>
 
       <Animated.ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.page}
         showsVerticalScrollIndicator={false}
         onScroll={Animated.event(
@@ -2289,10 +2291,12 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
                     onPress={() => {
                       const ids = outfitItems.map((item) => item.variantId);
                       if (ids.length >= 2) putOnBundle(ids);
+                      // Kategoriya panelini yopish va yuqoriga scrollash
+                      scrollRef.current?.scrollTo({ y: 0, animated: true });
                     }}
                     style={({ pressed }) => [styles.outfitHead, pressed && { opacity: 0.7 }]}
                   >
-                    <Text style={styles.outfitTitle}>Komplekt · {outfitItems.length} ta</Text>
+                    <Text style={styles.outfitTitle}>Komplekt · {outfitItems.length} ta ▲</Text>
                     <Text style={styles.outfitTotal}>
                       {money(String(outfitTotal), outfitCurrency)}
                     </Text>
