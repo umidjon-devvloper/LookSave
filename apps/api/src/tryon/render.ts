@@ -810,7 +810,38 @@ export async function requestBundleRender(
     return { renders: renderRows.map(toDto), limitReached: false };
   }
 
-  // Fonda bitta GPT chaqiruv va natija barcha qatorlarga yoziladi
+  const manual = isManual('render') && !isAutoAiUser(userId);
+  const first = renderRows[0]!;
+
+  if (manual) {
+    /*
+     * ⚠️ OPERATOR REJIMI. Komplekt uchun BITTA task yaratamiz — ref_id birinchi
+     * render. Payload ichida barcha kiyim URL'lari + bundle prompt + bundleHash
+     * bo'ladi, shunda operator panelida bitta ish ko'rinadi va ekstension auto
+     * GPT'da bundle promptini ishlatadi. Natija kelganda server bundleHash
+     * bo'yicha barcha sibling renderlarni ham `ready` qiladi.
+     */
+    await enqueueTask('render', userId, first.id, {
+      bodyUrl,
+      garmentImageUrl: sourcesList[0]!.garmentImageUrl,
+      ...(faceUrl ? { faceUrl } : {}),
+      angle,
+      slot: sourcesList[0]!.slot,
+      measurements: measurements as Record<string, number | string>,
+      gender,
+      prompt,
+      // Bundle metadata — ekstension va server bularni oladi
+      bundle: {
+        variantIds,
+        garments: sourcesList.map((s) => ({ imageUrl: s.garmentImageUrl, slot: s.slot })),
+        hash: bundleHash,
+      },
+    });
+    logger.info({ userId, renderIds: renderRows.map((r) => r.id) }, 'bundle operator navbatiga qo`yildi');
+    return { renders: renderRows.map(toDto), limitReached: false };
+  }
+
+  // Auto rejim: fonda bitta GPT chaqiruv va natija barcha qatorlarga yoziladi
   void (async () => {
     try {
       for (const r of renderRows) {
@@ -828,12 +859,10 @@ export async function requestBundleRender(
         prompt,
       });
 
-      // Yuzni haqiqiylashtirish (facefusion)
       const finalBuf = faceUrl
         ? await faceSwap({ target: buffer, sourceFaceUrl: faceUrl, angle })
         : buffer;
 
-      // Natija R2'ga bir marta yuklanadi, keyin barcha qatorlarga URL yoziladi
       const resultUrl = await uploadObject({
         key: `tryon/${randomUUID()}.png`,
         body: finalBuf,

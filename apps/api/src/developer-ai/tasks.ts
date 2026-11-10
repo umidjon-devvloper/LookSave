@@ -491,6 +491,20 @@ async function applyResult(
       [main.user_id, main.variant_id, angle, main.source_hash, main.base_render_id, url],
     );
   }
+
+  /*
+   * ⚠️ KOMPLEKT SIBLINGLAR (2026-11-10). Bundle rejimida bir nechta
+   * variant bir xil `source_hash` (bundleHash) bilan yaratiladi. Operator
+   * bitta bo'lagini tugatsa — xuddi shu hash'dagi boshqa renderlarga ham
+   * natija ko'chiriladi (har kiyim "tayyor" bo'lib ko'rinadi).
+   */
+  await client.query(
+    `UPDATE tryon_renders
+        SET result_url = COALESCE(($4::jsonb ->> angle), $3),
+            status = 'ready', error = NULL, completed_at = now()
+      WHERE user_id = $1 AND source_hash = $2 AND status != 'ready' AND id != $5`,
+    [main.user_id, main.source_hash, resultUrl, JSON.stringify(angles ?? {}), row.ref_id],
+  );
 }
 
 async function applyFailure(client: PoolClient, row: TaskRow, reason: string): Promise<void> {
