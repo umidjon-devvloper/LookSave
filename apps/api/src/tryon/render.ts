@@ -283,6 +283,25 @@ async function loadSources(
  * turmaydi, shuning uchun u chegarani yemasligi kerak.
  */
 async function assertDailyLimit(userId: string): Promise<void> {
+  /*
+   * ⚠️ WHITELIST (2026-11-10). Ichki test akkauntlariga kunlik chegara
+   * qo'llanmaydi. `TRYON_UNLIMITED_PHONES` env'da vergul bilan ajratilgan
+   * E.164 telefon raqamlari ro'yxati — ulardagi userlarga limit tekshirilmaydi.
+   */
+  const whitelistRaw = process.env['TRYON_UNLIMITED_PHONES'] ?? '';
+  const whitelist = whitelistRaw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  if (whitelist.length > 0) {
+    const { rows: phoneRows } = await pool.query<{ phone: string | null }>(
+      `SELECT phone FROM users WHERE id = $1`,
+      [userId],
+    );
+    const phone = phoneRows[0]?.phone ?? '';
+    if (whitelist.includes(phone)) return;
+  }
+
   const { rows } = await pool.query<{ count: string }>(
     `SELECT COUNT(*) AS count FROM tryon_renders
       WHERE user_id = $1 AND created_at > now() - interval '24 hours'`,

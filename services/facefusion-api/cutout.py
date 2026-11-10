@@ -18,16 +18,18 @@ from rembg import new_session, remove
 
 log = logging.getLogger("cutout")
 
-# PREMIUM default: birefnet-general-lite — 440MB RAM, premium chekka.
-MODEL = os.environ.get("CUTOUT_MODEL", "birefnet-general-lite")
+# PREMIUM default: birefnet-general — 1.5GB RAM, aniqroq chekka
+# (lite'da fon chetlarda sizib ko'rinardi). fly.io 8GB RAM yetarli.
+MODEL = os.environ.get("CUTOUT_MODEL", "birefnet-general")
 
 # Kiruvchi rasmda maksimum o'lcham. 1024 — mobile ekran uchun yetarli,
 # ONNX runtime RAM cho'qqisi mo'tadil (2-3GB).
 MAX_SIDE = int(os.environ.get("CUTOUT_MAX_SIDE", "1024"))
 
 # Alfa normallashtirish — chekkadagi yarim-shaffof piksellar aniqlashtirish uchun.
-ALPHA_LO = int(os.environ.get("CUTOUT_ALPHA_LO", "10"))
-ALPHA_HI = int(os.environ.get("CUTOUT_ALPHA_HI", "245"))
+# Ko'proq bosim: 60 dan past piksellar 0, 230 dan yuqori 255 — fon o'tib ko'rinmaydi.
+ALPHA_LO = int(os.environ.get("CUTOUT_ALPHA_LO", "60"))
+ALPHA_HI = int(os.environ.get("CUTOUT_ALPHA_HI", "230"))
 
 # Qora fon chetdan flood-fill (operator panellari uchun).
 BLACK_BG_THRESHOLD = int(os.environ.get("CUTOUT_BLACK_BG_THRESHOLD", "70"))

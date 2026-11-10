@@ -61,7 +61,8 @@ import { PhotoSwipe } from './PhotoSwipe';
 import { StorePicker } from './StorePicker';
 import { goBack } from '../../navigation/back';
 
-const PREMIUM_TRYON_BACKGROUND = require('../../../assets/tryon-boutique-bg-portrait-v2.png');
+const FEMALE_TRYON_BACKGROUND = require('../../../assets/tryon-boutique-female-v1.png');
+const MALE_TRYON_BACKGROUND = require('../../../assets/tryon-boutique-male-v1.png');
 /** Hero fon cho'zilish diapazoni — Home ekrani kabi: 560 px */
 const TRYON_HERO_STRETCH = 560;
 /*
@@ -176,10 +177,13 @@ const TABS: Array<{ category: string; label: string; icon: IconName; slot: strin
   { category: '', label: 'Oyoq kiyim', icon: 'slotFeet', slot: 'feet' },
 ];
 
-/** Biror natija hali kelmayotgan bo'lsa ro'yxat qayta so'raladi. */
-function isWorking(renders: readonly TryonRender[] | undefined): boolean {
+/** Ready rasm yozilgach, server shaffof kesimni biroz keyin ulaydi. */
+function needsRenderRefresh(renders: readonly TryonRender[] | undefined): boolean {
   return (renders ?? []).some(
-    (render) => render.status === 'pending' || render.status === 'processing',
+    (render) =>
+      render.status === 'pending' ||
+      render.status === 'processing' ||
+      (render.status === 'ready' && Boolean(render.imageUrl) && !render.cutoutUrl),
   );
 }
 
@@ -344,6 +348,8 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
 
   const measurements = profile.data?.measurements;
   const gender = profile.data?.gender ?? null;
+  // Avatar yaratishda tanlangan jins primerka sahnasining butik fonini ham belgilaydi.
+  const tryonBackground = gender === 'male' ? MALE_TRYON_BACKGROUND : FEMALE_TRYON_BACKGROUND;
 
   /*
    * ── Sevimlilar ──
@@ -572,7 +578,8 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
     queryFn: () => getRenders(outfitIds, angle, null, 'all'),
     enabled: ready && outfitIds.length > 0,
     // Tayyor bo'lgan render tezroq ko'rinsin; ilovaga qaytganda ham yangilanadi
-    refetchInterval: (query) => (isWorking(query.state.data as TryonRender[]) ? 1000 : false),
+    refetchInterval: (query) =>
+      needsRenderRefresh(query.state.data as TryonRender[]) ? 1500 : false,
     refetchOnWindowFocus: true,
     // Keshdagi burchak ma'lumoti darhol ishlatilsin (almashganda tarmoq kutmaslik)
     staleTime: 30_000,
@@ -645,7 +652,8 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
     queryKey: ['renders', 'strip', angle, stripBase.baseRenderId, stripIds.join(',')],
     queryFn: () => getRenders(stripIds, angle, stripBase.baseRenderId),
     enabled: ready && stripIds.length > 0 && stripBase.ready,
-    refetchInterval: (query) => (isWorking(query.state.data as TryonRender[]) ? 1000 : false),
+    refetchInterval: (query) =>
+      needsRenderRefresh(query.state.data as TryonRender[]) ? 1500 : false,
     refetchOnWindowFocus: true,
     staleTime: 30_000,
   });
@@ -665,6 +673,8 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
     queryKey: ['renders', 'strip-any', angle, stripIds.join(',')],
     queryFn: () => getRenders(stripIds, angle, null, 'all'),
     enabled: ready && stripIds.length > 0,
+    refetchInterval: (query) =>
+      needsRenderRefresh(query.state.data as TryonRender[]) ? 1500 : false,
     staleTime: 30_000,
   });
 
@@ -997,12 +1007,23 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
         : null
       : (angles[angle] ?? (avatar.data?.status === 'ready' ? (avatar.data?.imageUrl ?? null) : null));
   const baseCutout = angle === 'front' ? (avatar.data?.cutoutUrl ?? null) : null;
+  /*
+   * ⚠️ `ensureCutout.isError` SHARTI OLIB TASHLANDI (2026-11-10).
+   *
+   * Avval cutout so'rovi muvaffaqiyatsiz bo'lsa, `preparingCutout` false
+   * bo'lar va asl `imageUrl` (studio fon bilan JPEG) ko'rsatila boshlanar
+   * edi — foydalanuvchi "ghost" effektni ko'rardi: shop fon ustida odam
+   * o'zining eski studio fon bilan.
+   *
+   * Endi cutout yo'q — bu VAZIYAT, HOLAT emas. Agar yo'q bo'lsa, surat
+   * ko'rsatmaymiz (overlay "Fon ajratilyapti" chiqadi), xato bo'lsa ham
+   * raw imageUrl'ni ochmaymiz.
+   */
   const preparingCutout =
     angle === 'front' &&
     avatar.data?.status === 'ready' &&
     Boolean(avatar.data.imageUrl) &&
-    !avatar.data.cutoutUrl &&
-    !ensureCutout.isError;
+    !avatar.data.cutoutUrl;
 
   /**
    * Sahnada ko'rsatiladigan natija.
@@ -1143,6 +1164,18 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
       || shown.status === 'processing'),
   );
 
+  /*
+   * Ready natija hali shaffof kesimga ega bo'lmasa, `imageUrl`ni butik
+   * ustiga qo'ymaymiz. Operator/AI ba'zan uch pozali fonli varaq qaytaradi;
+   * raw rasm ko'rsatilsa to'rtburchak fon va yon siluetlar ham chiqadi.
+   */
+  const renderPreparingCutout = Boolean(
+    angle === 'front' &&
+    shown?.status === 'ready' &&
+    shown.imageUrl &&
+    !shown.cutoutUrl,
+  );
+
   /** Sahnadagi yagona holat — ustuvorlik: kiyintirish → sahnaga tayyorlash → xato */
   const stageStatus: { title: string; hint: string; error?: boolean } | null = currentWorking
     ? currentInFlight
@@ -1161,7 +1194,9 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
               ? 'Har qatlam 10–20 soniya'
               : 'Avval ostidagi qatlam tayyorlanmoqda',
           }
-    : preparingCutout
+    : renderPreparingCutout
+      ? { title: 'Kiyim sahnaga tayyorlanmoqda…', hint: 'Rasm foni ajratilmoqda' }
+      : preparingCutout
       ? { title: 'Avatar sahnaga tayyorlanmoqda…', hint: 'Fon bir marta ajratiladi' }
       : failed
         ? {
@@ -1202,15 +1237,28 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
       // AvatarStage `cutoutUrl ?? imageUrl` ni tanlaydi, shuning uchun
       // thumbnail'ni AYNAN shunday zanjirga qo'yamiz — main va thumb
       // bir xil rasmni ko'rsatadi.
-      const url =
-        visibleTop?.render?.status === 'ready'
-          ? (visibleTop.render.cutoutUrl ?? visibleTop.render.imageUrl)
-          : (wornFront?.imageUrl ?? baseImage ?? angles[option.value] ?? null);
+      /*
+       * ⚠️ FON TAYYORLANAYOTGAN PAYTDA RASM YO'Q (2026-11-10). Cutout hali
+       * yo'q bo'lsa `baseImage` (studio fon bilan JPEG) ni ko'rsatmaymiz —
+       * shop fon ichida ghost bo'lib ko'rinardi. Overlay status matni
+       * "Fon ajratilyapti" chiqadi.
+       */
+      const sceneRender =
+        shown?.status === 'ready'
+          ? shown
+          : visibleTop?.render?.status === 'ready'
+            ? visibleTop.render
+            : null;
+      const url = sceneRender
+        ? (sceneRender.cutoutUrl ?? baseCutout)
+        : preparingCutout
+          ? null
+          : (baseCutout ?? angles[option.value] ?? null);
       return { key: option.value, url, resizeMode: 'contain' as const };
     }
     return {
       key: option.value,
-      url: angles[option.value] ?? baseImage ?? null,
+      url: preparingCutout ? null : (angles[option.value] ?? baseImage ?? null),
       resizeMode: 'contain' as const,
     };
   });
@@ -1272,11 +1320,11 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
           },
         ]}
       >
-        <Animated.Image
-          source={PREMIUM_TRYON_BACKGROUND}
-          resizeMode="stretch"
-          style={styles.tryonHeroBackground}
-        />
+          <Animated.Image
+            source={tryonBackground}
+            resizeMode="stretch"
+            style={styles.tryonHeroBackground}
+          />
       </Animated.View>
 
       <Animated.ScrollView
@@ -1378,7 +1426,13 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
                 : wornFront ? (wornFront.cutoutUrl ?? null)
                 : baseCutout
             }
-            dimmed={!worn && currentWorking}
+            /*
+             * ⚠️ DIMMED OLIB TASHLANDI (2026-11-10). Avval "AI kiyintirmoqda"
+             * paytida avatar 35% opacity'ga tushardi — foydalanuvchiga ghost
+             * bo'lib ko'rinardi va shop fon ichidan o'tib turardi. Overlay
+             * matn (`stageStatus`) AI ishlayotganini aytadi, dimming ortiqcha.
+             */
+            dimmed={false}
             showRings
           >
             {/*
@@ -1884,7 +1938,8 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
                  * o'sha kiyimda ko'rsatadi. Endi bu deyarli hamma
                  * kartochkada bor: tasma oldindan tayyorlanadi.
                  */
-                const preview = isReady ? (render.cutoutUrl ?? render.imageUrl) : item.image;
+                // Fonli AI varaqni thumbnail'da ham ko'rsatmaymiz.
+                const preview = isReady ? (render.cutoutUrl ?? item.image) : item.image;
 
                 return (
                   <Pressable
