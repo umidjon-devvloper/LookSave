@@ -194,13 +194,23 @@ export function PhotoSwipe({ photos, index, onIndexChange, style }: PhotoSwipePr
                   },
                 ],
                 /*
-                 * Qo'shni karta xiralashadi — ko'z markazdagiga qaraydi.
-                 * To'liq shaffof qilinmaydi: chetda nimadir turgani
-                 * svayp mumkinligini ko'rsatadi.
+                 * ⚠️ QO'SHNI KARTA SVAYPSIZ KO'RINMAYDI (2026-11-10).
+                 *
+                 * Ilgari qo'shni karta har doim 0.45 opacity bilan chetida
+                 * ko'rinardi. Lekin yon/orqa burchak surati HALI CUTOUT
+                 * QILINMAGAN bo'lsa (studio fon bilan JPEG), chetda grey
+                 * silhouette bo'lib bo'linardi — hech qanday svayp yo'q
+                 * paytda ham. Foydalanuvchiga "nega orqa fon?" deb
+                 * ko'rinardi.
+                 *
+                 * Endi qo'shni karta faqat BARMOQ TEGIB HARAKAT QILGAN
+                 * paytda yoritiladi: offset ±1 → 0 shaffof, ±0.5 → 0.6
+                 * ko'rinadigan, 0 → 1 to'liq. Jim turgan paytda chetlar
+                 * toza.
                  */
                 opacity: offset.interpolate({
-                  inputRange: [-1, 0, 1],
-                  outputRange: [0.45, 1, 0.45],
+                  inputRange: [-1, -0.5, 0, 0.5, 1],
+                  outputRange: [0, 0.6, 1, 0.6, 0],
                   extrapolate: 'clamp',
                 }),
               },
