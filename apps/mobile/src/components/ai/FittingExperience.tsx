@@ -252,6 +252,24 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
    */
   const [seen, setSeen] = useState<Record<string, Garment>>({});
 
+  /*
+   * ⚠️ BUNDLE TANLOV (2026-11-10). Foydalanuvchi bir nechta kiyimni
+   * (futbolka + shim + krossovka) tanlab, hammasini birgalikda kiyintirish
+   * uchun. Karta burchagidagi checkbox bilan ishlaydi. Oddiy tap hali ham
+   * BITTA kiyimni darhol kiyintiradi — bu Flow buzilmaydi.
+   */
+  const [bundleSelection, setBundleSelection] = useState<Set<string>>(() => new Set());
+  const toggleBundleItem = useCallback((item: Garment): void => {
+    // Keshga ham qo'shamiz — bundle yig'ilganda item ma'lumotlari kerak
+    setSeen((prev) => (prev[item.variantId] ? prev : { ...prev, [item.variantId]: item }));
+    setBundleSelection((prev) => {
+      const next = new Set(prev);
+      if (next.has(item.variantId)) next.delete(item.variantId);
+      else next.add(item.variantId);
+      return next;
+    });
+  }, []);
+
   const stripRef = useRef<FlatList<Garment>>(null);
 
   const outfit = useAiFlowStore((state) => state.outfit);
@@ -321,6 +339,28 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
     takeOff(category);
     setSize(null);
     setNotice(null);
+  };
+
+  /*
+   * ⚠️ BUNDLE KIYINTIRISH (2026-11-10). Checkbox orqali bir nechta kiyim
+   * tanlangan — hammasini outfit'ga qo'shib, zanjirli render boshlaymiz.
+   * Mavjud `useEffect` (900-qator atrofida) bir qatlamni navbatma-navbat
+   * ishga tushiradi; shuning uchun shunchaki wear() chaqirish yetarli.
+   */
+  const putOnBundle = (variantIds: string[]): void => {
+    // Avval eski outfit tozalanadi, keyin yangi qatlamlar qo'yiladi
+    for (const layer of outfit) takeOff(layer.category);
+    for (const id of variantIds) {
+      // `seen` keshi — tanlangan paytda kartochkada ko'ringan kiyim shu
+      // yerga tushgan bo'ladi. Bo'lmasa (kesh yo'q) o'tkazib yuboramiz.
+      const item = seen[id];
+      if (!item) continue;
+      wear(item.slot, item.variantId);
+    }
+    setBundleSelection(new Set());
+    setSize(null);
+    setNotice(null);
+    if (angle !== 'front') setAngle('front');
   };
 
   const profile = useQuery({ queryKey: ['profile'], queryFn: getFullProfile, enabled: signedIn });
@@ -1941,22 +1981,12 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
                 // Fonli AI varaqni thumbnail'da ham ko'rsatmaymiz.
                 const preview = isReady ? (render.cutoutUrl ?? item.image) : item.image;
 
+                const bundled = bundleSelection.has(item.variantId);
                 return (
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={item.title}
                     onPress={() => {
-                      /*
-                       * ⚠️ BOSISH = KIYINTIRISH. Ilgari bosish faqat
-                       * tanlardi va pastda alohida «Kiyintirish» tugmasi
-                       * bor edi — ya'ni natijani ko'rish uchun ikki
-                       * bosish kerak edi.
-                       *
-                       * "Hammasi" tabda tab='all' — bu haqiqiy slot emas,
-                       * shuning uchun kiyimning o'z slotini (item.slot)
-                       * ishlatamiz; aks holda outfit'ga noto'g'ri qatlam
-                       * tushadi va render hech qachon ulanmaydi.
-                       */
                       putOn(tab === 'all' ? item.slot : tab, item.variantId);
                     }}
                     style={[styles.thumbWrap, selected && styles.thumbSelected]}
@@ -1981,10 +2011,28 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
                     ) : null}
 
                     {/*
-                     * Bosilgan kiyim ("kiyilgan") pastda yorqin tasma
-                     * bilan belgilanadi — border bilan birga ikkinchi
-                     * signal; nozik tema'da ham bilinadi.
+                     * ⚠️ BUNDLE CHECKBOX (2026-11-10). Yuqori chap burchakda
+                     * bosiladigan tik maydon — tap propagation to'xtatiladi
+                     * ki main Pressable darhol kiyintirmasin.
                      */}
+                    <Pressable
+                      accessibilityRole="checkbox"
+                      accessibilityLabel={bundled ? 'Tanlovdan olib tashlash' : 'Bundle ga qo\'shish'}
+                      accessibilityState={{ checked: bundled }}
+                      onPress={(e) => {
+                        e.stopPropagation?.();
+                        toggleBundleItem(item);
+                      }}
+                      hitSlop={12}
+                      style={[styles.bundleCheck, bundled && styles.bundleCheckOn]}
+                    >
+                      {bundled ? (
+                        <Icon name="authentic" size={14} color="#FFFFFF" />
+                      ) : (
+                        <Text style={styles.bundleCheckPlus}>+</Text>
+                      )}
+                    </Pressable>
+
                     {selected ? (
                       <View style={styles.thumbWornBadge}>
                         <Text style={styles.thumbWornBadgeText}>Kiyilgan</Text>
@@ -1995,6 +2043,39 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
               }}
             />
           )}
+
+          {/*
+            ⚠️ BUNDLE QATORI (2026-11-10). Checkbox orqali tanlangan kiyimlar
+            soni ≥ 2 bo'lsa chiqadi. Bosganda hammasini birdaniga kiyintiradi.
+          */}
+          {bundleSelection.size >= 2 ? (
+            <View style={styles.bundleBar}>
+              <View style={styles.bundleBarLeft}>
+                <Icon name="looks" size={16} color={colors.primary} />
+                <Text style={styles.bundleBarText}>
+                  {bundleSelection.size} ta kiyim tanlangan
+                </Text>
+              </View>
+              <View style={styles.bundleBarActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setBundleSelection(new Set())}
+                  hitSlop={8}
+                  style={({ pressed }) => [styles.bundleCancel, pressed && { opacity: 0.6 }]}
+                >
+                  <Text style={styles.bundleCancelText}>Bekor</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => putOnBundle(Array.from(bundleSelection))}
+                  hitSlop={8}
+                  style={({ pressed }) => [styles.bundleGo, pressed && { opacity: 0.85 }]}
+                >
+                  <Text style={styles.bundleGoText}>Hammasini kiyintir</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
 
           {current ? (
             <View style={styles.details}>
@@ -2949,6 +3030,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   thumbWornBadgeText: { ...text.tiny, color: colors.bg, fontWeight: '700' },
+  /*
+   * ⚠️ BUNDLE CHECKBOX (2026-11-10). Kartochka yuqori chap burchagida 20x20
+   * dumaloq. Bo'sh — '+' belgisi, bosilgan — oq galochka primary rangda.
+   */
+  bundleCheck: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bundleCheckOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  bundleCheckPlus: { ...text.tiny, color: colors.primary, fontWeight: '800', lineHeight: 16 },
+  /* Bundle action bar — Kiyintir va Bekor tugmalari */
+  bundleBar: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    padding: spacing.sm,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  bundleBarLeft: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
+  bundleBarText: { ...text.body, color: colors.text, fontWeight: '600' },
+  bundleBarActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  bundleCancel: { paddingHorizontal: spacing.sm, paddingVertical: 8 },
+  bundleCancelText: { ...text.body, color: colors.textMuted },
+  bundleGo: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+  },
+  bundleGoText: { ...text.body, color: colors.textOnPrimary, fontWeight: '700' },
   thumb: { width: 78, height: 88, backgroundColor: colors.surface2 },
   thumbWorn: { backgroundColor: colors.bg },
   // Thumbnail busy overlay — kiyim bosilgani aniq ko'rinsin
