@@ -941,6 +941,27 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
     onError: (err) => setNotice(err instanceof ApiError ? err.message : 'Qo`shilmadi'),
   });
 
+  /*
+   * ⚠️ PULL-TO-REFRESH hook'lari SHU YERDA — hamma early return'dan OLDIN.
+   * Avval pastroqda edi va "Rendered fewer hooks than expected" xatosi
+   * chiqardi: birinchi render'da `!signedIn` early return'ga tushgach,
+   * useState va useCallback chaqirilmasdi; keyingi render'da esa
+   * chaqirilib, hook tartibi buzilardi.
+   */
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['garments'] }),
+        queryClient.invalidateQueries({ queryKey: ['renders'] }),
+        queryClient.invalidateQueries({ queryKey: ['avatar'] }),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [queryClient]);
+
   if (!signedIn) {
     return (
       <Screen>
@@ -1217,28 +1238,6 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
 
   const outfitTotal = outfitItems.reduce((sum, item) => sum + Number(item.price), 0);
   const outfitCurrency = outfitItems[0]?.currency ?? 'UZS';
-
-  const [refreshing, setRefreshing] = useState(false);
-  /*
-   * ⚠️ PULL-TO-REFRESH — ICHKI INDIKATOR. Ilgari hero rasmi pastga
-   * tortilganda rezinka effekti bilan cho'zilardi — bu render'ni
-   * yangilamasdi va foydalanuvchi "nega surat tortildi, yangilanmadi?"
-   * degan chalkashlikni tug'dirardi. Endi stretch olib tashlangan,
-   * standart RefreshControl spinner'i scroll ichida chiqadi va
-   * garments + renders + avatar'ni haqiqatan qayta yuklaydi.
-   */
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['garments'] }),
-        queryClient.invalidateQueries({ queryKey: ['renders'] }),
-        queryClient.invalidateQueries({ queryKey: ['avatar'] }),
-      ]);
-    } finally {
-      setRefreshing(false);
-    }
-  }, [queryClient]);
 
   return (
     <Screen>
