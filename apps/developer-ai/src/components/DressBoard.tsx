@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type JSX } from 'react';
 
 import { ApiClientError } from '../api/client';
 import { dressBoard, submitDress, type DressGarment } from '../api/tasks';

@@ -1,5 +1,5 @@
 import type { AuthUser } from '@looksave/shared-types';
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type JSX, type ReactNode } from 'react';
 
 import { clearTokens, login as apiLogin, logout as apiLogout, restoreSession } from '../api/client';
 

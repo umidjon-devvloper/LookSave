@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Button } from '@/components/ui/button';
 export function Spinner({ label = 'Yuklanmoqda' }: { label?: string }): JSX.Element {
   return (
