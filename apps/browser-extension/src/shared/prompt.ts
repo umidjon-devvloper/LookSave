@@ -541,6 +541,68 @@ export function buildFrontTryonPrompt(input: {
   ].join('\n\n');
 }
 
+/**
+ * BUNDLE — bir nechta kiyim birgalikda. Mobil ilovada checkbox bilan
+ * tanlansa, ekstension bu promptni ishlatadi (yoki backend orqali).
+ */
+export function buildTryonBundleSheetPrompt(input: {
+  kinds: readonly GarmentKind[];
+  measurements: Measurements;
+  gender?: string | null;
+}): string {
+  const person = input.gender === 'female' ? 'woman' : input.gender === 'male' ? 'man' : 'person';
+  // FIRST=face, SECOND..N=har bir kiyim
+  const garmentList = input.kinds
+    .map((k, i) => `IMAGE ${i + 2} (${k}) ${PLACEMENT[k] ?? 'in its natural position'}`)
+    .join('; ');
+
+  return [
+    '🔒 YOU ARE EDITING A PHOTO OF A REAL PERSON. The first image is the face of that real ' +
+      'person — the single most important input. If the output face does not match, you have ' +
+      'FAILED the task.',
+
+    'Create ONE single image: a photorealistic fashion turnaround sheet of ONE real person, ' +
+      'shown three times side by side, wearing ALL the garments at once.',
+
+    `IMAGES: the FIRST image is the face of the person — the ONLY source for identity. The next ` +
+      `${input.kinds.length} images are DIFFERENT garments the SAME person must wear together in ` +
+      'ALL THREE panels.',
+
+    faceLock(true),
+
+    bodyLine(person, input.measurements),
+
+    `CLOTHING — WEAR ALL OF THEM TOGETHER AT ONCE: ${garmentList}. Each garment must be ` +
+      'reproduced EXACTLY from its source image (same colour, same pattern, same cut, same ' +
+      'details, printed artwork). Combine them into one complete outfit on one single person ' +
+      'in every panel — never show the garments separately, never create extra figures, never ' +
+      'swap garments between panels.',
+
+    'LAYOUT: three equal-width vertical panels in one horizontal row — each panel is exactly one ' +
+      'third of the image width. From left to right:',
+    `PANEL 1 (left third) — FRONT VIEW: ${SHEET_FRONT}`,
+    `PANEL 2 (middle third) — SIDE VIEW: ${SHEET_SIDE}`,
+    `PANEL 3 (right third) — BACK VIEW: ${SHEET_BACK}`,
+
+    'EXACTLY THREE FIGURES of the same single person wearing the SAME combined outfit — never ' +
+      'four, never two people in one panel, no mirror images, no close-ups.',
+
+    'FRAMING FOR CUTTING: same camera distance, eye-level camera, same scale in every panel — ' +
+      'top of head and soles of feet at the same height. Each figure centered in its third, ' +
+      'fills ~85–90% of image height. Empty space ≥ 8% of image width between figures.',
+
+    'BACKGROUND: fully TRANSPARENT PNG with an alpha channel — no background colour, no floor, ' +
+      'no wall, no ground shadow, no text or watermarks. Soft even studio lighting, natural ' +
+      'fabric folds, photorealistic.',
+
+    'Output exactly ONE image — the three-panel sheet — landscape 3:2 PNG with transparency. ' +
+      'Do not ask questions, do not explain, do not offer alternatives.',
+
+    '🔒 REMEMBER: the face in all three panels MUST be the exact face from image 1. Do not ' +
+      'idealise, do not beautify — copy image 1 as-is.',
+  ].join('\n\n');
+}
+
 export function buildTryonSheetPrompt(input: {
   kind: GarmentKind;
   measurements: Measurements;
