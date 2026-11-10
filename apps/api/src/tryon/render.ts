@@ -4,6 +4,7 @@ import { AI_TRYON_SLOTS, garmentImageForAngle, normalizeSize } from '@looksave/v
 
 import type { AvatarGender, AvatarMeasurements } from './avatar-prompt';
 import { buildTryonSheetPrompt, buildTryonBundleSheetPrompt } from './tryon-prompt';
+import { storeAvatarSheet } from './avatar-sheet';
 
 import { enqueueTask, isAutoAiUser, isManual } from '../developer-ai/tasks';
 import { pool } from '../db/pool';
@@ -863,11 +864,20 @@ export async function requestBundleRender(
         ? await faceSwap({ target: buffer, sourceFaceUrl: faceUrl, angle })
         : buffer;
 
-      const resultUrl = await uploadObject({
+      // 3-panelli varaqni R2'ga yuklab, keyin bo'lamiz
+      const sheetUrl = await uploadObject({
         key: `tryon/${randomUUID()}.png`,
         body: finalBuf,
         contentType: 'image/png',
       });
+
+      /*
+       * ⚠️ VARAQNI BO'LAMIZ (2026-11-10). Prompt 3 panelli varaq so'rayapti
+       * — mijozga FAQAT so'ralgan burchak ('front') bo'lagi beriladi. Varaq
+       * bo'lmasa (noto'g'ri format) sheetUrl o'z holicha ishlatiladi.
+       */
+      const parts = await storeAvatarSheet(sheetUrl).catch(() => null);
+      const resultUrl = parts?.[angle] ?? sheetUrl;
       const cutout = await makeCutout(resultUrl, 'tryon');
 
       for (const r of renderRows) {
