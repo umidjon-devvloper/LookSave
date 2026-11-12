@@ -6,6 +6,7 @@ import { Platform } from 'react-native';
 
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
+import { notificationTarget } from './pushTarget';
 
 /**
  * Push bildirishnomalar (05-mobile §9).
@@ -68,11 +69,11 @@ async function registerForPush(): Promise<string | null> {
 }
 
 /**
- * Kirgan foydalanuvchi uchun qurilmani ro'yxatga oladi va
- * bildirishnoma bosilganda buyurtma sahifasiga o'tkazadi.
+ * Kirgan foydalanuvchi uchun qurilmani ro'yxatga oladi.
+ *
+ * Bildirishnoma BOSILISHI bu yerda emas — `useNotificationOpen` da.
  */
 export function usePushRegistration(): void {
-  const router = useRouter();
   const status = useAuthStore((state) => state.status);
   const registered = useRef(false);
 
@@ -97,34 +98,63 @@ export function usePushRegistration(): void {
       }
     })();
   }, [status]);
+}
+
+type Router = ReturnType<typeof useRouter>;
+
+/*
+ * Oxirgi qayta ishlangan bosish. Bitta bosish ikki yo'ldan kelishi mumkin
+ * (tinglovchi va `getLastNotificationResponse`) — ekran ikki marta ochilmasin.
+ */
+let handledResponse: string | null = null;
+
+function openNotification(response: Notifications.NotificationResponse, router: Router): void {
+  const key = `${response.notification.request.identifier}|${response.actionIdentifier}`;
+  if (key === handledResponse) return;
+  handledResponse = key;
+
+  try {
+    // Native tomonda qolsa, JS qayta yuklanganda (OTA, dev) eski bosish yana ochilardi
+    Notifications.clearLastNotificationResponse();
+  } catch {
+    // Eski native build'da bu metod yo'q — `handledResponse` yetarli
+  }
+
+  const target = notificationTarget(response.notification.request.content.data);
+  if (target) router.push(target);
+}
+
+/**
+ * Bildirishnoma bosilganda kerakli ekranni ochadi (`pushTarget.ts`).
+ *
+ * ⚠️ TAB LAYOUT ICHIDA CHAQIRILADI (`app/(tabs)/_layout.tsx`), ILDIZDA EMAS.
+ *
+ * Ilova YOPIQ paytda bildirishnoma bosilsa, expo-notifications javobni native
+ * modul yaratilgan zahoti jo'natadi — JS tinglovchisi hali ulanmagan bo'ladi
+ * va hodisa tushib qoladi: ilova ochilardi-yu, bosh sahifada qolardi
+ * (2026-11-12 da simulyatorda takrorlandi). Shuning uchun ochilishda
+ * `getLastNotificationResponse()` ham o'qiladi.
+ *
+ * Uni ildiz layout'da o'qish xavfli: u yerda Stack splash tugaguncha
+ * chizilmaydi, kirish nuqtasi (`app/index.tsx`) esa keyin `/(tabs)` ga
+ * `replace` qiladi va undan oldin qilingan `push` ni bosib ketishi mumkin.
+ * Tab layout o'rnatilganda ikkalasi ham ortda qolgan bo'ladi.
+ */
+export function useNotificationOpen(): void {
+  const router = useRouter();
 
   useEffect(() => {
-    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data;
+    let launch: Notifications.NotificationResponse | null = null;
+    try {
+      launch = Notifications.getLastNotificationResponse();
+    } catch {
+      // Eski native build'da bu metod yo'q — faqat tinglovchi ishlaydi
+    }
+    if (launch) openNotification(launch, router);
 
-      /*
-       * Do'kon buyurtmasi — sotuvchi panelga olib boriladi, mijoz buyurtma
-       * sahifasiga EMAS. Ikkalasida ham `orderId` bor, shuning uchun tur
-       * oldin tekshiriladi.
-       */
-      if (data?.['type'] === 'store_order') {
-        router.push('/seller');
-        return;
-      }
-
-      const orderId = data?.['orderId'];
-      if (typeof orderId === 'string') {
-        router.push(`/order/${orderId}`);
-        return;
-      }
-
-      /*
-       * Avatar tayyor bo'lgani haqidagi xabar — operator navbati
-       * (`developer_ai`) yo'li. Bosilganda kiyintirishga olib boramiz:
-       * odam aynan shuning uchun kutgan edi.
-       */
-      if (data?.['type'] === 'avatar_ready') router.push('/ai/fitting');
-    });
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) =>
+      openNotification(response, router),
+    );
 
     return () => subscription.remove();
   }, [router]);

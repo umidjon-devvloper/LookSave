@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '../../src/components/Icon';
+import { useNotificationOpen } from '../../src/hooks/usePush';
 import { useI18n } from '../../src/i18n';
 import { colors, radius, text } from '../../src/theme/tokens';
 
@@ -138,6 +139,9 @@ function PremiumTabBar({
 export default function TabsLayout(): JSX.Element {
   const t = useI18n((state) => state.t);
   const dark = useColorScheme() === 'dark';
+
+  // Bildirishnoma bosilishi — nega aynan shu yerda, `usePush.ts` da yozilgan
+  useNotificationOpen();
 
   return (
     <Tabs
