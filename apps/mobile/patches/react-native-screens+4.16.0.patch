@@ -1,0 +1,26 @@
+diff --git a/node_modules/react-native-screens/ios/RNSScreenStack.mm b/node_modules/react-native-screens/ios/RNSScreenStack.mm
+index 229dc58..a4841c2 100644
+--- a/node_modules/react-native-screens/ios/RNSScreenStack.mm
++++ b/node_modules/react-native-screens/ios/RNSScreenStack.mm
+@@ -230,13 +230,14 @@ - (BOOL)navigationBar:(UINavigationBar *)navigationBar shouldPopItem:(UINavigati
+     // which we check indirectly by checking if transitionCoordinator is set.
+     // If it's not, we are safe to proceed.
+     if (self.transitionCoordinator == nil) {
+-      // We still need to disable interactions for back button so click effects are not applied,
+-      // and there is unfortunately no better place for it currently
+-      UIView *button = [navigationBar rnscreens_findBackButtonWrapperView];
+-      if (button != nil) {
+-        button.userInteractionEnabled = false;
+-      }
+-
++      // [LookSave patch — apps/mobile/patches/react-native-screens+4.16.0.patch]
++      // 4.16.0 shu yerda «orqaga» tugmasini o'chirardi (`userInteractionEnabled = false`,
++      // faqat kosmetik: bosish effekti ko'rinmasin deb) va uni `navigationBar:didPopItem:`
++      // da qayta yoqardi. iOS 27 da tugma bosilgandan keyin `didPopItem` kelmaydi va
++      // panel o'sha tugma nusxasini qayta ishlatadi — keyingi ekranda tugma o'chiq
++      // qolardi va ekrandan chiqib bo'lmasdi. Yuqori oqim bu mexanizmni 4.17 da butunlay
++      // olib tashlagan. Ikki marta yopilishdan yuqoridagi `transitionCoordinator`
++      // tekshiruvi himoya qiladi — u o'zgarmagan.
+       return true;
+     }
+ 
