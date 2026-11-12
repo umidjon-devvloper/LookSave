@@ -68,7 +68,8 @@
         {
           "locationWhenInUsePermission": "Yaqin atrofdagi do'konlarni ko'rsatish uchun joylashuvingiz kerak"
         }
-      ]
+      ],
+      "./plugins/withIosSceneLifecycle"
     ],
     "experiments": {
       "typedRoutes": true
