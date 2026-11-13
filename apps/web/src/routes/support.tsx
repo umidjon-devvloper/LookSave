@@ -1,4 +1,16 @@
-import { isLocale } from '@/i18n/locale';
+import type { JSX, ReactNode } from 'react';
+import { Link } from 'react-router';
+
+import { rich } from '@/components/RichText';
+import { DEFAULT_LOCALE, isLocale, type Locale } from '@/i18n/locale';
+import {
+  STORE_PANEL_LABEL,
+  STORE_PANEL_URL,
+  SUPPORT_COPY,
+  SUPPORT_EMAIL,
+  TELEGRAM_HANDLE,
+  TELEGRAM_URL,
+} from '@/i18n/support';
 
 import type { Route } from './+types/support';
 
@@ -15,172 +27,147 @@ import type { Route } from './+types/support';
  * uni bevosita ilovaning o'zidan o'chirish yo'li KO'RSATILISHI kerak.
  * Foydalanuvchi ilovada, biz esa shu yerda uning qadamlarini takrorlab
  * beramiz — Review guruhi ekranni ochib topa oladi.
+ *
+ * ⚠️ MATN BU FAYLDA EMAS — `i18n/support.ts` da, to'rt tilda. Ilgari u
+ * shu yerda o'zbekcha qattiq yozilgan edi (`/en/support` ham o'zbekcha
+ * chiqardi) va kodga zid da'volari bor edi — ro'yxati o'sha faylning
+ * boshida. Bu fayl faqat chizadi.
  */
 
-const SUPPORT_EMAIL = 'support@looksave.app';
-const TELEGRAM_HANDLE = '@looksave';
-const TELEGRAM_URL = 'https://t.me/looksave';
+/**
+ * ⚠️ QAYTISH TURI ANIQ YOZILGAN. `isLocale(x) ? x : 'en'` ni obyekt
+ * ichiga to'g'ridan-to'g'ri qo'ysak, TypeScript `'en'` ni `string` ga
+ * kengaytiradi va `SUPPORT_COPY[locale]` indekslanmay qoladi.
+ */
+function localeOf(value: string | undefined): Locale {
+  return isLocale(value) ? value : DEFAULT_LOCALE;
+}
 
-export function meta(): Route.MetaDescriptors {
-  return [
-    { title: 'Yordam — LookSave' },
-    {
-      name: 'description',
-      content:
-        "LookSave bilan bog'lanish, tez-tez so'raladigan savollar va hisobni o'chirish yo'li.",
-    },
-  ];
+export function meta({ params }: Route.MetaArgs): Route.MetaDescriptors {
+  const { title, description } = SUPPORT_COPY[localeOf(params.locale)].meta;
+  return [{ title }, { name: 'description', content: description }];
 }
 
 export function loader({ params }: Route.LoaderArgs) {
-  return { locale: isLocale(params.locale) ? params.locale : 'en' };
+  return { locale: localeOf(params.locale) };
 }
 
-export default function Support(): JSX.Element {
+/*
+ * ⚠️ RANGLAR: `text-foreground` / `text-muted-foreground` EMAS.
+ *
+ * Sayt oq fonga o'tgan (`index.css`: body `#fff`), `--foreground` tokeni
+ * esa hali OQ. Ilgari bu sahifada sarlavhalar, savollar va BARCHA
+ * HAVOLALAR (pochta, Telegram, sotuvchi kabineti) aynan shu sinfda edi va
+ * oq fonda UMUMAN KO'RINMASDI — ya'ni «yordam» sahifasida bog'lanish
+ * manzilining o'zi yo'q edi.
+ *
+ * `routes/privacy.tsx` dagi juftlik: `#171323` — sarlavha, urg'u va
+ * havola, `#6b5f79` — asosiy matn (kontrast ~5.9:1).
+ */
+const HEADING = 'text-h2 font-semibold text-[#171323]';
+const LINK = 'text-[#171323] underline underline-offset-4 hover:text-brand';
+
+/**
+ * Pochta havolasi.
+ *
+ * `dir="ltr"` — arabcha matn ichida manzil teskari chizilmasin
+ * (Telegram nomi va sayt manzili uchun ham shu).
+ */
+function mailLink(subject?: string): JSX.Element {
+  const href =
+    subject === undefined
+      ? `mailto:${SUPPORT_EMAIL}`
+      : `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}`;
+
+  return (
+    <a href={href} dir="ltr" className={LINK}>
+      {SUPPORT_EMAIL}
+    </a>
+  );
+}
+
+export default function Support({ loaderData }: Route.ComponentProps): JSX.Element {
+  const { locale } = loaderData;
+  const copy = SUPPORT_COPY[locale];
+
+  const telegramLink = (
+    <a href={TELEGRAM_URL} target="_blank" rel="noreferrer noopener" dir="ltr" className={LINK}>
+      {TELEGRAM_HANDLE}
+    </a>
+  );
+
+  const storeLink = (
+    <a href={STORE_PANEL_URL} target="_blank" rel="noreferrer noopener" dir="ltr" className={LINK}>
+      {STORE_PANEL_LABEL}
+    </a>
+  );
+
+  /*
+   * ⚠️ TO'LIQ YO'L, `href="privacy"` EMAS. Nisbiy havola `/uz/support/`
+   * (oxirida chiziq bilan) ochilganda `/uz/support/privacy` ga — ya'ni
+   * 404 ga — olib borardi.
+   */
+  const privacyLink: ReactNode = (
+    <Link to={`/${locale}/privacy`} className={LINK}>
+      {copy.privacyLink}
+    </Link>
+  );
+
   return (
     <article className="shell max-w-3xl py-12">
-      <p className="eyebrow">Yordam</p>
-      <h1 className="mt-4 text-h1 font-bold">Yordam markazi</h1>
-      <p className="mt-3 text-small text-dim">
-        Savol yoki muammo bo'lsa yozing — 24 soat ichida javob beramiz.
-      </p>
+      <p className="eyebrow">{copy.eyebrow}</p>
+      <h1 className="mt-4 text-h1 font-bold text-[#171323]">{copy.title}</h1>
+      <p className="mt-3 text-small text-dim">{copy.lead}</p>
 
-      <div className="mt-10 flex flex-col gap-8 text-body leading-[1.7] text-muted-foreground">
+      <div className="mt-10 flex flex-col gap-8 text-body leading-[1.7] text-[#6b5f79]">
         <section>
-          <h2 className="text-h2 font-semibold text-foreground">Biz bilan bog'lanish</h2>
+          <h2 className={HEADING}>{copy.contact.title}</h2>
           <ul className="mt-3 flex flex-col gap-2">
-            <li>
-              Elektron pochta:{' '}
-              <a
-                href={`mailto:${SUPPORT_EMAIL}`}
-                className="text-foreground underline underline-offset-4 hover:text-brand"
-              >
-                {SUPPORT_EMAIL}
-              </a>
-            </li>
-            <li>
-              Telegram:{' '}
-              <a
-                href={TELEGRAM_URL}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="text-foreground underline underline-offset-4 hover:text-brand"
-              >
-                {TELEGRAM_HANDLE}
-              </a>
-            </li>
-            <li>Ish vaqti: har kuni, 09:00 – 21:00 (Toshkent vaqti).</li>
+            <li>{rich(copy.contact.email, { email: mailLink() })}</li>
+            <li>{rich(copy.contact.telegram, { telegram: telegramLink })}</li>
+            <li>{copy.contact.hours}</li>
           </ul>
         </section>
 
         <section>
-          <h2 className="text-h2 font-semibold text-foreground">Tez-tez so'raladigan savollar</h2>
+          <h2 className={HEADING}>{copy.faq.title}</h2>
 
           <div className="mt-4 flex flex-col gap-6">
-            <div>
-              <h3 className="text-body font-semibold text-foreground">
-                AI kiyintirish qanday ishlaydi?
-              </h3>
-              <p className="mt-1.5">
-                Bir marta yuz suratingizni yuklaysiz — biz avataringizni yasaymiz. Keyin har qanday
-                kiyimni bosib, o'zingizda old, yon va orqadan ko'rasiz. Surat qurilmangizdan
-                serverga, u yerdan esa kiyintirish provayderiga uzatiladi (batafsil{' '}
-                <a
-                  href="privacy"
-                  className="text-foreground underline underline-offset-4 hover:text-brand"
-                >
-                  maxfiylik siyosati
-                </a>
-                da).
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-body font-semibold text-foreground">O'lcham qanday tanlanadi?</h3>
-              <p className="mt-1.5">
-                Bo'y, vazn va tanlagan razmerlaringiz asosida har turkumda mos o'lcham taklif
-                qilinadi. «Faqat mening o'lchamim» filtri esa faqat sizga tayyor variantlarni
-                ko'rsatadi.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-body font-semibold text-foreground">
-                Buyurtma qaytarilsa nima qilinadi?
-              </h3>
-              <p className="mt-1.5">
-                Qaytarish va almashtirish shartlari sotuvchi do'kon siyosatiga bo'ysunadi. LookSave
-                nizoda vositachi bo'ladi: yozing, biz do'kon bilan bog'lanamiz.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-body font-semibold text-foreground">
-                Kiyintirish sekin kelayapti yoki xato chiqdi
-              </h3>
-              <p className="mt-1.5">
-                AI generatsiyasi odatda 10–20 soniya oladi (birinchi qatlam biroz uzoqroq).
-                «Yangilash» tugmasini bosing yoki ilovani qayta oching. Qayta yiqilsa, muammoni
-                yuborsangiz — biz o'sha kiyim/burchak bilan tekshirib chiqamiz.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-body font-semibold text-foreground">
-                Kunlik AI chegarasi tugadi
-              </h3>
-              <p className="mt-1.5">
-                Kuniga foydalanuvchiga tegishli miqdorda kiyintirish beriladi (chegara —
-                foydalanuvchini AI xarajatlaridan asrash uchun). Tayyor suratlar joyida qoladi;
-                yangi kiyintirish ertaga qayta ochiladi.
-              </p>
-            </div>
+            {copy.faq.items.map((item) => (
+              <div key={item.question}>
+                <h3 className="text-body font-semibold text-[#171323]">{item.question}</h3>
+                <p className="mt-1.5">{rich(item.answer, { privacy: privacyLink })}</p>
+              </div>
+            ))}
           </div>
         </section>
 
         <section>
-          <h2 className="text-h2 font-semibold text-foreground">Hisobni o'chirish</h2>
-          <p className="mt-3">
-            Hisobingizni ilovaning o'zidan bir necha bosishda o'chirishingiz mumkin. Ma'lumot butunlay
-            olib tashlanadi — avatar, suratlar, buyurtma tarixi va manzillar.
-          </p>
+          <h2 className={HEADING}>{copy.deletion.title}</h2>
+          <p className="mt-3">{copy.deletion.intro}</p>
+          {/* `ps-6` — mantiqiy chekinish: arabchada raqam o'ng tomonda turadi */}
           <ol className="mt-4 flex list-decimal flex-col gap-2 ps-6">
-            <li>Ilovaning pastki panelidagi «Profil» ni oching.</li>
-            <li>Sahifa oxiridagi «Hisobni o'chirish» tugmasini bosing.</li>
-            <li>Amalni tasdiqlang — hisob va bog'liq ma'lumot 24 soat ichida o'chiriladi.</li>
+            {copy.deletion.steps.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
           </ol>
+          {copy.deletion.after.map((paragraph, index) => (
+            <p key={index} className="mt-4">
+              {rich(paragraph)}
+            </p>
+          ))}
           <p className="mt-4">
-            Ilovaga kira olmayotgan bo'lsangiz,{' '}
-            <a
-              href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Hisobni o'chirish")}`}
-              className="text-foreground underline underline-offset-4 hover:text-brand"
-            >
-              {SUPPORT_EMAIL}
-            </a>{' '}
-            ga hisobingizga bog'langan telefon raqamidan yozing — biz tekshirib o'chiramiz.
+            {rich(copy.deletion.noAccess, { email: mailLink(copy.deletion.mailSubject) })}
           </p>
         </section>
 
         <section>
-          <h2 className="text-h2 font-semibold text-foreground">Do'konlar uchun</h2>
+          <h2 className={HEADING}>{copy.stores.title}</h2>
           <p className="mt-3">
-            Do'kon ochish, mahsulot yuklash yoki sotuvchi kabineti bo'yicha savol —{' '}
-            <a
-              href="https://store.looksave.app"
-              target="_blank"
-              rel="noreferrer noopener"
-              className="text-foreground underline underline-offset-4 hover:text-brand"
-            >
-              store.looksave.app
-            </a>{' '}
-            ga o'ting yoki{' '}
-            <a
-              href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Do'kon")}`}
-              className="text-foreground underline underline-offset-4 hover:text-brand"
-            >
-              {SUPPORT_EMAIL}
-            </a>{' '}
-            ga xat yuboring.
+            {rich(copy.stores.text, {
+              store: storeLink,
+              email: mailLink(copy.stores.mailSubject),
+            })}
           </p>
         </section>
       </div>

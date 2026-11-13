@@ -14,6 +14,25 @@ export default [
   index('routes/entry.tsx'),
 
   /*
+   * ── Til bo'lagisiz huquqiy manzillar ──
+   *
+   * ⚠️ MOBIL ILOVA AYNAN SHULARNI OCHADI (`https://looksave.uz/privacy`,
+   * `/terms`) — App Store'ga yuborilgan build'larda ham. Bu marshrutlarsiz
+   * ular `:locale` ga tushib 404 berardi. Hech narsa chizmaydi:
+   * `Accept-Language` bo'yicha `/{til}/…` ga yo'naltiradi.
+   *
+   * ⚠️ `id` SHART. Uchala marshrut bitta fayldan foydalanadi, React Router
+   * esa `id` ni fayl nomidan oladi — berilmasa «duplicate route id» bilan
+   * yiqiladi.
+   *
+   * Statik bo'lak `:locale` dan ustun turadi (tartibga bog'liq emas),
+   * shuning uchun `/en/privacy` kabi tilli manzillarga ta'sir qilmaydi.
+   */
+  route('privacy', 'routes/legal-redirect.tsx', { id: 'legal-redirect-privacy' }),
+  route('terms', 'routes/legal-redirect.tsx', { id: 'legal-redirect-terms' }),
+  route('support', 'routes/legal-redirect.tsx', { id: 'legal-redirect-support' }),
+
+  /*
    * ── BFF resurs marshrutlari (AI kiyintirish) ──
    *
    * ⚠️ QOBIQDAN TASHQARIDA — ATAYIN. `layouts/shell.tsx` ichiga
