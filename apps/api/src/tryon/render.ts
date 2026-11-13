@@ -5,6 +5,13 @@ import { AI_TRYON_SLOTS, garmentImageForAngle, normalizeSize } from '@looksave/v
 import type { AvatarGender, AvatarMeasurements } from './avatar-prompt';
 import { buildTryonSheetPrompt, buildTryonBundleSheetPrompt } from './tryon-prompt';
 import { storeAvatarSheet } from './avatar-sheet';
+import {
+  BUNDLE_HASH_LENGTH,
+  groupHistory,
+  historyRowCap,
+  type RenderHistoryDto,
+  type RenderHistoryRow,
+} from './render-history';
 
 import { enqueueTask, isAutoAiUser, isManual } from '../developer-ai/tasks';
 import { pool } from '../db/pool';
@@ -778,11 +785,15 @@ export async function requestBundleRender(
   );
 
   // Birlashgan source hash — bundle variant'larini yagona identifikatsiya qilish
+  //
+  // ⚠️ UZUNLIGI — KOMPLEKT QATORINING YAGONA BELGISI (`render-history.ts`).
+  // Tarix va tozalash ishi qator turini shundan biladi; to'liq sha256 (64)
+  // qilib qo'yilsa komplekt bitta kiyimli natijadan farqlanmay qoladi.
   const bundleHash = createHash('sha256')
     .update(variantIds.slice().sort().join(','))
     .update(bodyUrl)
     .digest('hex')
-    .slice(0, 32);
+    .slice(0, BUNDLE_HASH_LENGTH);
 
   /*
    * Har variant uchun pending qator yaratamiz — hammasi bir xil `source_hash`
@@ -1164,6 +1175,47 @@ export async function listRenders(
   );
 
   return rows.map(toDto);
+}
+
+/**
+ * Kiyintirish tarixi — tayyor natijalar, to'plam bo'yicha, eng yangisi boshida.
+ *
+ * Ilovadagi «Kiyib ko'rilganlar» qatori uchun. `listRenders` dan farqi:
+ * u «shu kiyimlarning holati» ni beradi (ilova kiyimlarni bilishi kerak),
+ * bu esa «nimalar kiyilgan edi» ni — ilova hech narsani bilmasa ham.
+ *
+ * ⚠️ FAQAT OLD TOMON VA FAQAT ASL GAVDAGA KIYILGANLARI. Sodda primerka
+ * (`LookRoom`) aynan shularni yasaydi: bitta kiyim yoki komplekt. Eski
+ * oqimning qatlamlari (`base_render_id`) kirmaydi — ularning to'plamini
+ * tiklash uchun zanjirni yurish kerak, yangi ilova esa bunday natijani
+ * qayta so'ray olmaydi.
+ *
+ * ⚠️ HOLATI HAR XIL QATORLAR O'QILADI, lekin faqat tayyorlari qaytadi:
+ * komplektning hamma qatori tayyor ekanini bilish uchun tayyor emaslarini
+ * ham ko'rish kerak. Guruhlash qoidalari — `render-history.ts`.
+ */
+export async function listRenderHistory(
+  userId: string,
+  limit: number,
+): Promise<RenderHistoryDto[]> {
+  const cap = historyRowCap(limit);
+
+  const { rows } = await pool.query<RenderHistoryRow>(
+    /*
+     * `tryon_renders_base_idx (user_id, angle, base_render_id)` — filtr
+     * to'liq shu indeksga tushadi. `id` — vaqti bir xil qatorlar har
+     * so'rovda bir tartibda kelsin (chegarada kesim barqaror bo'lsin).
+     */
+    `SELECT id, variant_id, source_hash, status, result_url, cutout_url,
+            created_at, completed_at
+       FROM tryon_renders
+      WHERE user_id = $1 AND angle = 'front' AND base_render_id IS NULL
+      ORDER BY created_at DESC, id
+      LIMIT $2`,
+    [userId, cap],
+  );
+
+  return groupHistory(rows, limit, rows.length >= cap);
 }
 
 /**

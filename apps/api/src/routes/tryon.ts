@@ -31,6 +31,7 @@ import { setBodyPhoto } from '../profile/profile';
 import { ensureAvatarCutout, getAvatar, requestAngle, requestAvatar } from '../tryon/avatar';
 import {
   listGarments,
+  listRenderHistory,
   listRenders,
   listTryonStores,
   pollRender,
@@ -369,6 +370,28 @@ tryonRouter.get(
       ),
     );
   }),
+);
+
+/**
+ * GET /v1/tryon/history — kiyintirish tarixi: tayyor natijalar, to'plam bo'yicha.
+ *
+ * Ilovadagi «Kiyib ko'rilganlar» qatori uchun. `/tryon/renders` dan farqi:
+ * unga kiyimlar ro'yxati kerak, bu esa hech narsa so'ramaydi — ilova qayta
+ * o'rnatilgan yoki boshqa qurilma bo'lsa ham mijoz kiyintirgan natijalar
+ * qaytadi.
+ *
+ * ⚠️ SAHIFALASH YO'Q — ATAYIN. Qator gorizontal suratchalar; eng yangi
+ * o'ttiztasi yetarli. Chegara so'rov hajmini ushlab turadi.
+ */
+tryonRouter.get(
+  '/tryon/history',
+  requireAuth,
+  route(
+    { query: z.object({ limit: z.coerce.number().int().min(1).max(60).default(30) }) },
+    async (input, _req, res) => {
+      sendData(res, await listRenderHistory(getAuth(res).sub, input.query.limit));
+    },
+  ),
 );
 
 // ── Sevimlilar ──
