@@ -1285,6 +1285,16 @@ export async function sweepStaleRenders(): Promise<number> {
  * ⚠️ `pending` VA `processing` TEGILMAYDI. Ular uchun pul allaqachon
  * ketgan va natija hali yo'lda.
  *
+ * ⚠️ KOMPLEKT QATORLARI UMUMAN QATNASHMAYDI — na eskirgan, na «yangiroq»
+ * sifatida (2026-11-13). «Xeshi boshqa, yangiroq qator» qoidasi faqat bitta
+ * kiyimli natijada to'g'ri: u yerda xesh surat yoki model almashgandagina
+ * o'zgaradi. Komplektda esa xesh TO'PLAMGA bog'liq — kurtka+shim va
+ * kurtka+jinsi ikki alohida natija, biri ikkinchisini eskirtirmaydi.
+ * Usiz ish (1) boshqa to'plamda qayta kiyilgan kiyimning qatorini o'chirar,
+ * (2) u bilan birga SURATNI ham o'chirardi — surat esa komplektning qolgan
+ * qatorlariga ham yozilgan: ular `ready` bo'lib, yo'q rasmga ishora qilib
+ * qolardi. Komplektlarni tozalash — alohida ish (to'plam bo'yicha).
+ *
  * ⚠️ AVVAL QATOR, KEYIN SURAT. Teskarisi qilinsa, R2 o'chib qator
  * qolgan oraliqda ilova buzilgan rasmga ishora qilardi (`scope: 'all'`
  * eski qatorlarni ham qaytaradi). Bu tartibda eng yomon holat —
@@ -1312,6 +1322,8 @@ export async function cleanupSupersededRenders(): Promise<number> {
          FROM tryon_renders r
         WHERE r.status IN ('ready', 'failed')
           AND r.created_at < now() - make_interval(days => $1::int)
+          -- ⚠️ KOMPLEKT QATORI EMAS (yuqoridagi izoh): surati qo'shnilariniki ham
+          AND length(r.source_hash) <> $3::int
           -- Yangiroq va BOSHQA xeshli natija bor: eskisiga yo'l qolmagan
           AND EXISTS (
                 SELECT 1 FROM tryon_renders n
@@ -1320,6 +1332,8 @@ export async function cleanupSupersededRenders(): Promise<number> {
                    AND n.angle = r.angle
                    AND n.base_render_id IS NOT DISTINCT FROM r.base_render_id
                    AND n.source_hash <> r.source_hash
+                   -- Komplektda qayta kiyilgani bitta kiyimli natijani eskirtirmaydi
+                   AND length(n.source_hash) <> $3::int
                    AND n.created_at > r.created_at)
           -- ⚠️ CASCADE: ustida qatlam turgan bo'lsa TEGILMAYDI
           AND NOT EXISTS (
@@ -1335,7 +1349,7 @@ export async function cleanupSupersededRenders(): Promise<number> {
      DELETE FROM tryon_renders
       WHERE id IN (SELECT id FROM superseded)
      RETURNING result_url, cutout_url`,
-    [CLEANUP_MIN_AGE_DAYS, CLEANUP_BATCH],
+    [CLEANUP_MIN_AGE_DAYS, CLEANUP_BATCH, BUNDLE_HASH_LENGTH],
   );
 
   if (rows.length === 0) return 0;
