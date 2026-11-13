@@ -21,9 +21,11 @@ import { logger } from '../logger';
  * chiziqlari ilovada chiziladi va ular hech qanday qo'shimcha xarajat
  * talab qilmaydi.
  *
- * ⚠️ ISHLOV O'Z SERVERIMIZDA — tashqi xizmatga to'lanmaydi. Har surat
- * uchun bir necha soniya protsessor vaqti ketadi, shuning uchun natija
- * SAQLANADI va qayta hisoblanmaydi.
+ * ⚠️ UCH YO'L, SHU TARTIBDA (`makeCutout`):
+ *   1. Surat allaqachon kesilgan (o'z alfasi bor) — hech narsa qilinmaydi.
+ *   2. Kesim xizmati (fly.io, birefnet) — asosiy yo'l, chekkasi eng toza.
+ *   3. Shu serverdagi zaxira model (`@imgly`) — faqat xizmat javob
+ *      bermaganda. Sifati pastroq, lekin mijoz kesimsiz qolmaydi.
  */
 
 /*
@@ -34,65 +36,174 @@ import { logger } from '../logger';
 const require_ = createRequire(import.meta.url);
 const RESOURCE_PATH = `file://${dirname(require_.resolve('@imgly/background-removal-node'))}/`;
 
-/**
- * Suratni yuklab, fonini olib tashlab, shaffof PNG sifatida saqlaydi.
- *
- * Xato bo'lsa `null` qaytadi — kesim BEZAK, uning yo'qligi asosiy oqimni
- * to'xtatmasligi kerak. Ilova bunday holatda oddiy suratni ko'rsatadi.
- */
-/**
- * Suratda haqiqiy shaffof fon bormi: alfa kanali bor VA to'rt burchagi
- * shaffof. Faqat `hasAlpha` yetmaydi — ba'zi PNG'larda alfa kanal bor,
- * lekin hamma piksel to'liq ko'rinadigan (oq fon).
- */
-async function isAlreadyTransparent(input: Buffer): Promise<boolean> {
-  try {
-    const image = sharp(input);
-    const meta = await image.metadata();
-    if (!meta.hasAlpha || !meta.width || !meta.height) return false;
+/** Xom rasm: har piksel 4 bayt — R, G, B, alfa. */
+interface RawImage {
+  data: Buffer;
+  width: number;
+  height: number;
+  /** Asl faylning O'ZIDA alfa kanali bormidi (`ensureAlpha` qo'shgani emas) */
+  hasAlpha: boolean;
+}
 
-    const { data, info } = await image
+/**
+ * Suratni xom RGBA ga ochadi. O'qib bo'lmasa `null`.
+ *
+ * ⚠️ KANALLAR SONI TEKSHIRILADI. Bu fayldagi hamma hisob «piksel = 4 bayt»
+ * degan farazga tayanadi, sharp esa so'ralganidan boshqa sonda kanal
+ * qaytarishi mumkin (`refineAlpha` izohiga qarang — aynan shundan butun
+ * kesim buzilgan). Faraz buzilsa jim davom etgandan to'xtagan yaxshi.
+ */
+async function decodeRgba(input: Buffer): Promise<RawImage | null> {
+  try {
+    const meta = await sharp(input).metadata();
+    const { data, info } = await sharp(input)
       .ensureAlpha()
-      .resize(32, 32, { fit: 'fill' })
       .raw()
       .toBuffer({ resolveWithObject: true });
-    const alphaAt = (x: number, y: number): number =>
-      data[(y * info.width + x) * info.channels + 3] ?? 255;
-    const last = info.width - 1;
-    const mid = Math.floor(info.width / 2);
 
-    /*
-     * ⚠️ BURCHAK + CHET + MARKAZ. Avval faqat 4 burchak tekshirilardi.
-     * `storeAvatarSheet` yon'dan kesgan panellarda burchaklar shaffof,
-     * lekin figura o'rtasida QORA fon qolgan — shunday hol "shaffof"
-     * deb hisoblanib, kesim o'tkazib yuborilardi. Endi 4 burchak PLUS
-     * 4 chetkning o'rtasi shaffof bo'lishi KERAK, VA markaziy piksel
-     * opaque bo'lsa — bu haqiqiy shaffof emas, kesim qilish kerak.
-     */
-    const corners = [
-      alphaAt(0, 0),
-      alphaAt(last, 0),
-      alphaAt(0, last),
-      alphaAt(last, last),
-    ];
-    const edges = [
-      alphaAt(mid, 0),
-      alphaAt(mid, last),
-      alphaAt(0, mid),
-      alphaAt(last, mid),
-    ];
-    const center = alphaAt(mid, mid);
-
-    const bordersTransparent = [...corners, ...edges].every((a) => a < 16);
-    const centerOpaque = center > 200;
-
-    // Burchak + chetlar shaffof VA markaz opak bo'lsa — haqiqiy shaffof PNG
-    // (figurali, atrofi bo'sh). Markaz ham shaffof bo'lsa — bu bo'sh rasm
-    // yoki anomaliya, kesim qilib ham foydasi yo'q.
-    return bordersTransparent && centerOpaque;
+    if (info.channels !== 4 || data.length !== info.width * info.height * 4) return null;
+    return { data, width: info.width, height: info.height, hasAlpha: Boolean(meta.hasAlpha) };
   } catch {
-    return false;
+    return null;
   }
+}
+
+/*
+ * Asl alfaga ishonish shartlari.
+ *
+ * ⚠️ `services/facefusion-api/cutout.py` DAGI `trusted_alpha` BILAN BIR XIL
+ * BO'LISHI SHART — o'zgartirsang ikkalasini birga o'zgartir. Xizmat ham,
+ * server ham bitta savolga («bu rasm allaqachon kesilganmi?») javob beradi;
+ * javoblar ayri tushsa bitta rasm bir joyda «tayyor», ikkinchisida
+ * «kesilsin» bo'lib qoladi.
+ */
+const TRUST_GRID_WIDTH = 96;
+const TRUST_GRID_HEIGHT = 144;
+const TRUST_MIN_CLEAR = 0.08;
+const TRUST_MIN_SOLID = 0.03;
+const TRUST_MAX_FILL = 0.86;
+
+/**
+ * Rasm allaqachon kesilganmi — ya'ni uning O'Z alfasi haqiqiy kesimmi.
+ *
+ * ⚠️ FAQAT «ALFA KANAL BOR» YETMAYDI — ikki tuzoq bor:
+ *
+ * • Alfa kanal bor, lekin hamma piksel to'liq ko'rinadi (oq/kulrang fonli
+ *   PNG). Shaffof qism 8% dan kam bo'lsa ishonilmaydi.
+ *
+ * • Burchaklar shaffof, lekin figura ortida FON QOLGAN: uch panelli
+ *   varaqdan qirqilgan bo'lak (`storeAvatarSheet`) shaffof hoshiya bilan
+ *   to'ldirilganda shunday bo'ladi. 2026-11-09 da «to'rt burchagi shaffof
+ *   = tayyor» degan eski tekshiruv aynan shularni o'tkazib yuborgan va
+ *   mijoz ekranida qora to'rtburchak ko'ringan. Bunday rasmda ko'rinadigan
+ *   qism o'z ramkasini deyarli TO'LIQ to'ldiradi; odam silueti esa
+ *   ramkasining yarmi atrofini egallaydi. To'ldirish ulushi 86% dan oshsa —
+ *   bu to'rtburchak, kesim emas.
+ *
+ * Hisob kichik to'rda (96×144) bo'ladi: har katak — o'z sohasidagi alfaning
+ * o'rtachasi. Yakka piksellar natijaga ta'sir qilmaydi.
+ */
+function hasOwnCutout(image: RawImage): boolean {
+  if (!image.hasAlpha) return false;
+
+  const { data, width, height } = image;
+  const cols = Math.min(TRUST_GRID_WIDTH, width);
+  const rows = Math.min(TRUST_GRID_HEIGHT, height);
+  const sums = new Float64Array(cols * rows);
+  const counts = new Uint32Array(cols * rows);
+
+  for (let y = 0; y < height; y += 1) {
+    const cellRow = Math.floor((y * rows) / height) * cols;
+    const pixelRow = y * width;
+    for (let x = 0; x < width; x += 1) {
+      const cell = cellRow + Math.floor((x * cols) / width);
+      sums[cell] = sums[cell]! + data[(pixelRow + x) * 4 + 3]!;
+      counts[cell] = counts[cell]! + 1;
+    }
+  }
+
+  let clear = 0;
+  let solid = 0;
+  let visible = 0;
+  let left = cols;
+  let right = -1;
+  let top = rows;
+  let bottom = -1;
+
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      const cell = row * cols + col;
+      const alpha = sums[cell]! / Math.max(1, counts[cell]!);
+
+      if (alpha > 239) solid += 1;
+      if (alpha < 16) {
+        clear += 1;
+        continue;
+      }
+
+      visible += 1;
+      if (col < left) left = col;
+      if (col > right) right = col;
+      if (row < top) top = row;
+      if (row > bottom) bottom = row;
+    }
+  }
+
+  const total = cols * rows;
+  if (clear / total < TRUST_MIN_CLEAR || solid / total < TRUST_MIN_SOLID) return false;
+  if (visible === 0) return false;
+
+  const fill = visible / ((right - left + 1) * (bottom - top + 1));
+  return fill <= TRUST_MAX_FILL;
+}
+
+/**
+ * Zaxira model (`@imgly`) — fon maskasini shu serverda hisoblaydi.
+ *
+ * ⚠️ KIRISH HAM, CHIQISH HAM XOM RGBA — VA BU UCH SABABDAN (2026-11-13):
+ *
+ * 1. PNG so'ralsa kutubxona uni `quality` bilan kodlaydi, sharp esa
+ *    `quality` berilgan PNG ni PALITRALI qiladi: butun surat 256 rangga
+ *    tushadi (o'lchangan: 58 870 xil rangdan 254 tasi qolgan) — teri va
+ *    mato silliq o'tishlari zina-zina bo'lib, surat «o'chgan» ko'rinadi.
+ *    Xom chiqishda hech narsa kodlanmaydi; PNG ni o'zimiz, to'liq rangda
+ *    yozamiz.
+ *
+ * 2. Kutubxona rasmning O'Z alfasini tashlab, o'rniga model taxminini
+ *    yozadi. Shaffof joy ostidagi rang esa ixtiyoriy (AI u yerda yorug'
+ *    halqa qoldiradi) — model o'sha joyni «odam» desa, yashirin rang
+ *    yuzaga chiqadi. Shuning uchun yakuniy alfa — ikkalasining KICHIGI:
+ *    asl rasmda ko'rinmagan piksel kesimda ham ko'rinmaydi. Xizmatdagi
+ *    `model_alpha` ham xuddi shunday qiladi.
+ *
+ * 3. Rasmni bir marta, o'zimiz ochamiz — o'lcham va kanal soni aniq.
+ */
+async function modelCutout(image: RawImage): Promise<RawImage> {
+  const { data, width, height } = image;
+
+  const out = await removeBackground(
+    new Blob([data], { type: `image/x-rgba8;width=${width};height=${height}` }),
+    {
+      publicPath: RESOURCE_PATH,
+      model: 'medium',
+      output: { format: 'image/x-rgba8' },
+    },
+  );
+
+  const cut = Buffer.from(await out.arrayBuffer());
+  if (cut.length !== data.length) {
+    throw new Error(
+      `fon modeli kutilmagan o'lchamda qaytardi: ${cut.length} bayt, kutilgani ${data.length}`,
+    );
+  }
+
+  if (image.hasAlpha) {
+    for (let i = 3; i < cut.length; i += 4) {
+      if (data[i]! < cut[i]!) cut[i] = data[i]!;
+    }
+  }
+
+  return { data: cut, width, height, hasAlpha: true };
 }
 
 /*
@@ -104,32 +215,28 @@ async function isAlreadyTransparent(input: Buffer): Promise<boolean> {
  * yo'qoladi, lekin chekkalar JAG'LANADI (pikselli stupeni ko'rinadi).
  *
  * YECHIM — uch bosqich:
- * 1) RGB'ni alfa bo'yicha PREMULTIPLY qilish o'rniga, chekkalardagi qora
- *    piksellarning RGB'sini QO'SHNI opak piksellar rangiga almashtiramiz.
- *    Buning uchun: alfa<255 bo'lgan pikselga sharp'ning `extract channel`
- *    + `recomb` bilan, yoki oddiyroq — alfa>200 bo'lmasa, qo'shni
- *    opak pikselni ko'chiramiz.
- * 2) Alfa'ni yumshoq blur bilan silliqlaymiz (0.4px) — chekkalardagi
+ * 1) Chekkadagi qora piksellarning RGB'sini QO'SHNI opak piksellar rangiga
+ *    almashtiramiz — halo'ning RANGI o'zgaradi, qora o'rniga teri/kiyim.
+ * 2) Alfa'ni yumshoq blur bilan silliqlaymiz (0.5px) — chekkalardagi
  *    stupeni yo'qoladi, silliq antialias chiziq paydo bo'ladi.
  * 3) Shu silliq alfani oraliqda normallashtiramiz: <40 → 0, >200 → 255,
- *    o'rtada — yumshoq ramp. Halo'ni yo'qolgan, chekka silliq.
+ *    o'rtada — yumshoq ramp. Halo yo'qolgan, chekka silliq.
+ *
+ * Xato bo'lsa rasm o'zgarmasdan qaytadi — silliqlash BEZAK, uning
+ * nosozligi kesimni yo'q qilmasligi kerak.
  */
-async function refineAlpha(input: Buffer): Promise<Buffer> {
+async function refineAlpha(image: RawImage): Promise<RawImage> {
   try {
-    const base = sharp(input).ensureAlpha();
-    const meta = await base.metadata();
-    if (!meta.width || !meta.height) return input;
-
-    const { data, info } = await base.raw().toBuffer({ resolveWithObject: true });
-    const { width, height, channels } = info;
-    if (channels !== 4) return input;
+    const { width, height } = image;
+    const pixels = width * height;
+    const data = Buffer.from(image.data);
 
     /*
      * 1) Chekkalardagi QORA piksel RGB'sini aniqlab, alfa>230 bo'lgan eng
-     *    yaqin opak pikseldan (3x3 tagidan) ko'chiramiz. Bu halo'ning
+     *    yaqin opak pikseldan (5x5 atrofidan) ko'chiramiz. Bu halo'ning
      *    rangini o'zgartiradi — qora o'rniga teri/kiyim rangi bo'ladi.
      */
-    const copy = Buffer.from(data);
+    const copy = image.data;
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const i = (y * width + x) * 4;
@@ -139,7 +246,7 @@ async function refineAlpha(input: Buffer): Promise<Buffer> {
           g = copy[i + 1]!,
           b = copy[i + 2]!;
         if (r > 24 || g > 24 || b > 24) continue; // qora bo'lmasa qoldiramiz
-        // 3x3 opak qo'shnini topamiz
+        // Opak qo'shnini topamiz
         let sumR = 0,
           sumG = 0,
           sumB = 0,
@@ -166,44 +273,74 @@ async function refineAlpha(input: Buffer): Promise<Buffer> {
     }
 
     // 2) Alfa kanali bo'yicha yengil blur — chekkalar silliq bo'ladi
-    const rgbaBuffer = await sharp(data, { raw: { width, height, channels: 4 } })
-      .png({ compressionLevel: 0 })
-      .toBuffer();
+    const alphaOnly = Buffer.alloc(pixels);
+    for (let i = 0; i < pixels; i++) alphaOnly[i] = data[i * 4 + 3]!;
 
-    const smoothed = await sharp(rgbaBuffer)
-      .ensureAlpha()
+    /*
+     * ⚠️ `toColourspace('b-w')` VA UZUNLIK TEKSHIRUVI SHART (2026-11-13).
+     *
+     * sharp bir kanalli rasmni chiqishda UCH kanalli (sRGB) qilib beradi —
+     * `.raw()` so'ralganda ham. Ilgari bu yerda `b-w` yo'q edi: bufer uch
+     * barobar uzun qaytar, kod esa uning birinchi uchdan birini bitta kanal
+     * deb o'qirdi. Natijada alfa uch barobar cho'zilib, har satr uch
+     * bo'lakka sochilardi — kesim YO'L-YO'L chiqardi (har uch qatordan
+     * ikkitasi shaffof), figura o'rnida esa fon ko'rinardi.
+     *
+     * Bu nuqson 2026-11-09 dan beri HAR zaxira kesimda bor edi; ko'rinmay
+     * yurgani — zaxira yo'l faqat kesim xizmati javob bermaganda ishlaydi.
+     * 2026-11-13 da prod'da ushlandi (`8b445355…`).
+     *
+     * Uzunlik mos kelmasa silliqlanmagan alfa ishlatiladi: kutilmagan
+     * o'lchamdagi buferni HECH QACHON o'qimaymiz.
+     */
+    const blurred = await sharp(alphaOnly, { raw: { width, height, channels: 1 } })
+      .blur(0.5)
+      .toColourspace('b-w')
       .raw()
       .toBuffer({ resolveWithObject: true });
 
-    // Alfa'ni ajratib blur qilamiz
-    const alphaOnly = Buffer.alloc(width * height);
-    for (let i = 0; i < width * height; i++) alphaOnly[i] = smoothed.data[i * 4 + 3]!;
-
-    const blurredAlpha = await sharp(alphaOnly, {
-      raw: { width, height, channels: 1 },
-    })
-      .blur(0.5)
-      .raw()
-      .toBuffer();
+    let smooth: Buffer = alphaOnly;
+    if (blurred.info.channels === 1 && blurred.data.length === pixels) {
+      smooth = blurred.data;
+    } else {
+      logger.warn(
+        { channels: blurred.info.channels, bytes: blurred.data.length, expected: pixels },
+        'kesim: alfa silliqlanmadi — kutilmagan bufer',
+      );
+    }
 
     // 3) Yangi alfa'ni ramp bilan normallashtirish va qaytarib qo'yish
-    for (let i = 0; i < width * height; i++) {
-      const a = blurredAlpha[i]!;
+    for (let i = 0; i < pixels; i++) {
+      const a = smooth[i]!;
       let out: number;
       if (a < 40) out = 0;
       else if (a > 200) out = 255;
       else out = Math.round(((a - 40) / (200 - 40)) * 255);
-      smoothed.data[i * 4 + 3] = out;
+      data[i * 4 + 3] = out;
     }
 
-    return await sharp(smoothed.data, { raw: { width, height, channels: 4 } })
-      .png({ compressionLevel: 9, palette: false })
-      .toBuffer();
-  } catch {
-    return input;
+    return { ...image, data };
+  } catch (err) {
+    logger.warn({ err }, 'kesim: chekkani silliqlab bo`lmadi — model natijasi o`z holicha');
+    return image;
   }
 }
 
+/** Xom RGBA → PNG, TO'LIQ RANGDA (palitrasiz — `modelCutout` izohiga qarang). */
+async function encodePng(image: RawImage): Promise<Buffer> {
+  return sharp(image.data, { raw: { width: image.width, height: image.height, channels: 4 } })
+    .png({ compressionLevel: 9, palette: false })
+    .toBuffer();
+}
+
+/**
+ * Suratni yuklab, fonini olib tashlab, shaffof PNG sifatida saqlaydi va
+ * uning manzilini qaytaradi. Surat allaqachon kesilgan bo'lsa — O'SHA
+ * manzilning o'zi qaytadi.
+ *
+ * Xato bo'lsa `null` qaytadi — kesim BEZAK, uning yo'qligi asosiy oqimni
+ * to'xtatmasligi kerak. Ilova bunday holatda oddiy suratni ko'rsatadi.
+ */
 export async function makeCutout(url: string, prefix: string): Promise<string | null> {
   try {
     const response = await fetch(url);
@@ -212,24 +349,38 @@ export async function makeCutout(url: string, prefix: string): Promise<string | 
     const input = Buffer.from(await response.arrayBuffer());
     const contentType = response.headers.get('content-type') ?? 'image/jpeg';
 
-    /*
-     * ⚠️ `isAlreadyTransparent` SHORTCUT OLIB TASHLANDI (2026-11-09).
-     *
-     * Avval 4 burchak shaffof bo'lsa — rasm tayyor deb o'tkazib yuborilardi.
-     * Operator rejimida `storeAvatarSheet` yon'dan kesgan panellarning
-     * BURCHAKLARI SHAFFOF (bo'sh joy), lekin markazda FIGURA + QORA FON
-     * qolgan. Shortcut shu holda ham `true` qaytarib, kesim qilmasdan
-     * asl URL'ni cutout_url deb yozardi — mijoz ekranida qora to'rtburchak
-     * ko'rinardi. Endi har doim Python/imgly ishlaydi — shaffof PNG ham
-     * qayta ishlanadi, bu ~2-3s qo'shadi lekin natija har doim toza.
-     */
+    // sharp o'qiy olmasa ham xizmat o'qishi mumkin — shuning uchun bu xato emas
+    const image = await decodeRgba(input);
 
     /*
-     * ⚠️ PYTHON CUTOUT XIZMATI AVVAL (2026-11-09).
-     * CUTOUT_URL sozlangan bo'lsa, `services/cutout-py` (rembg + isnet) ga
-     * yuboramiz — chekkalari ancha silliq, qora halo yo'q. Xizmat yo'q
-     * yoki javob bermasa, pastdagi `@imgly` fallback ishga tushadi, oqim
-     * uzilmaydi.
+     * ⚠️ TAYYOR KESIM QAYTA KESILMAYDI (2026-11-13) — shaffof rasmning
+     * kesimi uning o'zi.
+     *
+     * TARIX. 2026-09-25 dan «to'rt burchagi shaffof = tayyor» yorlig'i bor
+     * edi. 2026-11-09 da u olib tashlandi: `storeAvatarSheet` qirqqan
+     * panellarda burchaklar shaffof, figura ortida esa QORA FON qolgan —
+     * yorliq ularni ham o'tkazar, mijoz qora to'rtburchak ko'rardi.
+     * Shundan keyin HAR rasm, allaqachon kesilgani ham, modelga ketdi.
+     *
+     * Bu ham xato bo'lib chiqdi:
+     *  • yuz almashtirish xizmati natijani allaqachon shaffof qaytaradi —
+     *    o'sha rasm shu yerda IKKINCHI marta xizmatga ketardi. Ortiqcha yuk
+     *    aynan o'sha mo'rt xizmatga tushadi (xotirasi to'lib yiqiladi);
+     *  • xizmat javob bermasa rasm zaxira modelga tushardi, u esa aniq
+     *    alfani o'z taxminiga almashtiradi. 2026-11-13 da prod'da shunday
+     *    bo'ldi: xizmat qayta ishga tushayotgan edi, kesim zaxira yo'ldan
+     *    o'tdi va buzilib chiqdi (`refineAlpha` izohiga qarang).
+     *
+     * Yorliq qaytarildi, lekin QAT'IY qoida bilan — `hasOwnCutout`: qora
+     * fonli panel undan o'tmaydi (to'ldirish ulushi), u modelga boradi.
+     */
+    if (image && hasOwnCutout(image)) return url;
+
+    /*
+     * ⚠️ KESIM XIZMATI AVVAL. `FACEFUSION_URL` (yoki eski `CUTOUT_URL`)
+     * sozlangan bo'lsa rasm o'sha yerga boradi — chekkalari ancha silliq,
+     * qora halo yo'q. Xizmat yo'q yoki javob bermasa pastdagi zaxira model
+     * ishga tushadi, oqim uzilmaydi.
      */
     const viaPy = await tryPythonCutout(input, contentType);
     if (viaPy) {
@@ -240,17 +391,14 @@ export async function makeCutout(url: string, prefix: string): Promise<string | 
       });
     }
 
-    const out = await removeBackground(new Blob([input], { type: contentType }), {
-      publicPath: RESOURCE_PATH,
-      model: 'medium',
-      output: { format: 'image/png', quality: 1 },
-    });
+    if (!image) throw new Error('suratni o`qib bo`lmadi');
 
-    const cleaned = await refineAlpha(Buffer.from(await out.arrayBuffer()));
+    logger.info({ url }, 'kesim: xizmat natija bermadi — zaxira model ishlatiladi');
+    const cleaned = await refineAlpha(await modelCutout(image));
 
     return await uploadObject({
       key: `${prefix}/${randomUUID()}.png`,
-      body: cleaned,
+      body: await encodePng(cleaned),
       contentType: 'image/png',
     });
   } catch (err) {
