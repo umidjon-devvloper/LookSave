@@ -1,3 +1,5 @@
+import { CLOTHING_SIZES, SHOE_SIZES } from '@looksave/validation';
+
 import type { VariantInput } from '../../api/products';
 import { ImageUploader } from './ImageUploader';
 import { Button } from '@/components/ui/button';
@@ -8,9 +10,20 @@ interface Props {
   onChange: (variants: VariantInput[]) => void;
 }
 
+/**
+ * ⚠️ RO'YXAT QO'LDA YOZILMAYDI. Mijoz profilida tanlay oladigan
+ * razmerlardan olinadi (`@looksave/validation` → `sizing.ts`), chunki
+ * ikki ro'yxat ajralib ketsa do'kon qo'sha olmagan razmer mijozning
+ * profilida turardi va primerka unga hech qachon mos razmer topmasdi
+ * (`matchSize` → `null`, keyin birinchi mavjud razmer olinardi).
+ *
+ * 2026-11-16 da shunday bo'lgan: panelda oyoq kiyim 38–45 va kiyim
+ * XS–XXL, mijozda esa 35–46 va 3XL — oyog'i 36 yoki 3XL kiyadigan
+ * mijozga to'g'ri razmer umuman chiqmasdi.
+ */
 const PRESET_SIZES: Record<string, string[]> = {
-  kiyim: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
-  oyoq: ['38', '39', '40', '41', '42', '43', '44', '45'],
+  kiyim: [...CLOTHING_SIZES],
+  oyoq: SHOE_SIZES.map((size) => String(size)),
   bitta: ['ONE'],
 };
 

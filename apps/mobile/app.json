@@ -23,7 +23,7 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSMicrophoneUsageDescription": "LookSave does not record audio. The camera is used only to take photos for your try-on avatar."
       },
-      "buildNumber": "66"
+      "buildNumber": "68"
     },
     "android": {
       "package": "com.looksave.looksave",

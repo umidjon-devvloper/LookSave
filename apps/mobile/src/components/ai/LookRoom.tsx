@@ -510,7 +510,21 @@ export function LookRoom({ showBack = false }: LookRoomProps): JSX.Element {
         setStaleRetry((current) => ({ ...current, [tried]: Date.now() }));
       }
     },
-    onError: (err) => setNotice(explainError(err, t)),
+    /*
+     * ⚠️ YUZ KERAK HOLATI ALOHIDA. Kiyintirish `face_texture_url`siz
+     * VALIDATION_ERROR beradi, lekin `explainError` uni umumiy `generic`
+     * («Something went wrong») ga tushiradi — foydalanuvchi nima qilishni
+     * bilmaydi. Yuz yo'qligini mijoz o'zi biladi (`profile.faceTextureUrl`),
+     * shuning uchun aniq ko'rsatma beramiz (avatar.tsx dagi kabi).
+     */
+    onError: (err) =>
+      setNotice(
+        err instanceof ApiError &&
+          err.code === 'VALIDATION_ERROR' &&
+          !profile.data?.faceTextureUrl
+          ? t.avatar.needFaceHint
+          : explainError(err, t),
+      ),
   });
 
   // ── Holat ──

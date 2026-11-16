@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { deleteAccount, getDeletionStatus, restoreAccount } from '../../src/api/endpoints';
-import { Button, ErrorView, Field, Loading } from '../../src/components/ui';
+import { Button, ErrorView, Loading } from '../../src/components/ui';
 import { explainError } from '../../src/api/explainError';
 import { useI18n } from '../../src/i18n';
 import { useAuthStore } from '../../src/store/authStore';
@@ -26,13 +26,12 @@ export default function DeleteAccount(): JSX.Element {
   const queryClient = useQueryClient();
   const signOut = useAuthStore((state) => state.signOut);
 
-  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const status = useQuery({ queryKey: ['deletion-status'], queryFn: getDeletionStatus });
 
   const remove = useMutation({
-    mutationFn: () => deleteAccount(password),
+    mutationFn: () => deleteAccount(),
     onSuccess: () => {
       // Server barcha sessiyalarni yopdi — ilovada ham chiqamiz
       void signOut();
@@ -93,22 +92,16 @@ export default function DeleteAccount(): JSX.Element {
         <Text style={styles.bullet}>• {t.deleteAccount.point4}</Text>
       </View>
 
-      <Field
-        label={t.auth.password}
-        value={password}
-        onChangeText={(value) => {
-          setPassword(value);
-          setError(null);
-        }}
-        secureTextEntry
-        autoCapitalize="none"
-        error={error}
-      />
+      {/*
+        ⚠️ PAROL MAYDONI OLIB TASHLANDI (2026-11-16, egasining qarori).
+        Himoya — shu aniq «danger» tugmasi va 30 kunlik kutish muddati:
+        o'sha davrda qayta kirish o'chirishni bekor qiladi.
+      */}
+      {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <Button
         title={t.deleteAccount.confirm}
         variant="danger"
-        disabled={password.length === 0}
         loading={remove.isPending}
         onPress={() => {
           remove.mutate();
@@ -131,6 +124,7 @@ const styles = StyleSheet.create({
   title: { ...text.h2, color: colors.text },
   body: { ...text.body, color: colors.textMuted },
   bullet: { ...text.small, color: colors.textMuted, marginTop: spacing.xs },
+  error: { ...text.small, color: colors.danger },
   warningBox: {
     backgroundColor: colors.surface,
     borderWidth: 1,

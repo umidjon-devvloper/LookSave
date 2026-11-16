@@ -62,16 +62,31 @@ export default function MarketStores(): JSX.Element {
   const insets = useSafeAreaInsets();
   const { coords } = useLocationStore();
   const params = useLocalSearchParams<{ gender?: string }>();
-  const gender = params.gender === 'female' ? 'female' : 'male';
+  /*
+   * ⚠️ JINS IXTIYORIY. Market'dagi «Erkaklar»/«Ayollar» kartalari jinsni
+   * uzatadi; bosh sahifadagi «Hammasi» (STORES → View all) esa uzatmaydi —
+   * o'shanda BARCHA do'kon ko'rinishi kerak. Ilgari standart `'male'` edi,
+   * shuning uchun «Hammasi» bosilganda ham «Erkaklar do'konlari» chiqardi.
+   */
+  const gender =
+    params.gender === 'female' ? 'female' : params.gender === 'male' ? 'male' : null;
   // Do'kon jinsi serverdagi `audience` bilan ('men'/'women'); `both` do'kon
-  // ikkala bo'limda ham chiqadi. Avval bu uzatilmasdi — shuning uchun ikkala
-  // bo'lim bir xil ro'yxatni ko'rsatardi.
-  const audience = gender === 'female' ? 'women' : 'men';
-  const title = gender === 'female' ? 'Ayollar do`konlari' : 'Erkaklar do`konlari';
+  // ikkala bo'limda ham chiqadi. Jins berilmasa — filtr yo'q, hammasi chiqadi.
+  const audience = gender === 'female' ? 'women' : gender === 'male' ? 'men' : undefined;
+  const title =
+    gender === 'female'
+      ? 'Ayollar do`konlari'
+      : gender === 'male'
+        ? 'Erkaklar do`konlari'
+        : 'Barcha do`konlar';
 
   const stores = useQuery({
-    queryKey: ['market', 'stores', audience, coords.lat, coords.lng],
-    queryFn: () => getNearbyStores(coords.lat, coords.lng, { radius: 50_000, audience }),
+    queryKey: ['market', 'stores', audience ?? 'all', coords.lat, coords.lng],
+    queryFn: () =>
+      getNearbyStores(coords.lat, coords.lng, {
+        radius: 50_000,
+        ...(audience ? { audience } : {}),
+      }),
   });
 
   return (
@@ -118,7 +133,9 @@ export default function MarketStores(): JSX.Element {
               store={item}
               onPress={() =>
                 router.push(
-                  `/market/store?storeId=${item.id}&gender=${gender}&name=${encodeURIComponent(item.name)}`,
+                  `/market/store?storeId=${item.id}${
+                    gender ? `&gender=${gender}` : ''
+                  }&name=${encodeURIComponent(item.name)}`,
                 )
               }
             />

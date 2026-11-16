@@ -51,8 +51,14 @@ function TrendingCard({
   return (
     <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.imageWrap}>
+        {/*
+          ⚠️ `contain`, `cover` EMAS. `cover` katakni to'ldirish uchun rasmni
+          kesardi — kurtka/ko'ylakning yuqori va pastki qismi ko'rinmasdi.
+          `contain` butun mahsulotni ko'rsatadi (chetda biroz bo'sh joy qolsa
+          ham) — mijoz nima sotib olayotganini to'liq ko'radi.
+        */}
         {product.image ? (
-          <Image source={{ uri: product.image }} style={styles.image} resizeMode="cover" />
+          <Image source={{ uri: product.image }} style={styles.image} resizeMode="contain" />
         ) : (
           <View style={[styles.image, styles.imagePlaceholder]} />
         )}

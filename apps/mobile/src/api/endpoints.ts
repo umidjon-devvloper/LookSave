@@ -1057,13 +1057,16 @@ export const getDeletionStatus = (): Promise<DeletionStatus> =>
 
 /**
  * `confirm` doim `'DELETE'` — server shuni talab qiladi
- * (`deleteAccountSchema`). Foydalanuvchi shu so'zni qo'lda yozadi,
- * shunda tugma tasodifan bosilmaydi.
+ * (`deleteAccountSchema`); ilova uni o'zi yuboradi.
+ *
+ * ⚠️ PAROL SO'RALMAYDI (2026-11-16, egasining qarori). Himoya — aniq
+ * tasdiq tugmasi va 30 kunlik kutish muddati: shu davrda qayta kirish
+ * o'chirish so'rovini bekor qiladi.
  */
-export const deleteAccount = (
-  password: string,
-): Promise<{ deletionRequestedAt: string; scheduledFor: string }> =>
-  api('/auth/account', { method: 'DELETE', body: { password, confirm: 'DELETE' } });
+export const deleteAccount = (): Promise<{
+  deletionRequestedAt: string;
+  scheduledFor: string;
+}> => api('/auth/account', { method: 'DELETE', body: { confirm: 'DELETE' } });
 
 export const restoreAccount = (): Promise<{ restored: boolean }> =>
   api('/auth/account/restore', { method: 'POST', body: {} });

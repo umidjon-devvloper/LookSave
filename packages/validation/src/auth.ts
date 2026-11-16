@@ -77,12 +77,16 @@ export const changePasswordSchema = z.object({
 /**
  * Akkauntni o'chirish (03-api-spec §5).
  *
- * Parol majburiy: bu qaytarib bo'lmaydigan amal. `confirm` maydoni
- * ataylab qo'yilgan — ilova foydalanuvchidan aniq matn yozdiradi,
- * shunda tugma tasodifan bosilmaydi.
+ * ⚠️ PAROL IXTIYORIY (2026-11-16, egasining qarori). Ilgari majburiy edi.
+ * Himoya endi ikki narsa bilan ta'minlanadi: `confirm: 'DELETE'` (tasodifan
+ * bosilmaydi) va 30 kunlik kutish muddati — shu davrda qayta kirish
+ * so'rovni bekor qiladi, ya'ni amal qaytarib bo'ladigan.
+ *
+ * Maydon olib tashlanmadi: eski ilovalar (build ≤ 67) hali parol yuboradi,
+ * yuborilgan bo'lsa server uni tekshiradi.
  */
 export const deleteAccountSchema = z.object({
-  password: z.string().min(1).max(128),
+  password: z.string().min(1).max(128).optional(),
   confirm: z.literal('DELETE'),
 });
 

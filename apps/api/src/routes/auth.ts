@@ -291,13 +291,21 @@ authRouter.delete(
 
     if (!user) throw ApiError.notFound('Foydalanuvchi topilmadi');
 
-    if (!user.password_hash) {
-      throw ApiError.unauthorized('Parol o`rnatilmagan');
-    }
+    /*
+     * ⚠️ PAROL IXTIYORIY (2026-11-16). Ilova endi uni so'ramaydi — amal
+     * 30 kun kutadi va shu davrda kirish so'rovni bekor qiladi, ya'ni
+     * qaytarib bo'ladi. Eski ilovalar hali parol yuboradi: kelgan bo'lsa
+     * tekshiramiz, shunda ularning xatti-harakati o'zgarmaydi.
+     */
+    if (input.body.password !== undefined) {
+      if (!user.password_hash) {
+        throw ApiError.unauthorized('Parol o`rnatilmagan');
+      }
 
-    const ok = await verifyPassword(input.body.password, user.password_hash);
-    if (!ok) {
-      throw ApiError.unauthorized('Parol noto`g`ri');
+      const ok = await verifyPassword(input.body.password, user.password_hash);
+      if (!ok) {
+        throw ApiError.unauthorized('Parol noto`g`ri');
+      }
     }
 
     // Ochiq buyurtma — do'kon oldidagi majburiyat (deletion.ts dagi izoh)
