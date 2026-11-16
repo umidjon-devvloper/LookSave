@@ -2,8 +2,6 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import {
-  Image,
-  ImageBackground,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -14,7 +12,6 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 
 import { explainError } from '../../src/api/explainError';
 import { Icon } from '../../src/components/Icon';
@@ -23,9 +20,14 @@ import { useI18n } from '../../src/i18n';
 import { useAuthStore } from '../../src/store/authStore';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 
-const IMG_BG = require('../../assets/auth-bg.jpg');
-const IMG_PHONE = require('../../assets/signup-phone-icon.png');
-
+/**
+ * Kirish ekrani — Atelier editorial.
+ *
+ * Ilgari to'liq ekranli photo bg + dark glass fieldlar bor edi
+ * (SaaS auth-screen klişesi). Atelier'da: krem fon, ozgina
+ * tipografika, chiziqli maydonlar. Form moda jurnaldagi sahifa
+ * oyoqligi (masthead) kabi tartib bilan joylashadi.
+ */
 export default function SignIn(): JSX.Element {
   const router = useRouter();
   const signIn = useAuthStore((state) => state.signIn);
@@ -37,13 +39,13 @@ export default function SignIn(): JSX.Element {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [focused, setFocused] = useState<'phone' | 'password' | null>(null);
 
   async function submit(): Promise<void> {
     setBusy(true);
     setError(null);
     try {
       await signIn(phone.replace(/\s/g, ''), password);
-      // Sotuvchi bo'lsa — do'kon panelga; xaridor — xaridor sahifasiga.
       const user = useAuthStore.getState().user;
       router.replace(user?.role === 'store_owner' ? '/seller' : '/(tabs)');
     } catch (err) {
@@ -54,17 +56,8 @@ export default function SignIn(): JSX.Element {
   }
 
   return (
-    <ImageBackground source={IMG_BG} style={styles.bg} resizeMode="cover">
-      <StatusBar style="light" translucent />
-
-      {/* Gradient overlay */}
-      <LinearGradient
-        colors={['rgba(10,10,15,0.05)', 'rgba(10,10,15,0.55)', 'rgba(10,10,15,0.96)']}
-        locations={[0, 0.4, 0.8]}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
-
+    <View style={styles.bg}>
+      <StatusBar style="dark" />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -72,39 +65,32 @@ export default function SignIn(): JSX.Element {
         <ScrollView
           contentContainerStyle={[
             styles.content,
-            { paddingTop: insets.top + spacing.xs, paddingBottom: insets.bottom + spacing.xl },
+            { paddingTop: insets.top + spacing.md, paddingBottom: insets.bottom + spacing.xl },
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* ── Yuqori qator: orqaga + tagline ── */}
+          {/* Yuqori: faqat orqaga tugma */}
           <View style={styles.topRow}>
-            {/*
-              Zaxira `'/(tabs)'` — `'/'` EMAS: `app/index.tsx` faqat
-              `(tabs)` ga yo'naltiradi va halqa hosil bo'lardi
-              (`src/navigation/back.ts` izohiga qarang).
-            */}
             <Pressable
               style={styles.backBtn}
               onPress={() => goBack('/(tabs)')}
               accessibilityRole="button"
               hitSlop={8}
             >
-              <Icon name="back" size={24} color={colors.text} />
+              <Icon name="back" size={20} color={colors.text} />
             </Pressable>
-            <Text style={styles.tagline}>{t.auth.tagline}</Text>
           </View>
 
-          {/* ── Sarlavha ── */}
-          <View style={styles.titleRow}>
-            <Text style={styles.titleWhite}>{t.auth.signIn}</Text>
+          {/* Sarlavha */}
+          <View style={styles.header}>
+            <Text style={styles.title}>{t.auth.signIn}</Text>
           </View>
-          <Text style={styles.subtitle}>{t.auth.signInSubtitle}</Text>
 
           {/* ── PHONE ── */}
           <Text style={styles.label}>{t.auth.phone}</Text>
-          <View style={styles.field}>
-            <Image source={IMG_PHONE} style={styles.fieldIcon} resizeMode="contain" />
+          <View style={[styles.field, focused === 'phone' && styles.fieldOn]}>
+            <Text style={styles.at}>+</Text>
             <TextInput
               style={styles.input}
               value={phone}
@@ -112,17 +98,16 @@ export default function SignIn(): JSX.Element {
               keyboardType="phone-pad"
               autoComplete="tel"
               textContentType="telephoneNumber"
-              placeholder="+998"
+              placeholder="998 90 123 45 67"
               placeholderTextColor={colors.textDim}
+              onFocus={() => setFocused('phone')}
+              onBlur={() => setFocused(null)}
             />
           </View>
 
           {/* ── PASSWORD ── */}
           <Text style={styles.label}>{t.auth.password}</Text>
-          <View style={styles.field}>
-            <View style={styles.lockBox}>
-              <Icon name="authentic" size={20} color={colors.accent} />
-            </View>
+          <View style={[styles.field, focused === 'password' && styles.fieldOn]}>
             <TextInput
               style={styles.input}
               value={password}
@@ -132,6 +117,8 @@ export default function SignIn(): JSX.Element {
               textContentType="password"
               placeholder={t.auth.passwordPlaceholder}
               placeholderTextColor={colors.textDim}
+              onFocus={() => setFocused('password')}
+              onBlur={() => setFocused(null)}
             />
             <Pressable onPress={() => setShowPass((v) => !v)} hitSlop={10}>
               <Icon name={showPass ? 'eyeOff' : 'eye'} size={18} color={colors.textMuted} />
@@ -145,51 +132,33 @@ export default function SignIn(): JSX.Element {
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          {/* ── Sign in tugmasi ── */}
+          {/* ── Submit tugmasi — to'ldirilgan anor, gradient yo'q ── */}
           <Pressable
-            style={({ pressed }) => [styles.submitBtn, pressed && { opacity: 0.88 }]}
+            style={({ pressed }) => [
+              styles.submitBtn,
+              pressed && { backgroundColor: colors.primaryDim },
+              busy && { opacity: 0.6 },
+            ]}
             onPress={() => void submit()}
             disabled={busy}
             accessibilityRole="button"
           >
-            <LinearGradient
-              colors={[colors.primary, colors.primaryDim]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
-            <Text style={styles.submitText}>{busy ? `${t.common.loading}…` : t.auth.signIn}</Text>
+            <Text style={styles.submitText}>
+              {busy ? `${t.common.loading}…` : t.auth.signIn}
+            </Text>
             <View style={styles.submitArrow}>
-              <Icon name="next" size={18} color={colors.text} />
+              <Icon name="next" size={18} color={colors.textOnPrimary} />
             </View>
           </Pressable>
 
-          {/* Hint */}
-          <Text style={styles.hint}>{t.auth.forgotHint}</Text>
-
-          <View style={{ flex: 1, minHeight: 80 }} />
-
-          {/* ── Pastki qator: badge + sloganlar ── */}
-          <View style={styles.bottomRow}>
-            <View style={styles.betterBadge}>
-              <View style={styles.betterDot} />
-              <Text style={styles.betterText}>{t.auth.betterTogether}</Text>
-            </View>
-
-            <View style={styles.sloganCol}>
-              <Text style={styles.sloganText}>{t.auth.sloganSimple}</Text>
-              <Text style={styles.sloganText}>{t.auth.sloganSecure}</Text>
-              <Text style={styles.sloganText}>{t.auth.sloganReliable}</Text>
-            </View>
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </ImageBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  bg: { flex: 1 },
+  bg: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
   content: { paddingHorizontal: spacing.lg, gap: spacing.xs },
 
@@ -200,62 +169,52 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing.lg,
   },
+  // Atelier: orqaga tugma — toza oq doira, ink ikonka, hair-thin chegara
   backBtn: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.lg,
-    backgroundColor: 'rgba(36,31,51,0.85)',
+    width: 44,
+    height: 44,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
   },
   tagline: {
-    ...text.small,
+    ...text.eyebrow,
     color: colors.textMuted,
     textAlign: 'right',
-    lineHeight: 18,
+    maxWidth: 220,
   },
 
-  /* ── Sarlavha ── */
-  titleRow: { flexDirection: 'row', alignItems: 'baseline' },
-  titleWhite: { fontSize: 36, fontWeight: '800', color: colors.text },
-  titlePurple: { fontSize: 36, fontWeight: '800', color: colors.primary },
-  subtitle: { ...text.body, color: colors.textMuted, marginBottom: spacing.sm },
+  /* ── Sarlavha bloki ── */
+  header: { marginTop: spacing.sm, marginBottom: spacing.lg },
+  eyebrow: { ...text.eyebrow, color: colors.textMuted, marginBottom: spacing.sm },
+  title: { ...text.hero, color: colors.text, marginBottom: spacing.sm },
+  subtitle: { ...text.body, color: colors.textMuted, maxWidth: '92%' },
 
-  /* ── Label ── */
+  /* ── Label ── (template ALL CAPS o'rniga italic serif) */
   label: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.4,
+    ...text.eyebrow,
     color: colors.textDim,
     marginTop: spacing.md,
     marginBottom: 6,
-    textTransform: 'uppercase',
   },
 
-  /* ── Field ── */
+  /* ── Field ── (cream fon, hair-thin chegara, fokusga anor) */
   field: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(20,18,28,0.84)',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.sm,
-    height: 58,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    height: 56,
     gap: spacing.sm,
   },
-  fieldIcon: { width: 44, height: 44 },
-  lockBox: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  fieldOn: { borderColor: colors.primary, backgroundColor: colors.surface2 },
+  at: { ...text.h3, color: colors.primary },
   input: {
     flex: 1,
     ...text.body,
@@ -263,30 +222,30 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
 
-  /* Forgot */
+  /* Forgot — italic serif link */
   forgotWrap: { alignSelf: 'flex-end', marginTop: spacing.sm },
-  forgotText: { ...text.small, color: colors.accent },
+  forgotText: { ...text.eyebrow, color: colors.primary },
 
   /* Error */
   error: { ...text.small, color: colors.danger, textAlign: 'center', marginTop: spacing.xs },
 
-  /* ── Submit ── */
+  /* ── Submit — to'ldirilgan anor pill, gradient yo'q ── */
   submitBtn: {
-    height: 58,
-    borderRadius: radius.xxl,
+    height: 56,
+    borderRadius: radius.md,
     flexDirection: 'row',
     alignItems: 'center',
-    overflow: 'hidden',
+    backgroundColor: colors.primary,
     marginTop: spacing.lg,
     paddingLeft: spacing.lg,
     paddingRight: spacing.sm,
   },
-  submitText: { ...text.bodyMed, color: colors.text, flex: 1, textAlign: 'center' },
+  submitText: { ...text.bodyMed, color: colors.textOnPrimary, flex: 1, textAlign: 'center' },
   submitArrow: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primaryDim,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -297,33 +256,15 @@ const styles = StyleSheet.create({
     color: colors.textDim,
     textAlign: 'center',
     marginTop: spacing.md,
-    lineHeight: 18,
+    lineHeight: 20,
   },
 
-  /* ── Pastki qator ── */
+  /* ── Pastki qator ── Hairline rule + italic sloganlar */
   bottomRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
+    marginTop: spacing.lg,
+    gap: spacing.md,
   },
-  betterBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: 'rgba(36,31,51,0.75)',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.xxl,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  betterDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
-  },
-  betterText: { ...text.small, color: colors.text, fontWeight: '600' },
-  sloganCol: { alignItems: 'flex-end', gap: 2 },
-  sloganText: { ...text.tiny, color: colors.textDim, letterSpacing: 0.5 },
+  rule: { height: 1, backgroundColor: colors.border },
+  badgesCol: { gap: 2 },
+  sloganText: { ...text.eyebrow, color: colors.textDim },
 });

@@ -22,9 +22,11 @@ export default function SellerLayout(): JSX.Element {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.accent,
+        tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
+        tabBarActiveBackgroundColor: 'transparent',
         tabBarStyle: styles.tabBar,
+        tabBarItemStyle: styles.tabItem,
         tabBarLabelStyle: styles.tabLabel,
         sceneStyle: { backgroundColor: colors.bg },
       }}
@@ -65,7 +67,6 @@ export default function SellerLayout(): JSX.Element {
         }}
       />
       {/* Tabda ko'rinmaydigan ekranlar — qo'yishga arzimaydi, lekin ochilishi mumkin */}
-      <Tabs.Screen name="apply" options={{ href: null }} />
       <Tabs.Screen name="product-new" options={{ href: null }} />
     </Tabs>
   );
@@ -73,12 +74,27 @@ export default function SellerLayout(): JSX.Element {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: colors.surface,
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-    height: Platform.OS === 'ios' ? 86 : 64,
+    position: 'absolute',
+    left: 10,
+    right: 10,
+    bottom: 8,
+    backgroundColor: '#FFFFFF',
+    borderTopColor: 'transparent',
+    borderTopWidth: 0,
+    borderWidth: 1,
+    borderColor: '#EBE4F7',
+    borderRadius: 30,
+    overflow: 'hidden',
+    height: Platform.OS === 'ios' ? 92 : 76,
     paddingTop: 8,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 10,
+    paddingHorizontal: 6,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+    shadowColor: '#4C1D95',
+    shadowOpacity: 0.16,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 16,
   },
-  tabLabel: { ...text.tiny, fontWeight: '600' },
+  tabItem: { borderRadius: 22, marginHorizontal: 2, paddingVertical: 4 },
+  tabLabel: { ...text.tiny, fontWeight: '700', marginTop: 2 },
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildAvatarPrompt, missingForAvatar } from './avatar-prompt';
+import { buildAvatarFrontPrompt, buildAvatarPrompt, missingForAvatar } from './avatar-prompt';
 
 /**
  * Tavsif sinovlari.
@@ -114,6 +114,67 @@ describe('avatar tavsifi', () => {
 
   it('vazn yo`q bo`lsa ham tavsif tuziladi', () => {
     expect(buildAvatarPrompt('male', { height: 180 })).toContain('average build');
+  });
+});
+
+/*
+ * Operator prompti — panelda nusxalanadi va yangilanmagan kengaytma ham
+ * o'qiydi. 2026-11-11 dan uch panelli varaq emas, bitta old ko'rinish.
+ */
+describe('operator avatar prompti — yakka old ko`rinish', () => {
+  const prompt = buildAvatarFrontPrompt('male', { height: 180, weight: 80 });
+
+  it('faqat bitta figura, faqat old tomoni', () => {
+    expect(prompt).toMatch(/ONE FIGURE, FRONT VIEW ONLY/);
+    expect(prompt).toMatch(/No side view, no back view/);
+    expect(prompt).not.toMatch(/SIDE VIEW:|BACK VIEW:|THREE/);
+  });
+
+  /*
+   * ⚠️ YANGILANMAGAN KENGAYTMA BILAN SHARTNOMA. U varaqni aynan shu ikki
+   * belgidan taniydi; topsa landshaft natija kutadi va tik portretni rad
+   * etadi — ya'ni avatar umuman yasalmay qolardi.
+   */
+  it('yangilanmagan kengaytma uni varaq deb tanimaydi', () => {
+    expect(/turnaround sheet/i.test(prompt) && /PANEL 1/.test(prompt)).toBe(false);
+  });
+
+  /* Yangilanmagan kengaytma do'kon kiyimini qo'shsa shu satrni butunlay olib tashlaydi. */
+  it('asos kiyim alohida CLOTHING satrida', () => {
+    expect(prompt).toMatch(/\n\nCLOTHING: a plain light grey t-shirt[^\n]*\n\n/);
+    expect(prompt).not.toMatch(/fitted|leggings|shorts/);
+  });
+
+  it('poza avtomatik rejimdagi old ko`rinish bilan bir xil', () => {
+    expect(prompt).toContain('turned about 40 degrees to the LEFT');
+    expect(prompt).toContain('Both hands rest casually inside the trouser pockets');
+  });
+
+  it('yuz qat`iy qulflangan — boshida, o`rtada va oxirida', () => {
+    expect(prompt.startsWith('🔒 YOU ARE EDITING A PHOTO OF A REAL PERSON')).toBe(true);
+    expect(prompt).toMatch(/FACE LOCK — HIGHEST PRIORITY RULE/);
+    expect(prompt).toMatch(/ABSOLUTELY FORBIDDEN: beautifying/);
+    expect(prompt.trimEnd()).toMatch(/copy the reference face as-is\.$/);
+  });
+
+  /* To'liq bo'yli kadrda yuz kichik — soddalashtirilmasin, lekin kadr ham yaqinlashmasin. */
+  it('kichik yuz soddalashtirilmaydi va kadr yaqinlashtirilmaydi', () => {
+    expect(prompt).toMatch(/render the face in sharp focus/);
+    expect(prompt).toMatch(/do not zoom in or crop/);
+  });
+
+  it('tik portret, shaffof fon, to`liq gavda', () => {
+    expect(prompt).toMatch(/vertical portrait 2:3/);
+    expect(prompt).toMatch(/TRANSPARENT PNG with an alpha channel/);
+    expect(prompt).toMatch(/head to feet/);
+    expect(prompt).toMatch(/85–90% of the image height/);
+  });
+
+  it('bo`y, gavda va tanlangan razmer tavsifda bor', () => {
+    expect(prompt).toContain('180 cm tall');
+    expect(
+      buildAvatarFrontPrompt('male', { height: 183, weight: 80, topSize: 'L', bottomSize: 'M' }),
+    ).toContain('wears size L tops and size M trousers');
   });
 });
 

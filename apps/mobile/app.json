@@ -17,12 +17,13 @@
       "bundleIdentifier": "com.looksave.looksave",
       "supportsTablet": false,
       "infoPlist": {
-        "NSCameraUsageDescription": "Avatar yasash uchun yuzingiz va gavdangiz suratini olamiz. Surat serverimizda saqlanadi va avatarni yasash uchun tashqi AI xizmatiga yuboriladi. Uni istalgan vaqtda ilovadan o'chirishingiz mumkin.",
-        "NSPhotoLibraryUsageDescription": "Galereyangizdan surat tanlaganingizda ishlatiladi — masalan, avatar yasash uchun o'z suratingizni, yoki sotuvchi bo'lsangiz do'kon logosi va mahsulot rasmlarini yuklash uchun. Tanlangan surat serverimizda saqlanadi va faqat shu maqsadda ishlatiladi; uni istalgan vaqtda o'chirishingiz mumkin.",
-        "NSLocationWhenInUseUsageDescription": "Yaqin atrofdagi do'konlarni va ularning mahsulotlarini xaritada ko'rsatish uchun joylashuvingizdan foydalanamiz.",
-        "ITSAppUsesNonExemptEncryption": false
+        "NSCameraUsageDescription": "LookSave uses the camera to take a photo of your face and body so it can build your try-on avatar. The photo is stored on our servers and sent to an external AI service to generate the avatar. You can delete it in the app at any time.",
+        "NSPhotoLibraryUsageDescription": "LookSave accesses your photo library only when you choose a photo — for example, your own photo for the try-on avatar, a profile picture, or, if you are a seller, your store logo and product photos. The selected photo is stored on our servers and used only for that purpose. You can delete it at any time.",
+        "NSLocationWhenInUseUsageDescription": "LookSave uses your location to show nearby clothing stores and their products on the map.",
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSMicrophoneUsageDescription": "LookSave does not record audio. The camera is used only to take photos for your try-on avatar."
       },
-      "buildNumber": "56"
+      "buildNumber": "66"
     },
     "android": {
       "package": "com.looksave.looksave",
@@ -53,7 +54,8 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Avatar yasash uchun yuzingizni skanerlaymiz. Surat serverimizda saqlanadi va tashqi AI xizmatiga yuboriladi; uni istalgan vaqtda o'chirishingiz mumkin."
+          "cameraPermission": "LookSave uses the camera to take a photo of your face and body so it can build your try-on avatar. The photo is stored on our servers and sent to an external AI service to generate the avatar. You can delete it in the app at any time.",
+          "microphonePermission": "LookSave does not record audio. The camera is used only to take photos for your try-on avatar."
         }
       ],
       [
@@ -66,7 +68,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Yaqin atrofdagi do'konlarni ko'rsatish uchun joylashuvingiz kerak"
+          "locationWhenInUsePermission": "LookSave uses your location to show nearby clothing stores and their products on the map."
         }
       ],
       "./plugins/withIosSceneLifecycle"

@@ -11,3 +11,6 @@ rembg==2.0.61
 onnxruntime>=1.17.0,<1.30.0
 Pillow>=10.3.0
 numpy>=1.24.0
+
+# WebP fallback — backend result_url'lari .webp bo'lishi mumkin.
+imageio>=2.34.0

@@ -231,12 +231,59 @@ export const dressBoard = (taskId: string): Promise<DressBoard> =>
 export const claimTask = (taskId: string): Promise<Task> =>
   authed<Task>(`/developer-ai/tasks/${taskId}/claim`, { method: 'POST' });
 
-/** Ishni yopadi — natija `profiles` yoki `tryon_renders` ga ko'chiriladi. */
-export const completeTask = (taskId: string, resultUrl: string): Promise<Task> =>
-  authed<Task>(`/developer-ai/tasks/${taskId}/result`, {
-    method: 'POST',
-    body: { resultUrl },
-  });
+/**
+ * Server ishni yopishga ulgurmay ulanish uzildimi.
+ *
+ * 502/503/504 — oraliqdagi proksi (nginx) kutishdan charchadi; 0 — ulanish
+ * javobsiz yopildi. Bularning hech biri «server rad etdi» degani emas.
+ */
+function cutShort(error: unknown): boolean {
+  return error instanceof ApiError && [0, 502, 503, 504].includes(error.status);
+}
+
+/** Ish `done` bo'lguncha kutadi; muddat ichida bo'lmasa `null`. */
+async function waitUntilDone(taskId: string): Promise<Task | null> {
+  const deadline = Date.now() + 4 * 60_000;
+
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 10_000));
+
+    const done = await listTasks('done').catch(() => [] as Task[]);
+    const task = done.find((item) => item.id === taskId);
+    if (task) return task;
+  }
+
+  return null;
+}
+
+/**
+ * Ishni yopadi — natija `profiles` yoki `tryon_renders` ga ko'chiriladi.
+ *
+ * ⚠️ ULANISH UZILSA ISH «YIQILDI» DEB OLINMAYDI (2026-11-12). Server ishni
+ * yopayotib suratga mijozning asl yuzini joylaydi; o'lchangan vaqt 40–75
+ * soniya, xizmat band bo'lsa bir necha daqiqa. Oraliqdagi proksi shuncha
+ * kutmasligi mumkin va 504 qaytaradi — server esa ishni OXIRIGACHA
+ * bajaradi. Ilgari kengaytma buni xato deb olardi: avatar aslida tayyor
+ * bo'lsa ham jurnalda «✗» chiqardi va avatar bilan birga yoziladigan
+ * birinchi kiyim umuman yozilmasdi.
+ *
+ * ⚠️ `POST` QAYTA YUBORILMAYDI — natija ikki marta yozilmasin. Buning
+ * o'rniga ish `done` ro'yxatida paydo bo'lishi kutiladi.
+ */
+export async function completeTask(taskId: string, resultUrl: string): Promise<Task> {
+  try {
+    return await authed<Task>(`/developer-ai/tasks/${taskId}/result`, {
+      method: 'POST',
+      body: { resultUrl },
+    });
+  } catch (error) {
+    if (!cutShort(error)) throw error;
+
+    const settled = await waitUntilDone(taskId);
+    if (settled) return settled;
+    throw error;
+  }
+}
 
 interface PresignResult {
   uploadUrl: string;

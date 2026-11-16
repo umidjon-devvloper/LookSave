@@ -25,6 +25,9 @@ import { money } from '../../src/theme/format';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 import { goBack } from '../../src/navigation/back';
 
+const SELLER_BAG = require('../../assets/seller-dashboard-bag-v2.png');
+const EMPTY_ORDERS = require('../../assets/seller-orders-empty-v2.png');
+
 /**
  * Sotuvchi paneli — bosh ekran.
  *
@@ -207,7 +210,7 @@ export default function SellerOrders(): JSX.Element {
           title={t.seller.noStoreTitle}
           hint={t.seller.noStoreHint}
           action={
-            <Button title={t.seller.applyTitle} onPress={() => router.push('/seller/apply')} />
+            <Button title={t.seller.applyTitle} onPress={() => router.push('/become-seller')} />
           }
         />
       </Screen>
@@ -220,7 +223,7 @@ export default function SellerOrders(): JSX.Element {
   const header = (
     <View>
       <LinearGradient
-        colors={['#1D1636', '#120E1C', colors.bg]}
+        colors={['#F8F3FF', '#FFFFFF', '#F6F0FF']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0.9, y: 1 }}
         style={[styles.header, { paddingTop: insets.top + spacing.sm }]}
@@ -262,7 +265,7 @@ export default function SellerOrders(): JSX.Element {
             {store?.logoUrl ? (
               <Image source={{ uri: store.logoUrl }} style={styles.logoImg} resizeMode="cover" />
             ) : (
-              <Icon name="shop" size={26} color={colors.text} />
+              <Icon name="shop" size={26} color={colors.textOnPrimary} />
             )}
           </View>
 
@@ -308,12 +311,13 @@ export default function SellerOrders(): JSX.Element {
             <Text style={styles.subtitleStrong}>{stats.inProgress}</Text> {t.seller.statInProgress}
           </Text>
         ) : null}
+        <Image source={SELLER_BAG} style={styles.headerBag} resizeMode="contain" />
       </LinearGradient>
 
       {/* Hero: oylik tushum — sotuvchi uchun eng muhim raqam */}
       {stats ? (
         <LinearGradient
-          colors={['#271B47', '#17121F']}
+          colors={['#C026F5', '#7C20E8', '#3D087F']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.hero}
@@ -343,6 +347,11 @@ export default function SellerOrders(): JSX.Element {
                 {stats.productCount} {t.seller.productWord}
               </Text>
             </View>
+          </View>
+          <View style={styles.heroBars} pointerEvents="none">
+            <View style={[styles.heroBar, { height: 38 }]} />
+            <View style={[styles.heroBar, { height: 58 }]} />
+            <View style={[styles.heroBar, { height: 84 }]} />
           </View>
         </LinearGradient>
       ) : null}
@@ -385,7 +394,7 @@ export default function SellerOrders(): JSX.Element {
                 end={{ x: 1, y: 1 }}
                 style={styles.filter}
               >
-                <Text style={[styles.filterText, { color: colors.text }]}>
+                <Text style={[styles.filterText, styles.filterTextActive]}>
                   {t.seller[item.labelKey]}
                 </Text>
               </LinearGradient>
@@ -427,9 +436,7 @@ export default function SellerOrders(): JSX.Element {
           // Yuklanayotganda skelet sarlavhada ko'rsatiladi — bu yerda emas
           orders.data && !orders.isError ? (
             <View style={styles.emptyBox}>
-              <View style={styles.emptyIcon}>
-                <Icon name="orders" size={34} color={colors.accent} />
-              </View>
+              <Image source={EMPTY_ORDERS} style={styles.emptyImage} resizeMode="contain" />
 
               <Text style={styles.emptyTitle}>
                 {filter === 'new' ? t.seller.emptyNewTitle : t.seller.emptyOtherTitle}
@@ -449,7 +456,7 @@ export default function SellerOrders(): JSX.Element {
                 style={styles.emptyAction}
               >
                 <View style={styles.emptyActionIcon}>
-                  <Icon name="premium" size={14} color={colors.text} />
+                  <Icon name="premium" size={14} color={colors.textOnPrimary} />
                 </View>
                 <Text style={styles.emptyActionText}>{t.seller.addProduct}</Text>
               </Pressable>
@@ -497,6 +504,9 @@ function ManageTile({
       <Text style={styles.manageHint} numberOfLines={1}>
         {hint}
       </Text>
+      <View style={styles.manageArrow}>
+        <Icon name="next" size={16} color={colors.textMuted} />
+      </View>
     </Pressable>
   );
 }
@@ -618,15 +628,14 @@ function OrderCard({
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingBottom: spacing.xxl },
+  scroll: { paddingBottom: 120, backgroundColor: '#F8F4FF' },
 
   // ── Sarlavha ──
   header: {
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.lg,
     gap: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    overflow: 'hidden',
   },
   headerBar: {
     flexDirection: 'row',
@@ -641,7 +650,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.borderStrong,
-    backgroundColor: 'rgba(20, 18, 28, 0.74)',
+    backgroundColor: 'rgba(255,255,255,0.86)',
   },
   eyebrow: { ...text.wordmark, fontSize: 11, letterSpacing: 2.5, color: colors.textMuted },
   eyebrowAccent: { color: colors.accent },
@@ -657,7 +666,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.primary,
   },
-  bellBadgeText: { ...text.tiny, color: colors.text, fontWeight: '700' },
+  bellBadgeText: { ...text.tiny, color: colors.textOnPrimary, fontWeight: '700' },
 
   identity: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   logoTile: {
@@ -676,7 +685,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 10 },
   },
   logoImg: { width: '100%', height: '100%' },
-  identityText: { flex: 1, gap: spacing.xs },
+  identityText: { flex: 1, gap: spacing.xs, maxWidth: '62%' },
   storeName: { ...text.h1, color: colors.text },
   statusPill: {
     flexDirection: 'row',
@@ -694,6 +703,14 @@ const styles = StyleSheet.create({
   statusText: { ...text.tiny },
   subtitle: { ...text.body, color: colors.textMuted },
   subtitleStrong: { color: colors.text, fontWeight: '700' },
+  headerBag: {
+    position: 'absolute',
+    right: 4,
+    bottom: -8,
+    width: 180,
+    height: 180,
+    opacity: 1,
+  },
 
   // ── Hero: oylik tushum ──
   hero: {
@@ -708,20 +725,21 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.28,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 14 },
+    overflow: 'hidden',
   },
   heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  heroLabel: { ...text.label, color: colors.accent },
+  heroLabel: { ...text.body, color: 'rgba(255,255,255,0.86)' },
   heroBadge: {
     width: 34,
     height: 34,
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primarySoft,
+    backgroundColor: 'rgba(255,255,255,0.16)',
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: 'rgba(255,255,255,0.32)',
   },
-  heroValue: { ...text.hero, color: colors.text, marginTop: spacing.xs },
+  heroValue: { ...text.hero, color: colors.textOnPrimary, marginTop: spacing.xs },
   heroStats: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -729,8 +747,24 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   heroStat: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs + 2 },
-  heroStatText: { ...text.small, color: colors.textMuted },
-  heroDivider: { width: 1, height: 14, backgroundColor: colors.borderStrong },
+  heroStatText: { ...text.small, color: colors.textOnPrimary },
+  heroDivider: { width: 1, height: 18, backgroundColor: 'rgba(255,255,255,0.45)' },
+  heroBars: {
+    position: 'absolute',
+    right: 28,
+    bottom: 22,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+    opacity: 0.82,
+  },
+  heroBar: {
+    width: 22,
+    borderRadius: 8,
+    backgroundColor: '#E9D5FF',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.55)',
+  },
 
   // ── Boshqaruv plitalari ──
   manage: {
@@ -747,6 +781,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderStrong,
     backgroundColor: colors.surface,
+    minHeight: 116,
+    shadowColor: '#4C1D95',
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 2,
   },
   manageTilePressed: { borderColor: colors.accent, backgroundColor: colors.surface2 },
   manageIcon: {
@@ -761,6 +800,17 @@ const styles = StyleSheet.create({
   },
   manageLabel: { ...text.bodyMed, color: colors.text, marginTop: spacing.xs },
   manageHint: { ...text.tiny, color: colors.textDim },
+  manageArrow: {
+    position: 'absolute',
+    right: spacing.md,
+    bottom: spacing.md,
+    width: 28,
+    height: 28,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primarySoft,
+  },
 
   // ── Filtrlar ──
   filters: {
@@ -772,7 +822,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.borderStrong,
-    backgroundColor: 'rgba(15, 13, 22, 0.92)',
+    backgroundColor: colors.surface,
+    shadowColor: '#4C1D95',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 2,
   },
   filterWrap: { flex: 1 },
   filter: {
@@ -783,6 +837,7 @@ const styles = StyleSheet.create({
   },
   filterIdle: { borderWidth: 1, borderColor: 'transparent', backgroundColor: 'transparent' },
   filterText: { ...text.small, color: colors.textMuted, fontWeight: '600' },
+  filterTextActive: { color: colors.textOnPrimary },
 
   statePad: { paddingHorizontal: spacing.md, marginTop: spacing.md },
 
@@ -795,21 +850,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderStyle: 'dashed',
     borderColor: colors.borderStrong,
-    backgroundColor: 'rgba(20, 18, 28, 0.55)',
+    backgroundColor: '#FBF8FF',
   },
-  emptyIcon: {
-    width: 76,
-    height: 76,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.primarySoft,
-    marginBottom: spacing.xs,
-  },
+  emptyImage: { width: 132, height: 112, marginBottom: spacing.xs },
   emptyTitle: { ...text.h3, color: colors.text, textAlign: 'center' },
   emptyHint: { ...text.small, color: colors.textDim, textAlign: 'center', maxWidth: 260 },
   emptyAction: {
@@ -822,8 +866,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs + 2,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
+    minWidth: 230,
+    justifyContent: 'center',
   },
   emptyActionIcon: {
     width: 28,
@@ -833,19 +879,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.primary,
   },
-  emptyActionText: { ...text.small, color: colors.text, fontWeight: '600' },
+  emptyActionText: { ...text.small, color: colors.textOnPrimary, fontWeight: '600' },
 
   // ── Buyurtma kartasi ──
   cardWrap: { paddingHorizontal: spacing.md, marginTop: spacing.md },
   card: {
-    backgroundColor: 'rgba(20, 18, 28, 0.95)',
+    backgroundColor: colors.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.borderStrong,
     padding: spacing.md,
     gap: spacing.sm,
-    shadowColor: '#000000',
-    shadowOpacity: 0.28,
+    shadowColor: '#4C1D95',
+    shadowOpacity: 0.08,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 12 },
   },

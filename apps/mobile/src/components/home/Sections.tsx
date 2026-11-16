@@ -1,40 +1,48 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { rtlStyles, useI18n } from '../../i18n';
-import { Icon } from '../Icon';
+import { Icon, type IconName } from '../Icon';
 import { StoreLogo } from '../StoreLogo';
-import type { Brand } from '../../api/endpoints';
+import type { Brand, NearbyStore } from '../../api/endpoints';
 import { colors, radius, spacing, text } from '../../theme/tokens';
 
 /**
- * Bo'lim sarlavhasi — deckdagi "TOP BRANDS" / "TRENDING NOW" uslubi
- * (06-dizayn.md §3: 11px, letter-spacing 1.6, katta harf).
+ * Bo'lim sarlavhasi — Atelier editorial uslubi.
+ *
+ * Ilgari "TOP BRANDS" ALL CAPS, kichik, tracked-out letter spacing edi
+ * (deckning eski tili). Endi Fraunces display serif — moda jurnali
+ * bo'lim boshiga o'xshaydi. "View all" esa italic ligature ohangida.
  */
 export function SectionHeader({
   title,
   actionLabel,
   onAction,
+  icon,
 }: {
   title: string;
   actionLabel?: string;
   onAction?: () => void;
+  icon?: IconName;
 }): JSX.Element {
   const isRTL = useI18n((state) => state.isRTL);
 
   return (
     <View style={[styles.header, rtlStyles.row(isRTL)]}>
-      <Text style={styles.headerTitle}>{title}</Text>
+      <View style={styles.titleRow}>
+        {icon ? <Icon name={icon} size={24} color={colors.accent} /> : null}
+        <Text style={styles.headerTitle}>{title}</Text>
+      </View>
       {actionLabel && onAction ? (
         <Pressable style={[styles.action, rtlStyles.row(isRTL)]} onPress={onAction}>
           <Text style={styles.actionText}>{actionLabel}</Text>
-          <Icon name={isRTL ? 'back' : 'next'} size={14} color={colors.accent} />
+          <Icon name={isRTL ? 'back' : 'next'} size={14} color={colors.primary} />
         </Pressable>
       ) : null}
     </View>
   );
 }
 
-/** Brend kafellari — deckning 01 va 08-slaydidagi qator. */
+/** Brend kafellari — logotiplar oqimi. */
 export function BrandRow({
   brands,
   onPress,
@@ -46,12 +54,6 @@ export function BrandRow({
     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
       <View style={styles.brandRow}>
         {brands.map((brand) => (
-          /*
-            ⚠️ TASHQI KUTI OLIB TASHLANDI. Ilgari `brandTile` ning o'z chegarasi
-            bor edi va `StoreLogo` ning ichida ham chegara bor — natija "ikki
-            quti ichida bir harf" bo'lib ko'rinardi. Endi faqat `StoreLogo`
-            o'zi — toza va kattaroq, deckdagi logotip tasavvuriga yaqinroq.
-          */
           <Pressable key={brand.id} style={styles.brandTile} onPress={() => onPress(brand)}>
             <StoreLogo
               logoUrl={brand.logoUrl}
@@ -59,7 +61,39 @@ export function BrandRow({
               size={76}
               width={112}
               style={styles.brandMark}
+              tintColor={colors.text}
             />
+          </Pressable>
+        ))}
+      </View>
+    </ScrollView>
+  );
+}
+
+/** Do'kon kafellari — logotip + nom. */
+export function StoreRow({
+  stores,
+  onPress,
+}: {
+  stores: NearbyStore[];
+  onPress: (store: NearbyStore) => void;
+}): JSX.Element {
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <View style={styles.brandRow}>
+        {stores.map((store) => (
+          <Pressable key={store.id} style={styles.storeTile} onPress={() => onPress(store)}>
+            <StoreLogo
+              logoUrl={store.logoUrl}
+              name={store.name}
+              size={76}
+              width={112}
+              style={styles.brandMark}
+              tintColor={colors.text}
+            />
+            <Text style={styles.storeName} numberOfLines={1}>
+              {store.name}
+            </Text>
           </Pressable>
         ))}
       </View>
@@ -70,16 +104,31 @@ export function BrandRow({
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'baseline',
     justifyContent: 'space-between',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
+    paddingTop: spacing.sm,
   },
-  headerTitle: { ...text.label, color: colors.text },
+  // Atelier bo'lim sarlavhasi: Fraunces display, h2 o'lchami. Moda jurnali bo'lim boshi.
+  headerTitle: { ...text.h2, color: colors.text, fontSize: 22 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   action: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  actionText: { ...text.tiny, color: colors.accent },
-  brandRow: { flexDirection: 'row', gap: spacing.sm },
-  // Nomlar olib tashlandi — logo o'zi tanish. Faqat quti qoladi,
-  // ixcham va zich qator sifatida.
+  // "Barchasi" linki — italic serif, template "VIEW ALL →" dan farqli.
+  actionText: { ...text.eyebrow, color: colors.primary },
+  brandRow: { flexDirection: 'row', gap: 12 },
   brandTile: { alignItems: 'center', justifyContent: 'center' },
-  brandMark: { borderRadius: radius.lg, borderWidth: 0 },
+  storeTile: { alignItems: 'center', width: 112, gap: 6 },
+  storeName: { ...text.small, color: colors.text, textAlign: 'center', maxWidth: 112 },
+  // Atelier: kichikroq radius, chegara soch-ingichka (surface2 fonga mos)
+  brandMark: {
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    shadowColor: '#5B21B6',
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 2,
+  },
 });

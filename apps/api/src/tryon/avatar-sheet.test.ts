@@ -1,7 +1,6 @@
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
 
-import { buildAvatarPrompt, buildAvatarSheetPrompt } from './avatar-prompt';
 import { isAvatarSheet, splitAvatarSheet } from './avatar-sheet';
 
 /** Uch rangli sinov varag'i: chap — qizil, o'rta — yashil, o'ng — ko'k. */
@@ -104,65 +103,5 @@ describe('avatar varag`i', () => {
       .png()
       .toBuffer();
     expect(await splitAvatarSheet(tall)).toBeNull();
-  });
-});
-
-describe('varaq prompti', () => {
-  const prompt = buildAvatarSheetPrompt('male', { height: 180, weight: 80 });
-
-  it('uch panel chapdan o`ngga: old, yon, orqa', () => {
-    const front = prompt.indexOf('PANEL 1 (left third) — FRONT');
-    const side = prompt.indexOf('PANEL 2 (middle third) — SIDE');
-    const back = prompt.indexOf('PANEL 3 (right third) — BACK');
-    expect(front).toBeGreaterThan(-1);
-    expect(side).toBeGreaterThan(front);
-    expect(back).toBeGreaterThan(side);
-  });
-
-  it('old ko`rinish chapga burilgan, orqada yuz ko`rinmaydi', () => {
-    expect(prompt).toMatch(/turned about 40 degrees to the LEFT/);
-    expect(prompt).toMatch(/face is NOT visible/);
-  });
-
-  it('fon har doim shaffof PNG', () => {
-    expect(prompt).toMatch(/TRANSPARENT PNG with an alpha channel/);
-    expect(prompt).toMatch(/no divider lines/);
-  });
-
-  it('aynan uch figura va kesish uchun chekka talab qilinadi', () => {
-    expect(prompt).toMatch(/EXACTLY THREE FIGURES/);
-    expect(prompt).toMatch(/at least 8% of the image width/);
-    expect(prompt).toMatch(/85–90% of the image height/);
-  });
-
-  it('yon va orqa matni avtomatik rejim bilan bir xil', () => {
-    expect(prompt).toContain(
-      buildAvatarPrompt('male', { height: 180, weight: 80 }, 'side')
-        .split(' The entire body')[0]!
-        .split('build. ')[1]!,
-    );
-  });
-
-  it('yuz qat`iy qulflangan — har qism sanaladi, har panelda bir xil', () => {
-    expect(prompt).toMatch(/FACE IDENTITY \(the most important rule\)/);
-    expect(prompt).toMatch(/nose shape and size/);
-    expect(prompt).toMatch(/Do NOT beautify/);
-    expect(prompt).toMatch(/SAME identical face appears in every panel/);
-  });
-
-  it('bo`y va gavda tavsifi bor', () => {
-    expect(prompt).toContain('180 cm tall');
-  });
-});
-
-describe('razmer tanlovi', () => {
-  it('varaq promptida tanlangan razmer bor', () => {
-    const prompt = buildAvatarSheetPrompt('male', {
-      height: 183,
-      weight: 80,
-      topSize: 'L',
-      bottomSize: 'M',
-    });
-    expect(prompt).toContain('wears size L tops and size M trousers');
   });
 });

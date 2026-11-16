@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
 import {
@@ -13,7 +14,9 @@ import {
   Text,
   TextInput,
   View,
+  type TextInputProps,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   getMyBrand,
   getStoreProfile,
@@ -25,12 +28,15 @@ import {
 } from '../../src/api/endpoints';
 import { ApiError } from '../../src/api/client';
 import { explainError } from '../../src/api/explainError';
-import { Icon } from '../../src/components/Icon';
-import { SellerHeader } from '../../src/components/SellerHeader';
-import { Button, ErrorView, Field, Loading, Screen } from '../../src/components/ui';
+import { Icon, type IconName } from '../../src/components/Icon';
+import { Button, Empty, ErrorView, Field, Loading, Screen } from '../../src/components/ui';
+import { useAuthStore } from '../../src/store/authStore';
+import { useRouter } from 'expo-router';
 import { useI18n, type Dictionary } from '../../src/i18n';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 import { goBack } from '../../src/navigation/back';
+
+const SETTINGS_GEAR = require('../../assets/seller-settings-gear-v1.png');
 
 /**
  * Do'kon sozlamalari.
@@ -59,7 +65,10 @@ function hoursToMap(hours: WorkingHour[]): Record<number, WorkingHour> {
  * — server bo'sh qatorni qabul qilmaydi.
  */
 function normalizeTime(value: string): string {
-  const digits = value.replace(/[^0-9]/g, '').slice(0, 4).padStart(4, '0');
+  const digits = value
+    .replace(/[^0-9]/g, '')
+    .slice(0, 4)
+    .padStart(4, '0');
   const hoursNum = Math.min(23, Number(digits.slice(0, 2)));
   const minutesNum = Math.min(59, Number(digits.slice(2, 4)));
   const pad = (n: number): string => n.toString().padStart(2, '0');
@@ -83,6 +92,7 @@ export default function StoreSettings(): JSX.Element {
    * Aks holda sarlavha soat va batareya ustiga chiqib ketadi.
    */
   const queryClient = useQueryClient();
+  const insets = useSafeAreaInsets();
   const t = useI18n((state) => state.t);
 
   const profile = useQuery({ queryKey: ['store', 'profile'], queryFn: getStoreProfile });
@@ -266,6 +276,29 @@ export default function StoreSettings(): JSX.Element {
   const brandUsername = brandForm.username.trim().replace(/^@/, '').toLowerCase();
   const brandValid = brandForm.name.trim().length >= 2 && brandUsername.length >= 3;
 
+  const role = useAuthStore((state) => state.user?.role);
+  const isSeller = role === 'store_owner' || role === 'admin';
+  const router = useRouter();
+
+  if (!isSeller) {
+    return (
+      <Screen>
+        <View style={{ height: insets.top }} />
+        <Empty
+          icon="shop"
+          title={t.sellerDashboard.notSellerTitle}
+          hint={t.sellerDashboard.notSellerDesc}
+          action={
+            <Button
+              title={t.sellerDashboard.applyNow}
+              onPress={() => router.push('/become-seller')}
+            />
+          }
+        />
+      </Screen>
+    );
+  }
+
   if (profile.isLoading) {
     return (
       <Screen>
@@ -302,25 +335,51 @@ export default function StoreSettings(): JSX.Element {
     }));
   };
 
-  const setDeliveryField = <K extends keyof typeof delivery>(key: K, value: (typeof delivery)[K]) => {
+  const setDeliveryField = <K extends keyof typeof delivery>(
+    key: K,
+    value: (typeof delivery)[K],
+  ) => {
     setSaved(false);
     setDelivery((prev) => ({ ...prev, [key]: value }));
   };
 
   return (
     <Screen>
-      <SellerHeader
-        title={t.seller.settingsTitle}
-        subtitle={t.seller.settingsSubtitle}
-        onBack={() => goBack('/seller')}
-      />
-
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.sm }]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.topbar}>
+            <Pressable style={styles.roundButton} onPress={() => goBack('/seller')}>
+              <Icon name="back" size={25} color={colors.text} />
+            </Pressable>
+            <Text style={styles.wordmark} numberOfLines={1}>
+              LOOK<Text style={styles.wordmarkAccent}>SAVE</Text>
+              <Text style={styles.wordmarkSeller}> · SELLER</Text>
+            </Text>
+            <Pressable style={styles.roundButton}>
+              <Icon name="bell" size={24} color={colors.text} />
+              <View style={styles.notificationDot} />
+            </Pressable>
+          </View>
+
+          <View style={styles.hero}>
+            <View style={styles.heroCopy}>
+              <Text style={styles.heroTitle}>{t.seller.settingsTitle}</Text>
+              <Text style={styles.heroSubtitle}>{t.seller.settingsSubtitle}</Text>
+            </View>
+            <Image source={SETTINGS_GEAR} style={styles.gearArt} resizeMode="contain" />
+          </View>
+
           <View style={styles.statusCard}>
+            <View style={styles.statusIcon}>
+              <Icon name="shop" size={27} color={colors.success} />
+            </View>
             <View style={styles.statusCardText}>
               <Text style={styles.statusLabel}>{t.seller.statusLabel}</Text>
               <Text style={styles.statusValue}>
@@ -348,9 +407,9 @@ export default function StoreSettings(): JSX.Element {
                 {store.status === 'active' ? t.seller.statusActive : t.seller.statusInactive}
               </Text>
             </View>
+            <Icon name="next" size={19} color={colors.text} />
           </View>
 
-          <Text style={styles.fieldLabel}>{t.seller.logoLabel}</Text>
           <View style={styles.logoRow}>
             <Pressable
               accessibilityRole="button"
@@ -367,42 +426,64 @@ export default function StoreSettings(): JSX.Element {
                 <Icon name="shop" size={26} color={colors.textDim} />
               )}
             </Pressable>
-            <View style={styles.logoActions}>
-              <Button
-                title={form.logoUrl ? t.seller.changeLogo : t.seller.pickLogo}
-                variant="ghost"
-                loading={uploading}
-                onPress={() => void pickLogo()}
-              />
-              {form.logoUrl ? (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => setForm((prev) => ({ ...prev, logoUrl: null }))}
-                  hitSlop={8}
-                >
-                  <Text style={styles.logoRemove}>{t.seller.remove}</Text>
-                </Pressable>
-              ) : null}
+            <View style={styles.logoCopy}>
+              <Text style={styles.logoTitle}>{t.seller.logoLabel}</Text>
+              <Text style={styles.logoHint}>Do‘koningiz uchun logoni tanlang</Text>
             </View>
+            <Pressable style={styles.logoPick} onPress={() => void pickLogo()} disabled={uploading}>
+              <Icon name="compare" size={18} color={colors.primary} />
+              <Text style={styles.logoPickText}>
+                {form.logoUrl ? t.seller.changeLogo : t.seller.pickLogo}
+              </Text>
+            </Pressable>
           </View>
 
-          <Field label={t.seller.fieldName} value={form.name} onChangeText={set('name')} />
-          <Field
-            label={t.auth.phone}
-            value={form.phone}
-            onChangeText={set('phone')}
-            keyboardType="phone-pad"
-          />
-          <Field label={t.checkout.address} value={form.address} onChangeText={set('address')} />
-          <Field label={t.checkout.landmark} value={form.landmark} onChangeText={set('landmark')} />
-          <Field label={t.catalog.city} value={form.city} onChangeText={set('city')} />
-          <Field label={t.catalog.district} value={form.district} onChangeText={set('district')} />
-          <Field
-            label={t.seller.descLabel}
-            value={form.description}
-            onChangeText={set('description')}
-            multiline
-          />
+          <View style={styles.fieldsCard}>
+            <SettingsField
+              icon="shop"
+              label={t.seller.fieldName}
+              value={form.name}
+              onChangeText={set('name')}
+            />
+            <SettingsField
+              icon="phone"
+              label={t.auth.phone}
+              value={form.phone}
+              onChangeText={set('phone')}
+              keyboardType="phone-pad"
+            />
+            <SettingsField
+              icon="chat"
+              label={t.checkout.address}
+              value={form.address}
+              onChangeText={set('address')}
+            />
+            <SettingsField
+              icon="locate"
+              label={t.checkout.landmark}
+              value={form.landmark}
+              onChangeText={set('landmark')}
+            />
+            <SettingsField
+              icon="stores"
+              label={t.catalog.city}
+              value={form.city}
+              onChangeText={set('city')}
+            />
+            <SettingsField
+              icon="location"
+              label={t.catalog.district}
+              value={form.district}
+              onChangeText={set('district')}
+            />
+            <SettingsField
+              icon="list"
+              label={t.seller.descLabel}
+              value={form.description}
+              onChangeText={set('description')}
+              multiline
+            />
+          </View>
 
           {/* Ish vaqti */}
           <View style={styles.section}>
@@ -449,9 +530,7 @@ export default function StoreSettings(): JSX.Element {
                     style={styles.dayOff}
                   >
                     <View style={[styles.checkbox, closed && styles.checkboxOn]}>
-                      {closed ? (
-                        <Text style={styles.checkboxMark}>✓</Text>
-                      ) : null}
+                      {closed ? <Text style={styles.checkboxMark}>✓</Text> : null}
                     </View>
                     <Text style={styles.dayOffLabel}>{t.seller.dayOff}</Text>
                   </Pressable>
@@ -535,11 +614,20 @@ export default function StoreSettings(): JSX.Element {
           {error ? <Text style={styles.error}>{error}</Text> : null}
           {saved ? <Text style={styles.saved}>{t.measurements.saved}</Text> : null}
 
-          <Button
-            title={t.measurements.save}
-            loading={save.isPending}
-            onPress={() => save.mutate()}
-          />
+          <Pressable disabled={save.isPending} onPress={() => save.mutate()}>
+            <LinearGradient colors={[colors.accent, colors.primaryDim]} style={styles.saveButton}>
+              {save.isPending ? (
+                <ActivityIndicator color={colors.textOnPrimary} />
+              ) : (
+                <>
+                  <View style={styles.saveIcon}>
+                    <Icon name="check" size={21} color={colors.textOnPrimary} />
+                  </View>
+                  <Text style={styles.saveText}>{t.measurements.save}</Text>
+                </>
+              )}
+            </LinearGradient>
+          </Pressable>
 
           {/* ── Mening brendim (@username bilan) — alohida saqlash ── */}
           <View style={styles.brandDivider} />
@@ -621,37 +709,116 @@ export default function StoreSettings(): JSX.Element {
   );
 }
 
+function SettingsField({
+  icon,
+  label,
+  multiline,
+  ...props
+}: TextInputProps & { icon: IconName; label: string }): JSX.Element {
+  return (
+    <View style={[styles.settingsField, multiline && styles.settingsFieldMultiline]}>
+      <View style={styles.settingsFieldLabel}>
+        <Icon name={icon} size={18} color={colors.primary} />
+        <Text style={styles.settingsFieldLabelText}>{label}</Text>
+      </View>
+      <TextInput
+        {...props}
+        multiline={multiline}
+        placeholderTextColor={colors.textDim}
+        style={[styles.settingsInput, multiline && styles.settingsInputMultiline]}
+      />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-
-  content: { padding: spacing.md, paddingBottom: spacing.xxl },
+  content: { paddingHorizontal: spacing.md, paddingBottom: 126 },
+  topbar: {
+    height: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  roundButton: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderWidth: 1,
+    borderColor: '#E8DFF7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#6D28D9',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+  },
+  wordmark: {
+    ...text.bodyMed,
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+  },
+  wordmarkAccent: { color: colors.accent },
+  wordmarkSeller: { color: colors.textMuted, fontWeight: '600' },
+  notificationDot: {
+    position: 'absolute',
+    right: 3,
+    top: 2,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
+    borderWidth: 2,
+    borderColor: colors.surface,
+  },
+  hero: { height: 132, justifyContent: 'center', overflow: 'visible' },
+  heroCopy: { zIndex: 2, maxWidth: '64%' },
+  heroTitle: { ...text.h1, color: colors.text, fontSize: 32, lineHeight: 38 },
+  heroSubtitle: { ...text.body, color: colors.textMuted, marginTop: 4, fontSize: 16 },
+  gearArt: { position: 'absolute', width: 150, height: 150, right: -2, top: -12 },
 
   statusCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    gap: spacing.sm,
+    backgroundColor: '#F1FFF8',
+    borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
-    padding: spacing.md,
-    marginBottom: spacing.lg,
+    borderColor: '#C5F0D8',
+    padding: 12,
+    marginBottom: spacing.md,
+    shadowColor: colors.success,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+  },
+  statusIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: radius.md,
+    backgroundColor: '#D6F8E5',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   statusCardText: { flex: 1, gap: 2 },
-  statusLabel: { ...text.tiny, color: colors.textDim, letterSpacing: 1 },
+  statusLabel: { ...text.small, color: colors.text, fontWeight: '700' },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs + 1,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: radius.pill,
     borderWidth: 1,
   },
   statusBadgeOn: { borderColor: 'rgba(34,197,94,0.35)', backgroundColor: 'rgba(34,197,94,0.1)' },
   statusBadgeOff: { borderColor: colors.border, backgroundColor: colors.surface2 },
   statusBadgeDot: { width: 6, height: 6, borderRadius: radius.pill },
-  statusBadgeText: { ...text.tiny },
+  statusBadgeText: { ...text.small, fontWeight: '700' },
   fieldLabel: {
     ...text.tiny,
     color: colors.textDim,
@@ -659,30 +826,90 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
     marginTop: spacing.sm,
   },
-  logoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md },
-  logoBox: {
-    width: 72,
-    height: 72,
-    borderRadius: radius.lg,
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+    backgroundColor: 'rgba(255,255,255,0.94)',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#E8DDF7',
+    borderRadius: radius.xl,
+    padding: 10,
+    shadowColor: '#6D28D9',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+  },
+  logoBox: {
+    width: 54,
+    height: 54,
+    borderRadius: radius.md,
     backgroundColor: colors.surface2,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
   logoImage: { width: '100%', height: '100%' },
+  logoCopy: { flex: 1, minWidth: 0 },
+  logoTitle: { ...text.bodyMed, color: colors.text, fontWeight: '700' },
+  logoHint: { ...text.small, color: colors.textMuted },
+  logoPick: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    height: 38,
+    borderRadius: radius.pill,
+    backgroundColor: '#F3E9FF',
+    borderWidth: 1,
+    borderColor: '#DCC5FA',
+  },
+  logoPickText: { ...text.tiny, color: colors.primary, fontWeight: '700' },
   logoActions: { flex: 1, gap: spacing.xs },
   logoRemove: { ...text.small, color: colors.danger, paddingVertical: spacing.xs },
   statusValue: { ...text.bodyMed, color: colors.success, marginTop: 2 },
+  fieldsCard: { marginBottom: spacing.sm },
+  settingsField: {
+    minHeight: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE8F7',
+  },
+  settingsFieldMultiline: { alignItems: 'flex-start', paddingVertical: 5 },
+  settingsFieldLabel: { width: 112, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  settingsFieldLabelText: { ...text.small, color: colors.text, flexShrink: 1 },
+  settingsInput: {
+    flex: 1,
+    minHeight: 38,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: '#DCCFF1',
+    backgroundColor: 'rgba(255,255,255,0.82)',
+    paddingHorizontal: 12,
+    ...text.small,
+    color: colors.text,
+  },
+  settingsInputMultiline: {
+    minHeight: 54,
+    borderRadius: radius.md,
+    paddingTop: 9,
+    textAlignVertical: 'top',
+  },
 
   section: {
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     padding: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: '#E5D9F5',
+    shadowColor: '#6D28D9',
+    shadowOpacity: 0.07,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 7 },
   },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   sectionTitle: { ...text.h3, color: colors.text },
@@ -700,7 +927,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     marginBottom: spacing.sm,
   },
-  dayLabel: { ...text.small, color: colors.text, width: 84 },
+  dayLabel: { ...text.small, color: colors.text, width: 78 },
   timeInput: {
     ...text.bodyMed,
     color: colors.text,
@@ -709,14 +936,14 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.sm,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-    width: 68,
+    paddingVertical: 5,
+    width: 64,
     textAlign: 'center',
   },
   timeInputDisabled: { opacity: 0.4 },
   dash: { color: colors.textDim, paddingHorizontal: 2 },
   dayOff: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginLeft: 'auto' },
-  dayOffLabel: { ...text.small, color: colors.textDim },
+  dayOffLabel: { ...text.tiny, color: colors.textDim },
 
   toggleRow: {
     flexDirection: 'row',
@@ -736,7 +963,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxOn: { backgroundColor: colors.primary, borderColor: colors.primary },
-  checkboxMark: { color: colors.text, fontSize: 12, lineHeight: 14, fontWeight: '700' },
+  checkboxMark: { color: colors.textOnPrimary, fontSize: 12, lineHeight: 14, fontWeight: '700' },
 
   deliveryGrid: {
     flexDirection: 'row',
@@ -755,6 +982,28 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     textAlign: 'center',
   },
+  saveButton: {
+    height: 56,
+    borderRadius: radius.pill,
+    marginTop: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.25,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 9 },
+  },
+  saveIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveText: { ...text.h3, color: colors.textOnPrimary },
 
   error: { ...text.small, color: colors.danger, marginTop: spacing.md, marginBottom: spacing.sm },
   saved: { ...text.small, color: colors.success, marginTop: spacing.md, marginBottom: spacing.sm },

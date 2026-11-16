@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, FlatList, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   deleteStoreProduct,
@@ -14,7 +15,6 @@ import {
 } from '../../src/api/endpoints';
 import { explainError } from '../../src/api/explainError';
 import { Icon } from '../../src/components/Icon';
-import { SellerHeader } from '../../src/components/SellerHeader';
 import { SkeletonList } from '../../src/components/Skeleton';
 import { Button, Empty, ErrorView, Screen } from '../../src/components/ui';
 import { useI18n, type Dictionary } from '../../src/i18n';
@@ -22,6 +22,8 @@ import { useAuthStore } from '../../src/store/authStore';
 import { money } from '../../src/theme/format';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 import { goBack } from '../../src/navigation/back';
+
+const SELLER_BAG = require('../../assets/seller-dashboard-bag-v2.png');
 
 /**
  * Do'kon mahsulotlari.
@@ -60,6 +62,7 @@ export default function SellerProducts(): JSX.Element {
    * Aks holda sarlavha soat va batareya ustiga chiqib ketadi.
    */
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const t = useI18n((state) => state.t);
   const user = useAuthStore((state) => state.user);
@@ -81,13 +84,16 @@ export default function SellerProducts(): JSX.Element {
   if (!isSeller) {
     return (
       <Screen>
-        <SellerHeader title={t.sellerTabs.products} onBack={() => router.replace('/seller')} />
+        <View style={{ height: insets.top }} />
         <Empty
           icon="shop"
           title={t.sellerDashboard.notSellerTitle}
           hint={t.sellerDashboard.notSellerDesc}
           action={
-            <Button title={t.sellerDashboard.applyNow} onPress={() => router.push('/seller/apply')} />
+            <Button
+              title={t.sellerDashboard.applyNow}
+              onPress={() => router.push('/become-seller')}
+            />
           }
         />
       </Screen>
@@ -96,91 +102,142 @@ export default function SellerProducts(): JSX.Element {
 
   return (
     <Screen>
-      <SellerHeader
-        title={t.seller.productsTitle}
-        subtitle={
-          products.data
-            ? t.seller.showing.replace('{n}', String(products.data.items.length))
-            : undefined
-        }
-        onBack={() => goBack('/seller')}
+      <LinearGradient
+        colors={['#FFFFFF', '#FBF8FF', '#F3ECFF']}
+        locations={[0, 0.58, 1]}
+        style={StyleSheet.absoluteFill}
       />
 
-      <View style={styles.filters}>
-        {FILTERS.map((item) => (
-          <Pressable
-            key={item.key}
-            accessibilityRole="button"
-            onPress={() => setFilter(item.key)}
-            style={styles.filterWrap}
-          >
-            {filter === item.key ? (
-              <LinearGradient
-                colors={[colors.accent, colors.primary]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.filter}
+      <FlatList
+        data={products.data?.items ?? []}
+        keyExtractor={(product) => product.id}
+        contentContainerStyle={styles.list}
+        refreshing={products.isFetching}
+        onRefresh={() => void products.refetch()}
+        removeClippedSubviews
+        initialNumToRender={6}
+        ListHeaderComponent={
+          <>
+            <View style={{ height: insets.top + 8 }} />
+            <View style={styles.topbar}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => goBack('/seller')}
+                style={styles.roundButton}
               >
-                <Text style={[styles.filterText, { color: colors.text }]}>
-                  {t.seller[item.labelKey]}
+                <Icon name="back" size={25} color={colors.text} />
+              </Pressable>
+              <Text style={styles.wordmark} numberOfLines={1}>
+                LOOK<Text style={styles.wordmarkAccent}>SAVE</Text>
+                <Text style={styles.wordmarkSeller}> · SELLER</Text>
+              </Text>
+              <Pressable accessibilityRole="button" style={styles.roundButton}>
+                <Icon name="bell" size={24} color={colors.text} />
+                <View style={styles.notificationDot} />
+              </Pressable>
+            </View>
+
+            <View style={styles.hero}>
+              <View style={styles.heroCopy}>
+                <Text style={styles.heroTitle}>{t.seller.productsTitle}</Text>
+                <Text style={styles.heroSubtitle}>
+                  {t.seller.showing.replace('{n}', String(products.data?.items.length ?? 0))}
                 </Text>
-              </LinearGradient>
-            ) : (
-              <View style={styles.filter}>
-                <Text style={styles.filterText}>{t.seller[item.labelKey]}</Text>
               </View>
-            )}
-          </Pressable>
-        ))}
-      </View>
+              <View style={styles.bags} pointerEvents="none">
+                <Image source={SELLER_BAG} style={styles.bagSmall} resizeMode="contain" />
+                <Image source={SELLER_BAG} style={styles.bagLarge} resizeMode="contain" />
+              </View>
+              <View style={styles.heroWaveOne} />
+              <View style={styles.heroWaveTwo} />
+            </View>
 
-      {products.isLoading ? <SkeletonList count={4} /> : null}
-      {products.isError ? (
-        <ErrorView error={products.error} onRetry={() => void products.refetch()} />
-      ) : null}
+            <View style={styles.filters}>
+              {FILTERS.map((item) => {
+                const selected = filter === item.key;
+                const icon =
+                  item.key === 'all'
+                    ? 'orders'
+                    : item.key === 'active'
+                      ? 'check'
+                      : item.key === 'draft'
+                        ? 'clock'
+                        : 'shop';
+                return (
+                  <Pressable
+                    key={item.key}
+                    accessibilityRole="button"
+                    onPress={() => setFilter(item.key)}
+                    style={styles.filterWrap}
+                  >
+                    {selected ? (
+                      <LinearGradient
+                        colors={[colors.accent, colors.primaryDim]}
+                        style={styles.filter}
+                      >
+                        <Icon name={icon} size={17} color={colors.textOnPrimary} />
+                        <Text style={[styles.filterText, styles.filterTextActive]}>
+                          {t.seller[item.labelKey]}
+                        </Text>
+                      </LinearGradient>
+                    ) : (
+                      <View style={styles.filter}>
+                        {item.key === 'active' ? (
+                          <View style={styles.filterDot} />
+                        ) : (
+                          <Icon name={icon} size={17} color={colors.textMuted} />
+                        )}
+                        <Text style={styles.filterText}>{t.seller[item.labelKey]}</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
 
-      {products.data ? (
-        <FlatList
-          data={products.data.items}
-          keyExtractor={(product) => product.id}
-          contentContainerStyle={styles.list}
-          refreshing={products.isFetching}
-          onRefresh={() => void products.refetch()}
-          removeClippedSubviews
-          initialNumToRender={6}
-          ListEmptyComponent={
-            <Empty
-              icon="slotTop"
-              title={t.seller.pEmptyTitle}
-              hint={t.seller.pEmptyHint}
-              action={
-                <Button
-                  title={t.seller.addProduct}
-                  onPress={() => router.push('/seller/product-new')}
-                />
-              }
-            />
-          }
-          renderItem={({ item }) => (
-            <ProductRow
-              product={item}
-              onDelete={() =>
-                Alert.alert(t.seller.deleteProductTitle, item.title, [
-                  { text: t.common.cancel, style: 'cancel' },
-                  {
-                    text: t.facePhoto.delete,
-                    style: 'destructive',
-                    onPress: () => remove.mutate(item.id),
-                  },
-                ])
-              }
-            />
-          )}
-        />
-      ) : null}
+            {products.isLoading ? <SkeletonList count={3} /> : null}
+            {products.isError ? (
+              <ErrorView error={products.error} onRetry={() => void products.refetch()} />
+            ) : null}
+          </>
+        }
+        ListEmptyComponent={
+          products.isLoading || products.isError ? null : (
+            <Empty icon="slotTop" title={t.seller.pEmptyTitle} hint={t.seller.pEmptyHint} />
+          )
+        }
+        renderItem={({ item }) => (
+          <ProductRow
+            product={item}
+            onEdit={() => router.push({ pathname: '/seller/product-new', params: { id: item.id } })}
+            onDelete={() =>
+              Alert.alert(t.seller.deleteProductTitle, item.title, [
+                { text: t.common.cancel, style: 'cancel' },
+                {
+                  text: t.facePhoto.delete,
+                  style: 'destructive',
+                  onPress: () => remove.mutate(item.id),
+                },
+              ])
+            }
+          />
+        )}
+      />
 
       <View style={styles.fab}>
-        <Button title={t.seller.addProduct} onPress={() => router.push('/seller/product-new')} />
+        <Pressable accessibilityRole="button" onPress={() => router.push('/seller/product-new')}>
+          <LinearGradient
+            colors={[colors.accent, colors.primaryDim]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.addButton}
+          >
+            <View style={styles.addIcon}>
+              <Text style={styles.addIconText}>+</Text>
+            </View>
+            <Text style={styles.addButtonText}>{t.seller.addProduct}</Text>
+          </LinearGradient>
+        </Pressable>
       </View>
     </Screen>
   );
@@ -189,9 +246,11 @@ export default function SellerProducts(): JSX.Element {
 function ProductRow({
   product,
   onDelete,
+  onEdit,
 }: {
   product: StoreProduct;
   onDelete: () => void;
+  onEdit: () => void;
 }): JSX.Element {
   const t = useI18n((state) => state.t);
   const meta = STATUS_LABEL[product.status];
@@ -202,7 +261,7 @@ function ProductRow({
     <View style={styles.card}>
       <View style={styles.cardTop}>
         {product.image ? (
-          <Image source={{ uri: product.image }} style={styles.thumb} resizeMode="cover" />
+          <Image source={{ uri: product.image }} style={styles.thumb} resizeMode="contain" />
         ) : (
           <View style={[styles.thumb, styles.thumbEmpty]}>
             <Icon name="slotTop" size={20} color={colors.textDim} />
@@ -225,15 +284,26 @@ function ProductRow({
           </View>
         </View>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="O`chirish"
-          hitSlop={8}
-          onPress={onDelete}
-          style={styles.delete}
-        >
-          <Icon name="close" size={16} color={colors.textDim} />
-        </Pressable>
+        <View style={styles.cardActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Tahrirlash"
+            hitSlop={8}
+            onPress={onEdit}
+            style={styles.cardActionBtn}
+          >
+            <Icon name="edit" size={16} color={colors.accent} />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="O`chirish"
+            hitSlop={8}
+            onPress={onDelete}
+            style={styles.cardActionBtn}
+          >
+            <Icon name="trash" size={18} color={colors.textMuted} />
+          </Pressable>
+        </View>
       </View>
 
       {/*
@@ -354,55 +424,157 @@ function SizeInputs({
 }
 
 const styles = StyleSheet.create({
+  topbar: {
+    height: 64,
+    paddingHorizontal: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  roundButton: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.82)',
+    borderWidth: 1,
+    borderColor: '#E7DDF8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#7C3AED',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+  },
+  wordmark: {
+    ...text.bodyMed,
+    color: colors.text,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+    fontSize: 13,
+    flexShrink: 1,
+    textAlign: 'center',
+  },
+  wordmarkAccent: { color: colors.accent },
+  wordmarkSeller: { color: colors.textMuted, fontWeight: '600' },
+  notificationDot: {
+    position: 'absolute',
+    right: 4,
+    top: 3,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
+    borderWidth: 2,
+    borderColor: colors.surface,
+  },
+  hero: {
+    height: 206,
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    overflow: 'hidden',
+  },
+  heroCopy: { zIndex: 3, maxWidth: '60%' },
+  heroTitle: { ...text.h1, color: colors.text, fontSize: 34, lineHeight: 40 },
+  heroSubtitle: { ...text.bodyMed, color: colors.textMuted, marginTop: spacing.sm, fontSize: 17 },
+  bags: { position: 'absolute', right: 10, top: 4, width: 210, height: 184, zIndex: 2 },
+  bagLarge: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    right: -4,
+    top: 0,
+    transform: [{ rotate: '3deg' }],
+  },
+  bagSmall: {
+    position: 'absolute',
+    width: 112,
+    height: 112,
+    left: 3,
+    top: 62,
+    transform: [{ rotate: '-5deg' }],
+  },
+  heroWaveOne: {
+    position: 'absolute',
+    width: '120%',
+    height: 130,
+    left: -20,
+    bottom: -79,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(139,44,245,0.10)',
+    transform: [{ rotate: '-7deg' }],
+  },
+  heroWaveTwo: {
+    position: 'absolute',
+    width: '110%',
+    height: 82,
+    right: -40,
+    bottom: -52,
+    borderRadius: radius.pill,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.75)',
+    transform: [{ rotate: '-7deg' }],
+  },
   filters: {
     flexDirection: 'row',
-    gap: spacing.xs,
-    marginHorizontal: spacing.md,
-    marginTop: spacing.md,
-    padding: spacing.xs,
-    borderRadius: radius.xl,
+    marginHorizontal: spacing.sm,
+    marginBottom: spacing.lg,
+    padding: 6,
+    borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: 'rgba(15, 13, 22, 0.92)',
+    borderColor: '#E7DDF8',
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    shadowColor: '#7C3AED',
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
   },
   filterWrap: { flex: 1 },
   filter: {
-    minHeight: 38,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xs + 2,
+    height: 48,
+    paddingHorizontal: 5,
     borderRadius: radius.pill,
+    flexDirection: 'row',
+    gap: 5,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  filterText: { ...text.tiny, color: colors.textMuted, fontWeight: '700', textAlign: 'center' },
+  filterText: {
+    ...text.tiny,
+    color: colors.textMuted,
+    fontWeight: '700',
+    textAlign: 'center',
+    fontSize: 10,
+  },
+  filterTextActive: { color: colors.textOnPrimary },
+  filterDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#12C55B' },
 
-  list: { padding: spacing.md, gap: spacing.md, paddingBottom: 100 },
+  list: { gap: spacing.md, paddingBottom: 112 },
 
   card: {
-    backgroundColor: 'rgba(20, 18, 28, 0.95)',
-    borderRadius: radius.xl,
+    marginHorizontal: spacing.md,
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    borderRadius: radius.xxl,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: '#DDC9FA',
     padding: spacing.md,
     gap: spacing.sm,
-    shadowColor: '#000000',
-    shadowOpacity: 0.28,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 12 },
+    shadowColor: '#7C3AED',
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
   },
-  cardTop: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
+  cardTop: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
   thumb: {
-    width: 62,
-    height: 62,
-    borderRadius: radius.lg,
+    width: 84,
+    height: 84,
+    borderRadius: radius.xl,
     backgroundColor: colors.surface2,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   thumbEmpty: { alignItems: 'center', justifyContent: 'center' },
   cardText: { flex: 1, gap: spacing.xs },
-  cardTitle: { ...text.bodyMed, color: colors.text },
-  price: { ...text.bodyMed, color: colors.accent },
+  cardTitle: { ...text.h3, color: colors.text, fontSize: 16 },
+  price: { ...text.h3, color: colors.primary, fontSize: 19 },
   statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -411,23 +583,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
     borderRadius: radius.pill,
-    borderWidth: 1,
+    borderWidth: 0,
   },
   statusDot: { width: 6, height: 6, borderRadius: radius.pill },
   statusText: { ...text.tiny },
-  delete: {
-    width: 34,
-    height: 34,
+  cardActions: { flexDirection: 'column', gap: spacing.xs, alignItems: 'center' },
+  cardActionBtn: {
+    width: 42,
+    height: 42,
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface2,
+    backgroundColor: '#F4ECFF',
   },
 
   stock: {
     gap: spacing.xs,
     borderTopWidth: 1,
-    borderTopColor: colors.borderStrong,
+    borderTopColor: '#E8DDF7',
     paddingTop: spacing.sm,
   },
   stockToggle: {
@@ -435,11 +608,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderTopWidth: 1,
-    borderTopColor: colors.borderStrong,
+    borderTopColor: '#E8DDF7',
     paddingTop: spacing.sm,
   },
-  stockEdit: { ...text.tiny, color: colors.accent },
-  stockLabel: { ...text.tiny, color: colors.textDim },
+  stockEdit: { ...text.small, color: colors.primary, fontWeight: '700' },
+  stockLabel: { ...text.small, color: colors.textMuted, fontWeight: '600' },
   stockRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   stockItem: { alignItems: 'center', gap: 2 },
   stockSize: { ...text.tiny, color: colors.textMuted },
@@ -459,10 +632,28 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: spacing.md,
     right: spacing.md,
-    bottom: spacing.lg,
+    bottom: spacing.sm,
     shadowColor: colors.primary,
-    shadowOpacity: 0.36,
+    shadowOpacity: 0.3,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 10 },
   },
+  addButton: {
+    height: 58,
+    borderRadius: radius.pill,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  addIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addIconText: { color: colors.textOnPrimary, fontSize: 26, lineHeight: 28, fontWeight: '400' },
+  addButtonText: { ...text.h3, color: colors.textOnPrimary },
 });

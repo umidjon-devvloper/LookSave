@@ -1,0 +1,89 @@
+# LookSave yuz xizmati — VPS'da (2026-11-15 dan; ilgari fly.io).
+#
+#   face  — FastAPI + FaceFusion + kesim modeli. Faqat 127.0.0.1:8080 da
+#           tinglaydi, tashqaridan to'g'ridan-to'g'ri ko'rinmaydi.
+#   caddy — tashqi eshik: HTTPS (Let's Encrypt) va kim chaqira olishini
+#           tekshirish.
+#
+# Qo'lda `docker compose up` yurgizma — `./up.sh` sozlamalarni tayyorlab,
+# to'g'ri tartibda ishga tushiradi. Sozlamalar: `.env` (namuna: env.example).
+name: looksave-face
+
+services:
+  face:
+    build:
+      context: ..
+      # Attestatsiyasiz: aks holda hech narsa o'zgarmagan qurishda ham
+      # image raqami yangilanadi va `docker compose ps` konteynerni tegsiz
+      # (sha256:…) ko'rsatib, «eski image'da qolgan»dek chalg'itadi.
+      provenance: false
+      sbom: false
+    image: looksave-face:latest
+    restart: unless-stopped
+    # tini: yetim qolgan bola jarayonlarni (vaqti tugagan facefusion, kesim
+    # ishchisi) yig'ib oladi. fly.io'da buni uning o'z init'i qilardi.
+    init: true
+    # Xizmatga faqat shu yadrolar beriladi; qolganlari serverdagi boshqa
+    # ishlar uchun bo'sh qoladi. Qiymatni up.sh hisoblaydi (8 tagacha).
+    cpuset: "${FACE_CPUSET:?avval ./up.sh ni yurgizing}"
+    environment:
+      FACEFUSION_TIMEOUT_S: "300"
+      FACEFUSION_API_TOKEN: "${FACEFUSION_API_TOKEN:-}"
+      # off — xizmat rasmga FAQAT kesim qiladi, yuzga tegmaydi (2026-11-15,
+      # egasining qarori). Qaytarish: `.env` da FACE_SWAP="on" va `./up.sh`.
+      FACE_SWAP: "${FACE_SWAP:-off}"
+      # Tezlashtirish (2026-11-15): modellar xotirada turadi, har so'rovda
+      # qayta yuklanmaydi. O'chirilsa xizmat avvalgidek (sekin) ishlaydi.
+      FACEFUSION_WARM: "1"
+      CUTOUT_PREWARM: "1"
+      # Kesim ishchisi ketma-ket ishlarda qayta ishlatiladi (≈12 GB ushlaydi),
+      # yarim soat bo'sh qolsa yopilib xotirani qaytaradi. Qisqartirilsa har
+      # so'rov sekin «birinchi kesim» bo'lib qoladi — cutout.py boshiga qarang.
+      CUTOUT_TASKS_PER_WORKER: "${CUTOUT_TASKS_PER_WORKER:-200}"
+      CUTOUT_IDLE_RECYCLE_S: "${CUTOUT_IDLE_RECYCLE_S:-1800}"
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      # Model og'irliklari (~2.2 GB) — image qayta qurilganda ham saqlanadi.
+      - models:/app/facefusion/.assets
+    # Xotira tugasa yadro butun serverdan emas, shu konteyner ichidan jarayon
+    # o'ldiradi — SSH va Caddy tirik qoladi. Qiymatni up.sh hisoblaydi.
+    mem_limit: "${FACE_MEM_LIMIT:?avval ./up.sh ni yurgizing}"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-m", "8", "http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    # host tarmog'i: so'rov yuborganning HAQIQIY manzili ko'rinsin — ruxsat
+    # aynan shunga qarab beriladi (caddy/Caddyfile, `remote_ip`).
+    network_mode: host
+    environment:
+      FACE_DOMAIN: "${FACE_DOMAIN:?}"
+      API_ALLOW_IPS: "${API_ALLOW_IPS:?}"
+      FACE_MAX_PARALLEL: "${FACE_MAX_PARALLEL:-3}"
+    volumes:
+      # Papka ulanadi, fayl emas: fayl qayta yozilganda (deploy) konteyner
+      # yangisini ko'rsin.
+      - ./caddy:/etc/caddy:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+volumes:
+  models:
+  caddy_data:
+  caddy_config:

@@ -339,7 +339,7 @@ export default function MeasurementsScreen(): JSX.Element {
               end={{ x: 1, y: 1 }}
               style={[styles.saveButton, save.isPending && { opacity: 0.6 }]}
             >
-              <Icon name="tryon" size={18} color={colors.text} />
+              <Icon name="tryon" size={18} color={colors.textOnPrimary} />
               <Text style={styles.saveText}>
                 {saved ? t.measurements.saved : t.measurements.save}
               </Text>
@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 4 },
   },
-  saveText: { ...text.bodyMed, color: colors.text, fontWeight: '700' },
+  saveText: { ...text.bodyMed, color: colors.textOnPrimary, fontWeight: '700' },
 
   error: { ...text.small, color: colors.danger },
   hint: { ...text.small, color: colors.textDim, flex: 1 },

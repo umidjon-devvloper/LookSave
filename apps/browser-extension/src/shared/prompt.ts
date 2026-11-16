@@ -129,7 +129,16 @@ function faceLock(panels: boolean): string {
         'facing camera. Side view: the TRUE profile of that same face (same nose silhouette, same ' +
         'lip shape, same chin, same brow line, same ear). Back view: hairstyle, hair colour, head ' +
         'shape, ears and neckline match image 1 exactly.'
-      : 'Hairstyle, hair colour, hair parting and hair volume stay exactly as in image 1.',
+      : /*
+         * ⚠️ TO'LIQ BO'YLI KADRDA YUZ KICHIK (2026-11-11, so'rovga ko'ra).
+         * Kichik yuzni model soddalashtirishga moyil — shuning uchun ochiq
+         * aytiladi. «do not zoom in» SHART: usiz «yuzni aniq chiz» buyrug'i
+         * kadrni yaqinlashtirib, oyoqlarni kesib yuborishi mumkin.
+         */
+        'Hairstyle, hair colour, hair parting and hair volume stay exactly as in image 1. ' +
+        'This is a full-body shot, so the face is small in the frame — that is NOT a licence to ' +
+        'simplify it: render the face in sharp focus with every feature of image 1 intact, never ' +
+        'soft, blurred, generic or averaged. Keep the full-body framing — do not zoom in or crop.',
     '🔒 FINAL CHECK before output: compare your rendered face side-by-side with image 1. If any ' +
       'feature differs, REDRAW using image 1 as the exact template. Only output when the two faces ' +
       'are the same person.',
@@ -305,130 +314,6 @@ export function buildTryonPrompt(input: PromptInput): string {
   return lines.join(' ');
 }
 
-/**
- * Avatar yasash prompti.
- *
- * ⚠️ GAVDA TAVSIFI BU YERDA TUZILMAYDI. U ishning payload'ida tayyor
- * keladi (`payload.prompt`) — serverda `buildAvatarPrompt` o'lchovlardan
- * yasagan. Ya'ni bo'y, gavda tuzilishi va poza AYNAN server aytgandek
- * bo'ladi; kengaytma faqat o'ramni qo'shadi.
- *
- * ⚠️ IKKI REJIM. Kiyimsiz — yalang'och asos (keyin ustiga kiyintiriladi).
- * Kiyim bilan — odam DARHOL do'konning mahsulotida chiqadi va mijoz
- * birinchi suratdayoq real kiyimni ko'radi, kulrang mayka emas.
- */
-export function buildAvatarRequestPrompt(
-  bodyPrompt: string,
-  /** Avatarga darhol kiydiriladigan do'kon kiyimi — ikkinchi surat. */
-  garment?: GarmentKind | null,
-): string {
-  if (isSheetPrompt(bodyPrompt)) return buildSheetRequestPrompt(bodyPrompt, garment);
-
-  const lines = [
-    '🔒 YOU ARE EDITING A PHOTO OF A REAL PERSON. The first three images are the SAME face of ' +
-      'that real person — attached three times because this is the single most important input. ' +
-      'If the output face does not match these references, you have FAILED the task.',
-    'Full-body photorealistic portrait of the person in the first three reference images (same face).',
-    faceLock(false),
-    'The references show the head and shoulders — carry the neck, shoulder line and build over to the full body.',
-    garment ? stripBaseLayer(bodyPrompt) : bodyPrompt,
-  ];
-
-  if (garment) {
-    lines.push(
-      `Dress the person in the garment from the FOURTH image, ${PLACEMENT[garment]}.`,
-      'Reproduce that garment EXACTLY: same colour, same pattern, same cut, same details and any printed artwork — it is a real product being sold.',
-      REST_OF_OUTFIT[garment],
-    );
-  }
-
-  lines.push(
-    'No text, no watermarks, no props.',
-    /* ⚠️ FAQAT BRAUZER VERSIYASIDA — chat interfeysi matn bilan javob bermasin. */
-    'Output exactly one image. Do not ask questions, do not explain, do not offer alternatives.',
-  );
-
-  return lines.join(' ');
-}
-
-/**
- * Serverdagi «bir rangli kulrang kiyim» jumlasini olib tashlaydi.
- *
- * ⚠️ USIZ IKKI KO'RSATMA URISHADI. `buildAvatarPrompt` (serverda) har
- * doim «Wearing a plain light grey t-shirt and plain light grey
- * trousers» deb yozadi — u YALANG'OCH asos uchun to'g'ri, chunki keyin
- * ustiga kiyim kiydiriladi. Lekin do'kon kiyimini o'sha so'rovning
- * o'zida bersak, model ikki jumladan birini tanlaydi va natija
- * tasodifiy bo'ladi: goh futbolka, goh kulrang mayka.
- *
- * ⚠️ QARAMA-QARSHI JUMLANI QOLDIRIB, USTIGA «buni e'tiborsiz qoldir»
- * DEB YOZISH ISHLAMAYDI — shu omborda bir marta sinalgan va model
- * oldinroq turgan ko'rsatmani tanlagan (`avatar-prompt.ts` dagi burchak
- * ziddiyati). Shuning uchun jumla butunlay olib tashlanadi.
- */
-function stripBaseLayer(bodyPrompt: string): string {
-  return (
-    bodyPrompt
-      .replace(/\s*Wearing a plain[^.]*\.\s*/i, ' ')
-      // Varaq promptida kiyim alohida band: «CLOTHING: a plain light grey …»
-      .replace(/\n*CLOTHING:[^\n]*/i, '')
-      .trim()
-  );
-}
-
-/**
- * Server uch burchakli varaq promptini yubordimi (`buildAvatarSheetPrompt`).
- *
- * ⚠️ ESKI SERVER BILAN HAM ISHLAYDI: yangilanmagan server oddiy (bitta
- * pozali) tavsif yuboradi va kengaytma eski o'ram bilan davom etadi.
- */
-export function isSheetPrompt(bodyPrompt: string): boolean {
-  return /turnaround sheet/i.test(bodyPrompt) && /PANEL 1/.test(bodyPrompt);
-}
-
-/**
- * Varaq uchun o'ram.
- *
- * ⚠️ «Full-body portrait of the person» BU YERDA YO'Q. U BITTA odamni
- * so'raydi va server matnidagi «uch panel» bilan urishardi — model
- * oldinroq turgan ko'rsatmani tanlaydi (omborda bir necha bor sinalgan).
- * Server matnining o'zi to'liq: joylashuv, poza, fon va kadr. Bu yerda
- * faqat suratlar tartibi va kiyim qo'shiladi.
- */
-function buildSheetRequestPrompt(bodyPrompt: string, garment?: GarmentKind | null): string {
-  const lines = [
-    '🔒 YOU ARE EDITING A PHOTO OF A REAL PERSON. The FIRST, SECOND and THIRD images are the ' +
-      'SAME face — three copies of the one and only identity reference. CROP the face from these ' +
-      'images and PASTE it unchanged into every panel. The reference shows the head and ' +
-      'shoulders — carry the neck, shoulder line and build the full body around it.',
-    /*
-     * Yangi server matnida yuz qulfi bor; eski server uni yubormasa bu
-     * yerda qo'shiladi — ikki marta takrorlanmasin.
-     */
-    ...(/FACE IDENTITY|FACE LOCK/.test(bodyPrompt) ? [] : [faceLock(true)]),
-    garment ? stripBaseLayer(bodyPrompt) : bodyPrompt,
-  ];
-
-  if (garment) {
-    lines.push(
-      `CLOTHING: dress the person in ALL THREE panels in the garment from the FOURTH image, ` +
-        `${PLACEMENT[garment]} — the same real product seen from the front, the side and the ` +
-        'back. Reproduce it EXACTLY: same colour, same pattern, same cut, same details and any ' +
-        'printed artwork; on the back view show the back of that garment. ' +
-        REST_OF_OUTFIT[garment],
-    );
-  }
-
-  lines.push(
-    /* ⚠️ FAQAT BRAUZER VERSIYASIDA — chat interfeysi matn bilan javob bermasin. */
-    'Output exactly ONE image — the three-panel sheet — as a PNG with a transparent background. ' +
-      'Do not ask questions, do not explain, do not offer alternatives.',
-  );
-
-  return lines.join('\n\n');
-}
-
-
 /*
  * ── Kiyintirish — UCH PANELLI VARAQ, faqat YUZ + KIYIM (2026-09-25) ──
  *
@@ -473,34 +358,73 @@ const SHEET_BACK =
   'camera, the face is NOT visible. Standing straight, arms relaxed at the sides and slightly ' +
   'away from the body, feet shoulder-width apart.';
 
+/*
+ * ⚠️ BOSH O'LCHAMI (so'rovga ko'ra, 2026-11-16). Yuz surati ko'pincha
+ * kameraga yaqin olingan selfi — model shu yaqin kadrni gavdaga ko'chirib
+ * boshni haddan tashqari katta chizadi (karikaturaga o'xshaydi). Yuz FAQAT
+ * shaxsni aniqlash uchun; yaqin kadr bosh o'lchamiga ta'sir qilmasligi kerak.
+ *
+ * ⚠️ API nusxasi (`apps/api/src/tryon/tryon-prompt.ts` → `bodyLine`,
+ * `HEAD_PROPORTION`) bilan AYNAN bir xil — biri o'zgarsa ikkinchisi ham.
+ * Bu matn `bodyLine` orqali barcha auto-GPT funksiyalariga tushadi.
+ */
+const HEAD_PROPORTION =
+  ' HEAD-TO-BODY PROPORTION: render the head at a natural, realistic size for an adult ' +
+  'standing body — a normal adult head is only about one seventh to one eighth of the full ' +
+  'standing height. The reference face photo is often a tight close-up (a selfie) and is used ' +
+  'ONLY to copy the identity — its close framing must NOT enlarge the head. Never render an ' +
+  'oversized, zoomed-in, bobble-head or caricature-like head; keep average, anatomically ' +
+  'correct, well-balanced head-to-body proportions.';
+
 function bodyLine(person: string, measurements: Measurements): string {
   const parts: string[] = [];
   if (measurements.height) parts.push(`${Math.round(measurements.height)} cm tall`);
   if (measurements.weight) parts.push(`${Math.round(measurements.weight)} kg`);
   if (measurements.topSize) parts.push(`wears size ${measurements.topSize} tops`);
   if (measurements.bottomSize) parts.push(`wears size ${measurements.bottomSize} trousers`);
-  return parts.length > 0
-    ? `BODY: a ${person}, ${parts.join(', ')} — build a natural, realistic body with exactly ` +
+  const base =
+    parts.length > 0
+      ? `BODY: a ${person}, ${parts.join(', ')} — build a natural, realistic body with exactly ` +
         'these proportions; the garment must drape as their true size would, neither tighter ' +
         'nor looser.'
-    : `BODY: a ${person} of average, healthy build.`;
+      : `BODY: a ${person} of average, healthy build.`;
+  return base + HEAD_PROPORTION;
 }
 
 /**
- * Kiyintirish — YAKKA OLD KO'RINISH (2026-11-09, so'rovga ko'ra).
+ * Kiyimsiz avatar asosi — serverdagi `baseLayer` bilan bir xil
+ * (`apps/api/src/tryon/avatar-prompt.ts`). «fitted» kabi tanaga urg'u
+ * beradigan so'zlar ATAYLAB yo'q — sababi o'sha yerda yozilgan.
+ */
+const BASE_LAYER = 'a plain light grey t-shirt and plain light grey trousers';
+
+/**
+ * YAKKA OLD KO'RINISH — kiyintirish (2026-11-09) va BIRINCHI AVATAR
+ * (2026-11-11), ikkalasi ham so'rovga ko'ra.
  *
  * Ilgari uch panelli varaq (old/yon/orqa) edi — endi faqat bitta old
- * portret. Image tartibi varaq bilan bir xil: 3 yuz nusxa + kiyim.
- * Chiqadigan rasm esa YAKKA vertikal portret.
+ * portret. Image tartibi: 3 yuz nusxa + (bo'lsa) kiyim. Chiqadigan rasm
+ * YAKKA vertikal portret.
+ *
+ * ⚠️ BITTA PORTRETDA YUZ YIRIKROQ. Varaqda har figura kadrning uchdan
+ * biri edi va yuzga bir necha o'n piksel qolardi — o'xshashlik uchun ham,
+ * serverdagi yuz almashtirish uchun ham kam.
+ *
+ * ⚠️ AVATARDA SERVER MATNI (`payload.prompt`) ISHLATILMAYDI. Yangilanmagan
+ * server unda uch panelli varaqni so'raydi. Gavda shu yerda o'lchamlardan
+ * quriladi — avatarda ham, keyingi kiyimlarda ham bir xil jumla, ya'ni
+ * bir xil gavda.
  *
  * ⚠️ POZA VA YUZ QULFI SHEETDAN KO'CHIRILGAN — natija bir xil bo'lsin.
  */
 export function buildFrontTryonPrompt(input: {
-  kind: GarmentKind;
+  /** `null` — kiyim surati yo'q: birinchi avatar kulrang asosda chiqadi. */
+  kind: GarmentKind | null;
   measurements: Measurements;
   gender?: string | null;
 }): string {
   const person = input.gender === 'female' ? 'woman' : input.gender === 'male' ? 'man' : 'person';
+  const garment = input.kind;
 
   return [
     '🔒 YOU ARE EDITING A PHOTO OF A REAL PERSON. The first three images are the SAME face of ' +
@@ -509,17 +433,24 @@ export function buildFrontTryonPrompt(input: {
 
     'Create ONE single image: a photorealistic full-body FRONT view fashion portrait of ONE real person.',
 
+    'ONE FIGURE, FRONT VIEW ONLY: the person appears exactly ONCE in the image, seen from the ' +
+      'front. No side view, no back view, no second pose, no mirror image, no multi-panel or ' +
+      'collage layout, no inset close-ups.',
+
     'IMAGES: the FIRST, SECOND and THIRD images are the SAME face of the person — three copies of ' +
       'the one and only reference you may use for identity. CROP the face from these images and ' +
-      'PASTE it unchanged into the portrait. The FOURTH image is the garment being sold.',
+      'PASTE it unchanged into the portrait. ' +
+      (garment ? 'The FOURTH image is the garment being sold.' : 'There are no other images.'),
 
     faceLock(false),
 
     bodyLine(person, input.measurements),
 
-    `CLOTHING: dress the person in the garment from the FOURTH image, ` +
-      `${PLACEMENT[input.kind]}. Reproduce it EXACTLY: same colour, same pattern, same cut, ` +
-      `same details and any printed artwork — it is a real product being sold. ${REST_OF_OUTFIT[input.kind]}`,
+    garment
+      ? `CLOTHING: dress the person in the garment from the FOURTH image, ` +
+        `${PLACEMENT[garment]}. Reproduce it EXACTLY: same colour, same pattern, same cut, ` +
+        `same details and any printed artwork — it is a real product being sold. ${REST_OF_OUTFIT[garment]}`
+      : `CLOTHING: ${BASE_LAYER}.`,
 
     `POSE: ${SHEET_FRONT}`,
 
@@ -555,6 +486,21 @@ export function buildFrontTryonBundlePrompt(input: {
     .map((k, i) => `IMAGE ${i + 4} (${k}) ${PLACEMENT[k] ?? 'in its natural position'}`)
     .join('; ');
 
+  // Extension'da slot = 'tops' (ikki tops bo'lsa — hoodie + jacket bo'lishi mumkin). Shuning
+  // uchun layer instruksiyasi slot'ga qarab emas, umumiy qoida sifatida beriladi.
+  const topsCount = input.kinds.filter((k) => k === 'tops').length;
+  const layeringNote = topsCount >= 2
+    ? 'LAYERING ORDER (very important): if two upper-body garments are given, DECIDE which is ' +
+      'the BASE layer (t-shirt / hoodie / sweater / shirt — the lighter / shorter inner piece) ' +
+      'and which is the OUTER layer (jacket / coat / windbreaker / overshirt — the heavier ' +
+      'outerwear piece). The base layer is worn first and covers the torso AND the full length ' +
+      'of both arms — its sleeves fill the arms completely. The outer layer goes OVER the base, ' +
+      'its sleeves fitting OVER the base-layer sleeves so the arms are inside both. The base ' +
+      'layer\'s hood / collar / cuffs / hem may peek out from under the outer layer where ' +
+      'natural. Never show an empty / hollow jacket sleeve — the arm with the base-layer sleeve ' +
+      'is always inside it.'
+    : '';
+
   return [
     '🔒 YOU ARE EDITING A PHOTO OF A REAL PERSON. The first three images are the SAME face of ' +
       'that real person. If the output face does not match, you have FAILED the task.',
@@ -569,9 +515,20 @@ export function buildFrontTryonBundlePrompt(input: {
 
     bodyLine(person, input.measurements),
 
+    'STEP 1 — RECOGNISE EACH GARMENT BEFORE DRESSING: look at every garment image carefully and ' +
+      'identify its type (t-shirt / hoodie / shirt / sweater / jacket / coat / trousers / shorts ' +
+      '/ shoes), sleeve length, hood / collar type, cut and length. Only then layer them.',
+
     `CLOTHING — WEAR ALL AT ONCE: ${garmentList}. Each garment reproduced EXACTLY from its ` +
       'source (colour, pattern, cut, details, artwork). Combine into one complete outfit on one ' +
       'single person.',
+
+    ...(layeringNote ? [layeringNote] : []),
+
+    'ARMS AND HANDS: both arms MUST be visibly filled with the sleeves of EVERY worn layer — ' +
+      'never leave a garment sleeve empty or deflated. Hands naturally in trouser pockets, ' +
+      'fingers clearly resolved, correct count, natural wrist thickness. Wrists pass cleanly ' +
+      'through the outer-layer sleeve.',
 
     `POSE: ${SHEET_FRONT}`,
 
@@ -619,11 +576,33 @@ export function buildTryonBundleSheetPrompt(input: {
 
     bodyLine(person, input.measurements),
 
+    'STEP 1 — RECOGNISE EACH GARMENT BEFORE DRESSING: look at every garment image carefully and ' +
+      'identify its type (t-shirt / hoodie / shirt / sweater / jacket / coat / trousers / shorts ' +
+      '/ shoes), sleeve length, hood / collar type, cut and length. Only then layer them.',
+
     `CLOTHING — WEAR ALL OF THEM TOGETHER AT ONCE: ${garmentList}. Each garment must be ` +
       'reproduced EXACTLY from its source image (same colour, same pattern, same cut, same ' +
       'details, printed artwork). Combine them into one complete outfit on one single person ' +
       'in every panel — never show the garments separately, never create extra figures, never ' +
       'swap garments between panels.',
+
+    ...(input.kinds.filter((k) => k === 'tops').length >= 2
+      ? [
+          'LAYERING ORDER (very important): if two upper-body garments are given, DECIDE which ' +
+          'is the BASE layer (t-shirt / hoodie / sweater / shirt — the lighter / shorter inner ' +
+          'piece) and which is the OUTER layer (jacket / coat / windbreaker / overshirt — the ' +
+          'heavier outerwear piece). The base layer is worn first and covers the torso AND the ' +
+          'full length of both arms — its sleeves fill the arms completely. The outer layer ' +
+          'goes OVER the base, its sleeves fitting OVER the base-layer sleeves so the arms are ' +
+          'inside both. The base layer\'s hood / collar / cuffs / hem may peek out from under ' +
+          'the outer layer where natural. Never show an empty / hollow jacket sleeve — the arm ' +
+          'with the base-layer sleeve is always inside it.',
+        ]
+      : []),
+
+    'ARMS AND HANDS: both arms MUST be visibly filled with the sleeves of EVERY worn layer — ' +
+      'never leave a garment sleeve empty. Hands naturally placed, fingers clearly resolved, ' +
+      'correct count, natural wrist thickness.',
 
     'LAYOUT: three equal-width vertical panels in one horizontal row — each panel is exactly one ' +
       'third of the image width. From left to right:',

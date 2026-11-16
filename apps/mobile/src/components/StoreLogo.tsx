@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Image, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { colors, radius } from '../theme/tokens';
@@ -23,6 +24,8 @@ interface StoreLogoProps {
   /** Alohida kenglik (plita cho'zilgan ko'rinishda). Berilmasa `size` ishlatiladi. */
   width?: number;
   style?: ViewStyle;
+  /** Bir rangli brand logolarini berilgan rangda chizadi. */
+  tintColor?: string;
 }
 
 const PALETTE: ReadonlyArray<{ bg: string; fg: string }> = [
@@ -57,13 +60,19 @@ function firstLetter(name: string): string {
   }
 }
 
-export function StoreLogo({ logoUrl, name, size = 52, width, style }: StoreLogoProps): JSX.Element {
+export function StoreLogo({
+  logoUrl,
+  name,
+  size = 52,
+  width,
+  style,
+  tintColor,
+}: StoreLogoProps): JSX.Element {
+  const [failed, setFailed] = useState(false);
   const outerDim: ViewStyle = { width: width ?? size, height: size, borderRadius: radius.lg };
+  const palette = pickPalette(name);
 
-  if (logoUrl) {
-    // Har brend uchun tanish rang-tangasi: palette.fg dan tark olingan
-    // yumshoq binafsha/ko'k/pushti nurlanish shisha quti taassurotini beradi.
-    const palette = pickPalette(name);
+  if (logoUrl && !failed) {
     const pad = Math.round(size * 0.16);
     return (
       <View
@@ -74,18 +83,18 @@ export function StoreLogo({ logoUrl, name, size = 52, width, style }: StoreLogoP
           style,
         ]}
       >
-        <View style={[styles.logoInner, { borderRadius: radius.lg }]}>
+        <View style={[styles.logoInner, { borderRadius: radius.lg, padding: pad }]}>
           <Image
             source={{ uri: logoUrl }}
-            style={[styles.image, { padding: pad }]}
+            style={[styles.image, tintColor ? { tintColor } : null]}
             resizeMode="contain"
+            onError={() => setFailed(true)}
           />
         </View>
       </View>
     );
   }
 
-  const palette = pickPalette(name);
   const letter = firstLetter(name);
   const fontSize = Math.round(size * 0.42);
 

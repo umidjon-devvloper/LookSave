@@ -39,6 +39,7 @@ import { colors } from '../theme/tokens';
 export function ScrollFade({
   scrollY,
   height,
+  tone = 'light',
   /**
    * Necha px scroll qilinganda fon TO'LIQ qorayadi. 100 — sukut: shu
    * masofada tepadagi blok (hero, avatar) header ostidan o'tib bo'ladi.
@@ -48,6 +49,7 @@ export function ScrollFade({
   scrollY: Animated.Value;
   height: number;
   distance?: number;
+  tone?: 'light' | 'dark';
 }): JSX.Element {
   const opacity = scrollY.interpolate({
     inputRange: [0, distance],
@@ -57,8 +59,15 @@ export function ScrollFade({
 
   return (
     <Animated.View style={[styles.fade, { height, opacity }]} pointerEvents="none">
-      <View style={styles.solid} />
-      <LinearGradient colors={[colors.bg, 'rgba(10,10,15,0)']} style={styles.edge} />
+      <View style={[styles.solid, tone === 'dark' && styles.solidDark]} />
+      <LinearGradient
+        colors={
+          tone === 'dark'
+            ? ['rgba(10,8,18,0.98)', 'rgba(10,8,18,0)']
+            : [colors.bg, 'rgba(251,250,255,0)']
+        }
+        style={styles.edge}
+      />
     </Animated.View>
   );
 }
@@ -66,5 +75,6 @@ export function ScrollFade({
 const styles = StyleSheet.create({
   fade: { position: 'absolute', top: 0, left: 0, right: 0 },
   solid: { ...StyleSheet.absoluteFillObject, backgroundColor: colors.bg },
+  solidDark: { backgroundColor: '#0A0812' },
   edge: { position: 'absolute', left: 0, right: 0, bottom: -24, height: 24 },
 });

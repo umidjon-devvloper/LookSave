@@ -109,6 +109,7 @@ export async function submitApplication(
       input.deliveryEnabled,
       input.pickupEnabled,
       input.currency,
+      input.audience,
     ];
 
     // Rad etilgan ariza yangilanadi — yangi qator yaratilmaydi, shunda
@@ -117,15 +118,15 @@ export async function submitApplication(
       existing === null
         ? `INSERT INTO stores (owner_id, name, slug, description, location, address, landmark,
                                city, country, phone, working_hours, delivery_enabled,
-                               pickup_enabled, currency, status, reject_reason)
+                               pickup_enabled, currency, audience, status, reject_reason)
            VALUES ($1, $2, $3, $4, ST_MakePoint($5, $6)::geography, $7, $8,
-                   $9, $10, $11, $12::jsonb, $13, $14, $15, 'pending', NULL)
+                   $9, $10, $11, $12::jsonb, $13, $14, $15, $16, 'pending', NULL)
            RETURNING id, name, slug, status, reject_reason, created_at`
         : `UPDATE stores SET name = $2, slug = $3, description = $4,
                   location = ST_MakePoint($5, $6)::geography, address = $7, landmark = $8,
                   city = $9, country = $10, phone = $11, working_hours = $12::jsonb,
                   delivery_enabled = $13, pickup_enabled = $14, currency = $15,
-                  status = 'pending', reject_reason = NULL
+                  audience = $16, status = 'pending', reject_reason = NULL
             WHERE owner_id = $1 AND status = 'rejected'
             RETURNING id, name, slug, status, reject_reason, created_at`;
 

@@ -5,8 +5,10 @@ import {
   SquarePen,
   Camera,
   Clock,
+  Crown,
   Eye,
   EyeOff,
+  Flame,
   Bell,
   ChevronLeft,
   ChevronRight,
@@ -17,6 +19,8 @@ import {
   MessageSquareText,
   LayoutGrid,
   LayoutList,
+  Image as ImageIcon,
+  Maximize,
   LocateFixed,
   Store,
   LogIn,
@@ -95,6 +99,8 @@ const LUCIDE = {
   rotate: RotateCw,
   zoom: ZoomIn,
   reset: RefreshCcw,
+  compare: ImageIcon,
+  fullscreen: Maximize,
 
   // ── Profil / buyurtma ──
   orders: Package,
@@ -119,11 +125,13 @@ const LUCIDE = {
   /** Ish vaqti: «Ochiq · 21:00 gacha» */
   clock: Clock,
   limited: Zap,
+  hot: Flame,
 
   // ── Ishonch belgilari (deck 01-slayd) ──
   authentic: ShieldCheck,
   delivery: Truck,
   premium: BadgeCheck,
+  crown: Crown,
 } satisfies Record<string, LucideIcon>;
 
 /**

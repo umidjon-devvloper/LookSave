@@ -13,16 +13,15 @@ import {
 import type { FlatList } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { getBrands, getLooks, getProducts, type ProductCard } from '../../src/api/endpoints';
+import { hasItem } from '../../src/ai/lookTray';
+import { getNearbyStores, getProducts, type ProductCard } from '../../src/api/endpoints';
 import { Icon } from '../../src/components/Icon';
-import { Hero } from '../../src/components/home/Hero';
-import { ScrollFade } from '../../src/components/ScrollFade';
-import { BrandRow, SectionHeader } from '../../src/components/home/Sections';
+import { Hero, HERO_HEIGHT } from '../../src/components/home/Hero';
+import { SectionHeader, StoreRow } from '../../src/components/home/Sections';
 import { Empty, ErrorView, Screen } from '../../src/components/ui';
 import { rtlStyles, useI18n } from '../../src/i18n';
-import { useAiFlowStore } from '../../src/store/aiFlowStore';
-import { useAuthStore } from '../../src/store/authStore';
 import { useLocationStore } from '../../src/store/locationStore';
+import { useLookStore } from '../../src/store/lookStore';
 import { useSplashLanding } from '../../src/store/splashTargetStore';
 import { CARD_PADDING, CARD_TEXT_INSET } from '../../src/components/Skeleton';
 import { money } from '../../src/theme/format';
@@ -47,6 +46,8 @@ function TrendingCard({
   inLook: boolean;
   isRTL: boolean;
 }): JSX.Element {
+  const t = useI18n((state) => state.t);
+
   return (
     <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.imageWrap}>
@@ -66,18 +67,6 @@ function TrendingCard({
           shart butunlay boshqa — modeli borlar emas, sloti mos
           keladiganlar. Eski belgi yolg'on va'da berardi.
         */}
-        {product.canTryOn ? (
-          <View
-            style={[
-              styles.badgeTryon,
-              // RTL'da yurak chapga o'tadi — AI belgisini o'ngga ko'chiramiz,
-              // aks holda ikkalasi ham chap burchakda ustma-ust tushadi
-              isRTL ? { right: spacing.sm, left: undefined } : null,
-            ]}
-          >
-            <Text style={styles.badgeTryonText}>AI</Text>
-          </View>
-        ) : null}
 
         {/*
           «Lookga qo'sh» tugmasi — rasm pastki chekkasida yotgan pil.
@@ -87,7 +76,7 @@ function TrendingCard({
         */}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={inLook ? 'Lookda bor' : "Lookga qo'shish"}
+          accessibilityLabel={inLook ? t.tryon.removeFromLook : t.tryon.addToLook}
           onPress={(e) => {
             e.stopPropagation();
             onLookPress();
@@ -102,9 +91,12 @@ function TrendingCard({
           <Icon
             name={inLook ? 'check' : 'looks'}
             size={13}
-            color={inLook ? colors.text : colors.accent}
+            color={inLook ? colors.textOnPrimary : colors.primary}
           />
-          <Text style={styles.lookBtnText}>{inLook ? 'Lookda' : 'Look'}</Text>
+          <Text style={[styles.lookBtnText, inLook && { color: colors.textOnPrimary }]}>
+            {/* «Look» — brend atamasi, har tilda bir xil; qo'shilgan holati tarjima qilinadi */}
+            {inLook ? t.tryon.inLook : 'Look'}
+          </Text>
         </Pressable>
       </View>
 
@@ -141,9 +133,10 @@ export default function Home(): JSX.Element {
   const t = useI18n((state) => state.t);
   const isRTL = useI18n((state) => state.isRTL);
   const { coords, permission, request } = useLocationStore();
-  // Lookga qo'shish — aiFlowStore outfit layer bilan ishlaydi
-  const outfit = useAiFlowStore((state) => state.outfit);
-  const wear = useAiFlowStore((state) => state.wear);
+  // «Look» savati — kartadagi tugma kiyimni shu yerga yig'adi (`lookStore`)
+  const lookItems = useLookStore((state) => state.items);
+  const addLook = useLookStore((state) => state.add);
+  const removeLook = useLookStore((state) => state.remove);
   // Bu ekranda tepa sarlavha yo'q (logotip uning o'rnini bosadi), shuning uchun
   // status bar ostiga kirib ketmaslik uchun bo'shliq qo'lda qo'shiladi.
   const insets = useSafeAreaInsets();
@@ -167,15 +160,9 @@ export default function Home(): JSX.Element {
     if (permission === 'unknown') void request();
   }, [permission, request]);
 
-  const brands = useQuery({ queryKey: ['brands'], queryFn: getBrands });
-
-  // Saqlangan looklar — AI ikonkadagi badge va bosilganda yo'nalish shu
-  // ro'yxatga. Faqat kirgan foydalanuvchi uchun — bo'lmasa 401 xatosi.
-  const authStatusForLooks = useAuthStore((state) => state.status);
-  const savedLooks = useQuery({
-    queryKey: ['looks'],
-    queryFn: getLooks,
-    enabled: authStatusForLooks === 'signedIn',
+  const stores = useQuery({
+    queryKey: ['stores', 'home', coords.lat, coords.lng],
+    queryFn: () => getNearbyStores(coords.lat, coords.lng, { radius: 50_000 }),
   });
 
   /* Sahifalash — katalogdagidek. Ilgari faqat birinchi 20 ta kelardi. */
@@ -208,6 +195,7 @@ export default function Home(): JSX.Element {
         data={items}
         keyExtractor={(product) => product.id}
         numColumns={2}
+        style={{ backgroundColor: '#FFFFFF' }}
         /*
          * Fon rasmi cho'zilishi uchun overscroll SHART — iOS'da bu
          * `bounces` (default true). `scrollEventThrottle: 16` esa 60 FPS:
@@ -254,33 +242,27 @@ export default function Home(): JSX.Element {
               ctaHint={t.home.exploreNow}
               onCta={() => router.push('/(tabs)/marketplace')}
               image={images.heroHome}
-              badges={[
-                {
-                  icon: 'authentic',
-                  title: t.home.badgeAuthentic,
-                  hint: t.home.badgeAuthenticHint,
-                },
-                { icon: 'delivery', title: t.home.badgeDelivery, hint: t.home.badgeDeliveryHint },
-                { icon: 'premium', title: t.home.badgeBrands, hint: t.home.badgeBrandsHint },
-              ]}
             />
 
-            {(brands.data ?? []).length > 0 ? (
-              <View style={styles.section}>
-                <SectionHeader
-                  title={t.home.topBrands}
-                  actionLabel={t.home.viewAll}
-                  onAction={() => router.push('/catalog')}
-                />
-                <BrandRow
-                  brands={brands.data ?? []}
-                  onPress={(brand) => router.push(`/catalog?brand=${brand.slug}`)}
-                />
-              </View>
-            ) : null}
+            <View style={styles.contentSheet}>
+              {(stores.data ?? []).length > 0 ? (
+                <View style={styles.section}>
+                  <SectionHeader
+                    icon="hot"
+                    title={t.home.topStores}
+                    actionLabel={t.home.viewAll}
+                    onAction={() => router.push('/market/stores')}
+                  />
+                  <StoreRow
+                    stores={stores.data ?? []}
+                    onPress={(store) => router.push(`/store/${store.id}`)}
+                  />
+                </View>
+              ) : null}
 
-            <View style={styles.section}>
-              <SectionHeader title={t.home.trendingNow} />
+              <View style={styles.section}>
+                <SectionHeader icon="limited" title={t.home.trendingNow} />
+              </View>
             </View>
           </View>
         }
@@ -291,19 +273,34 @@ export default function Home(): JSX.Element {
             onPress={() => router.push(`/product/${item.id}`)}
             onLookPress={() => {
               if (!item.canTryOn) {
-                // Kiyib ko'rib bo'lmaydigan buyum (masalan aksessuar) —
-                // mahsulot sahifasida foydalanuvchi batafsil ko'radi
                 router.push(`/product/${item.id}`);
                 return;
               }
               /*
-               * Slot `null` bo'lishi mumkin — eski API javobida bu maydon
-               * yo'q edi, deploy'dan oldin backward-compat uchun `top`
-               * standart qiymat. Yangi javobda to'g'ri slot keladi.
+               * ⚠️ HAMMA BOSILGANI SAQLANADI. 5 ta kurtka bosilsa beshalasi
+               * ham savatga tushadi va nishon o'sadi; kiyiladigani esa bir
+               * turdan bittasi — oxirgi qo'shilgani (qolganlari primerkada
+               * nomzod bo'lib turadi va bosib almashtiriladi).
+               *
+               * Karta faqat MAHSULOTNI biladi. Rangi (variant) primerka
+               * ekranida serverdan aniqlanadi; surat va narx esa hoziroq
+               * beriladi — savat darhol to'g'ri ko'rinsin.
                */
-              wear(item.slot ?? 'top', item.id);
+              if (hasItem(lookItems, item.id)) {
+                removeLook(item.id);
+                return;
+              }
+              addLook({
+                productId: item.id,
+                variantId: null,
+                slot: item.slot,
+                title: item.title,
+                image: item.image,
+                price: item.price,
+                currency: item.currency,
+              });
             }}
-            inLook={outfit.some((layer) => layer.variantId === item.id)}
+            inLook={hasItem(lookItems, item.id)}
           />
         )}
         ListEmptyComponent={
@@ -324,20 +321,31 @@ export default function Home(): JSX.Element {
         }}
       />
 
-      {/* Tepa fon — logotip qatori ORQASIDA (`ScrollFade` izohiga qarang) */}
-      <ScrollFade scrollY={scrollY} height={headerHeight} />
-
-      {/*
-        FIXED header — deckdagi logotip qatori. Ilgari ro'yxat ichida edi va
-        scroll bilan yuqoriga chiqib ketardi; endi doim ko'rinadi.
-      */}
-      <View style={[styles.headerBar, { paddingTop: insets.top + spacing.sm }]}>
+      <Animated.View
+        style={[
+          styles.headerBar,
+          {
+            paddingTop: insets.top + spacing.sm,
+            transform: [
+              {
+                translateY: scrollY.interpolate({
+                  inputRange: [0, headerHeight],
+                  outputRange: [0, -headerHeight],
+                  extrapolate: 'clamp',
+                }),
+              },
+            ],
+          },
+        ]}
+      >
         <View style={[styles.topBar, rtlStyles.row(isRTL)]}>
           <View style={[styles.wordmarkWrap, rtlStyles.row(isRTL)]}>
             <View ref={splashLanding.ref} onLayout={splashLanding.onLayout} collapsable={false}>
               <Image source={images.logoMark} style={styles.logo} resizeMode="contain" />
             </View>
-            <Text style={styles.wordmark}>Look Save</Text>
+            <Text style={styles.wordmark}>
+              Look<Text style={styles.wordmarkAccent}>Save</Text>
+            </Text>
           </View>
           <View style={[styles.topActions, rtlStyles.row(isRTL)]}>
             {/*
@@ -348,48 +356,47 @@ export default function Home(): JSX.Element {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={
-                outfit.length > 0
-                  ? `AI — ${outfit.length} ta buyum yig'ilgan`
-                  : (savedLooks.data?.length ?? 0) > 0
-                    ? `Looklar — ${savedLooks.data?.length} ta saqlangan`
-                    : 'AI Designer'
+                lookItems.length > 0
+                  ? `${t.tryon.title} — ${t.tryon.collected.replace('{n}', String(lookItems.length))}`
+                  : t.tryon.title
               }
               /*
-                Ikki holat, bitta ikonka:
-                  — foydalanuvchi mahsulotlardan "Look" bosib buyumlar yig'yapti
-                    (`outfit.length > 0`) → kiyintirish ekraniga, u yerda ko'radi;
-                  — hali hech narsa yig'ilmagan → saqlangan looklariga.
-                Badge esa qaysi oqimda bo'lsa — o'shaning sonini chiqaradi.
+                ⚠️ BITTA IKONKA — BITTA EKRAN. Ilgari bu tugma ikki joyga
+                olib borardi: kiyim yig'ilgan bo'lsa primerkaga, bo'lmasa
+                saqlangan komplektlar ro'yxatiga — nishon ham goh unisini,
+                goh bunisini sanardi. Endi u doim primerkani ochadi va doim
+                yig'ilgan kiyimlar sonini ko'rsatadi; savat bo'sh bo'lsa
+                ekranning o'zi nima qilishni aytadi (saqlangan komplektlarga
+                yo'l ham o'sha yerda).
               */
-              onPress={() =>
-                router.push(outfit.length > 0 ? '/ai/fitting' : '/looks')
-              }
+              onPress={() => router.push('/ai/fitting')}
               hitSlop={8}
               style={styles.aiBtn}
             >
-              <Icon name="tryon" size={22} color={colors.accent} />
-              {outfit.length > 0 ? (
+              <Icon name="tryon" size={22} color="#FFFFFF" />
+              {lookItems.length > 0 ? (
                 <View style={styles.aiBadge}>
-                  <Text style={styles.aiBadgeText}>{outfit.length}</Text>
-                </View>
-              ) : (savedLooks.data?.length ?? 0) > 0 ? (
-                <View style={styles.aiBadge}>
-                  <Text style={styles.aiBadgeText}>{savedLooks.data!.length}</Text>
+                  <Text style={styles.aiBadgeText}>{lookItems.length}</Text>
                 </View>
               ) : null}
             </Pressable>
             <Pressable onPress={() => router.push('/catalog')} hitSlop={8}>
-              <Icon name="search" size={22} color={colors.text} />
+              <Icon name="search" size={22} color="#FFFFFF" />
             </Pressable>
-            <Pressable onPress={() => router.push('/stores')} hitSlop={8}>
-              <Icon name="stores" size={22} color={colors.text} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Real-time kiyim ko'rish"
+              onPress={() => router.push('/anywear')}
+              hitSlop={8}
+            >
+              <Icon name="camera" size={22} color="#FFFFFF" />
             </Pressable>
             <Pressable onPress={() => router.push('/orders')} hitSlop={8}>
-              <Icon name="bell" size={22} color={colors.text} />
+              <Icon name="bell" size={22} color="#FFFFFF" />
             </Pressable>
           </View>
         </View>
-      </View>
+      </Animated.View>
 
       {/*
         Yangilash indikatori — fon USTIDA suzadi (RefreshControl kabi joy
@@ -403,13 +410,13 @@ export default function Home(): JSX.Element {
           <ActivityIndicator color={colors.accent} size="small" />
         </View>
       ) : null}
-
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   headerBar: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: spacing.md },
+  // Atelier: krem pill (cho'tka ustida sal shaffof), ichida anor spinner.
   refreshBadge: {
     position: 'absolute',
     alignSelf: 'center',
@@ -418,9 +425,17 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(10,10,15,0.65)',
+    backgroundColor: 'rgba(247,242,234,0.92)',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  list: { padding: spacing.md, paddingTop: 0, gap: spacing.md },
+  list: {
+    padding: spacing.md,
+    paddingTop: 0,
+    paddingBottom: 120,
+    gap: spacing.md,
+    backgroundColor: '#FFFFFF',
+  },
   column: { gap: spacing.sm },
   header: { marginBottom: spacing.md },
 
@@ -429,13 +444,25 @@ const styles = StyleSheet.create({
   // Logotipda mayda detallar bor (galstuk, krossovka) — kichik o'lchamda ular
   // bir-biriga qo'shilib ketadi, shuning uchun balandlik 46px.
   logo: { width: 64, height: 46 },
-  wordmark: { ...text.wordmark, color: colors.text },
+  wordmark: { ...text.wordmark, color: '#FFFFFF', fontSize: 18 },
+  wordmarkAccent: { color: colors.accent },
   topActions: { flexDirection: 'row', gap: spacing.md },
 
+  contentSheet: {
+    marginHorizontal: -spacing.md,
+    marginTop: -spacing.xl,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xl,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: radius.xxl,
+    borderTopRightRadius: radius.xxl,
+    zIndex: 4,
+    elevation: 4,
+  },
   section: { marginTop: spacing.sm },
 
-  // `maxWidth` — toq sondagi oxirgi karta butun qatorni egallab ketmasligi uchun
-  // Katalog kartasi bilan bir xil yaxlit quti (`catalog.tsx` → styles.card)
+  // Atelier karta: soyasiz, hair-thin chegara, deyarli kvadrat burchak (radius.md).
+  // SaaS-card-kit yumaloq soyali shablonning aksi.
   card: {
     flex: 1,
     maxWidth: '48.5%',
@@ -445,16 +472,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
+    shadowColor: '#5B21B6',
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 3,
   },
   imageWrap: { position: 'relative' },
   image: {
     width: '100%',
-    aspectRatio: 3 / 4,
+    aspectRatio: 1,
     borderRadius: radius.md,
     backgroundColor: colors.surface2,
   },
   imagePlaceholder: { borderWidth: 1, borderColor: colors.border },
   footerLoading: { paddingVertical: spacing.lg, alignItems: 'center' },
+  // Yurak — rasm ustida oq doira, ichida chernila yurak. Oldingi yarim-shaffof
+  // qora doira dark-fon uchun edi; bu yerda rasm ustida ham o'qiladi.
   heart: {
     position: 'absolute',
     top: spacing.sm,
@@ -464,20 +498,40 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(10,10,15,0.55)',
+    backgroundColor: 'rgba(255,255,255,0.92)',
   },
+  hotBadge: {
+    position: 'absolute',
+    top: spacing.sm,
+    left: spacing.sm,
+    height: 26,
+    paddingHorizontal: 9,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  hotBadgeText: { ...text.tiny, color: colors.textOnPrimary, fontSize: 12 },
+  // "AI" belgisi — mayda, tipografik. Primary soft fon shaffof: rasm ustida
+  // anor tus beradi, matn va chegara to'liq anor.
   badgeTryon: {
     position: 'absolute',
     top: spacing.sm,
     left: spacing.sm,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: radius.sm,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: 'rgba(247,242,234,0.94)',
     borderWidth: 1,
-    borderColor: colors.borderAccent,
+    borderColor: colors.primary,
   },
-  badgeTryonText: { ...text.tiny, color: colors.accent },
+  badgeTryonText: {
+    ...text.tiny,
+    color: colors.primary,
+    letterSpacing: 1.2,
+  },
+  // Look tugmasi — krem pill, ichida ink matn. Lookda bo'lsa anorga aylanadi.
   lookBtn: {
     position: 'absolute',
     bottom: spacing.sm,
@@ -488,9 +542,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(10,10,15,0.72)',
+    backgroundColor: 'rgba(255,255,255,0.94)',
     borderWidth: 1,
-    borderColor: colors.borderAccent,
+    borderColor: colors.border,
   },
   lookBtnOn: {
     backgroundColor: colors.primary,
@@ -498,7 +552,7 @@ const styles = StyleSheet.create({
   },
   lookBtnText: { ...text.tiny, color: colors.text, letterSpacing: 0.3 },
 
-  // AI tugmasidagi hisoblagich — binafsha pill, 1-9 va «9+»
+  // AI tugmasidagi hisoblagich — anor pill, krem matn
   aiBtn: { position: 'relative' },
   aiBadge: {
     position: 'absolute',
@@ -516,7 +570,7 @@ const styles = StyleSheet.create({
   },
   aiBadgeText: {
     ...text.tiny,
-    color: colors.text,
+    color: colors.textOnPrimary,
     fontSize: 10,
     lineHeight: 12,
     letterSpacing: 0,
@@ -527,11 +581,13 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     paddingHorizontal: CARD_TEXT_INSET,
   },
+  // Narx Atelier'da serif (text.price → Fraunces display semibold).
+  // Shu bilan har karta "moda jurnali tilini" gapiradi.
   price: {
     ...text.price,
     color: colors.text,
-    fontSize: 15,
-    lineHeight: 20,
+    fontSize: 17,
+    lineHeight: 22,
     paddingHorizontal: CARD_TEXT_INSET,
     paddingBottom: 2,
   },

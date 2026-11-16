@@ -19,15 +19,28 @@ import { notificationTarget } from './pushTarget';
  * ko'rinadi — push faqat qulaylik.
  */
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+/*
+ * ⚠️ TRY/CATCH — ILOVA START PAYTIDA YIQILMASIN.
+ *
+ * `setNotificationHandler` modul yuklanishi bilan chaqiriladi. Agar
+ * notifications native modulida kutilmagan xato bo'lsa (eski Android
+ * versiyasi, g'alati OEM qobig'i — Xiaomi, Huawei), bu chaqiriq butun
+ * bundlening yuklanishini to'xtatib qo'yardi va ilova "ochilmagan" deb
+ * qolar edi (Google Play 2026-11 policy xati).
+ */
+try {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+} catch {
+  // Bildirishnoma oynasi standart tartibda chiqadi
+}
 
 /** Qurilmani serverga tanitish uchun barqaror id. */
 function deviceId(): string {
@@ -38,32 +51,33 @@ function deviceId(): string {
 async function registerForPush(): Promise<string | null> {
   if (!Device.isDevice) return null;
 
-  if (Platform.OS === 'android') {
-    // Kanal bo'lmasa Android'da bildirishnoma ovozsiz keladi
-    await Notifications.setNotificationChannelAsync('orders', {
-      name: 'Buyurtmalar',
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#8B5CF6',
-    });
-  }
-
-  const existing = await Notifications.getPermissionsAsync();
-  let status = existing.status;
-
-  if (status !== 'granted') {
-    const requested = await Notifications.requestPermissionsAsync();
-    status = requested.status;
-  }
-
-  // Ruxsat berilmasa ham qurilma ro'yxatga olinadi — token'siz
-  if (status !== 'granted') return null;
-
+  // ⚠️ HAR BIR CHAQIRIQ TRY/CATCH ICHIDA — bironta ham xato ilovani
+  // yiqitmasligi kerak. Bildirishnomalar qulaylik, majburiyat emas.
   try {
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('orders', {
+        name: 'Buyurtmalar',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#8B5CF6',
+      });
+    }
+
+    const existing = await Notifications.getPermissionsAsync();
+    let status = existing.status;
+
+    if (status !== 'granted') {
+      const requested = await Notifications.requestPermissionsAsync();
+      status = requested.status;
+    }
+
+    // Ruxsat berilmasa ham qurilma ro'yxatga olinadi — token'siz
+    if (status !== 'granted') return null;
+
     const token = await Notifications.getExpoPushTokenAsync();
     return token.data;
   } catch {
-    // `projectId` sozlanmagan yoki tarmoq yo'q
+    // `projectId` sozlanmagan yoki native modul yo'q — ilova baribir ochilsin
     return null;
   }
 }

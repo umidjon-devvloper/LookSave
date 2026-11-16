@@ -1,6 +1,6 @@
 {
   "name": "@looksave/browser-extension",
-  "version": "0.9.10",
+  "version": "0.9.12",
   "private": true,
   "type": "module",
   "description": "Operator kengaytmasi — developer_ai navbatidagi kiyimlarni brauzerdagi AI'da avatarga kiydiradi",

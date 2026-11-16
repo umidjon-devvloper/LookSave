@@ -1,0 +1,50 @@
+From e8a3966b67098e526637012232553623830e0893 Mon Sep 17 00:00:00 2001
+From: umidjon <ogabekgafforov61@gmail.com>
+Date: Sat, 7 Nov 2026 11:20:43 +0500
+Subject: [PATCH] =?UTF-8?q?fix(web):=20kiyintirish=20=E2=80=94=20"Ma'lumot?=
+ =?UTF-8?q?lar=20to'liq=20emas"=20xatosi?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Skanerlashdan keyin avatar yasash so'rovi silentsiz 400 bilan yiqilardi
+va ekranda umumiy «Ma'lumotlar to'liq emas» chiqardi, sabab hech qayerda
+ko'rinmasdi.
+
+Sabab: requestAvatar POST'ni body'siz yuborardi -> Content-Type ham
+qo'yilmasdi -> express.json() tanani parse qilmasdi -> req.body
+undefined -> route zod «obyekt kutgandim, undefined keldi» deb yiqilardi
+-> ApiError.validation([]) default xabari qaytardi.
+
+Tuzatma: body: {} ni qo'shish. Route sxemasi (.partial()) bo'sh obyektni
+qabul qiladi.
+
+Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
+---
+ apps/web/src/api/endpoints.ts | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/apps/web/src/api/endpoints.ts b/apps/web/src/api/endpoints.ts
+index a107cb9..6b9b8ab 100644
+--- a/apps/web/src/api/endpoints.ts
++++ b/apps/web/src/api/endpoints.ts
+@@ -529,7 +529,15 @@ export const getAvatar = (options: ApiOptions = {}): Promise<UserAvatar> =>
+   api<UserAvatar>('/tryon/avatar', options);
+ 
+ export const requestAvatar = (options: ApiOptions = {}): Promise<UserAvatar> =>
+-  api<UserAvatar>('/tryon/avatar', { ...options, method: 'POST' });
++  /*
++   * ⚠️ `body: {}` SHART. `requestAvatar` o'lchov/do'kon talab qilmaydi, lekin
++   * backend route zod sxemasi (`z.object(...).partial()`) BOSH OBYEKT kutadi.
++   * Bo'sh POST yuborilsa `Content-Type` ham qo'yilmaydi va `express.json()`
++   * tanani parse qilmaydi: `req.body === undefined`, zod esa «obyekt kutgandim,
++   * `undefined` keldi» deydi va umumiy «Ma`lumotlar to`liq emas» qaytadi —
++   * foydalanuvchi uchun hech qanday ma'lumot bermaydigan xato.
++   */
++  api<UserAvatar>('/tryon/avatar', { ...options, method: 'POST', body: {} });
+ 
+ export const requestAvatarAngle = (
+   angle: AvatarAngle,
+-- 
+2.54.0 (Apple Git-157)
+

@@ -9,212 +9,197 @@ import {
   Text,
   View,
   useWindowDimensions,
+  type ImageSourcePropType,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Icon, type IconName } from '../src/components/Icon';
-import { useI18n } from '../src/i18n';
+import { Icon } from '../src/components/Icon';
 import { useOnboardingStore } from '../src/store/onboardingStore';
-import { images } from '../src/theme/images';
 import { colors, radius, spacing, text } from '../src/theme/tokens';
 
-/**
- * Ilk ochilish onboarding'i — App Store 4.3(b) uchun «nega bu farq qiladi?».
- *
- * ⚠️ UCH SLAYD, UCH O'ZIGA XOSLIK. Har biri LookSave'ni oddiy do'kon
- * ilovasidan ajratadigan bitta narsani aytadi: AI kiyintirish, shaxsiy
- * avatar, yaqin do'konlar. Matn i18n'da (`onboarding`) — to'rt tilda.
- *
- * ⚠️ FAQAT BIR MARTA. Tugma bosilганда (yoki «o'tkazish») bayroq qurilmaga
- * yoziladi (`onboardingStore`) va kirish nuqtasi (`app/index.tsx`) boshqa
- * onboarding'ga yo'naltirmaydi. Ekran o'zini `complete()` dan keyin
- * `(tabs)` ga `replace` qiladi — orqaga qaytib yana ko'rinmasin.
- */
+const STORE_ART = require('../assets/seller-onboarding-store-v1.png');
+const PRODUCTS_ART = require('../assets/seller-onboarding-products-v1.png');
+const ANALYTICS_ART = require('../assets/seller-onboarding-analytics-v1.png');
 
 interface Slide {
-  icon: IconName;
+  id: string;
+  image: ImageSourcePropType;
   title: string;
   body: string;
 }
 
+const SLIDES: Slide[] = [
+  {
+    id: 'store',
+    image: STORE_ART,
+    title: 'O‘z do‘koningizni\nyarating',
+    body: 'Bir necha daqiqada do‘kon oching\nva mahsulotlaringizni katalogga\nqo‘shing.',
+  },
+  {
+    id: 'products',
+    image: PRODUCTS_ART,
+    title: 'Mahsulotlaringizni\nboshqaring',
+    body: 'Rasmlar, narx, kategoriya, o‘lcham\nva zaxirani qulay tarzda\ntasdiqlang.',
+  },
+  {
+    id: 'analytics',
+    image: ANALYTICS_ART,
+    title: 'Sotuvlarni kuzating\nva rivojlantiring',
+    body: 'Buyurtmalar, ko‘rishlar va statistika\norqali do‘koningiz samaradorligini\noshiring.',
+  },
+];
+
 export default function Onboarding(): JSX.Element {
-  const t = useI18n((state) => state.t);
   const router = useRouter();
   const complete = useOnboardingStore((state) => state.complete);
   const { width } = useWindowDimensions();
-
   const listRef = useRef<FlatList<Slide>>(null);
   const [index, setIndex] = useState(0);
-
-  const slides: Slide[] = [
-    { icon: 'tryon', title: t.onboarding.slide1Title, body: t.onboarding.slide1Body },
-    { icon: 'profile', title: t.onboarding.slide2Title, body: t.onboarding.slide2Body },
-    { icon: 'stores', title: t.onboarding.slide3Title, body: t.onboarding.slide3Body },
-  ];
-
-  const last = index >= slides.length - 1;
+  const last = index === SLIDES.length - 1;
 
   const finish = (): void => {
     complete();
     router.replace('/(tabs)');
   };
 
-  const onNext = (): void => {
-    if (last) {
-      finish();
-      return;
-    }
-    const next = index + 1;
-    setIndex(next);
-    listRef.current?.scrollToOffset({ offset: next * width, animated: true });
+  const next = (): void => {
+    if (last) return finish();
+    const nextIndex = index + 1;
+    setIndex(nextIndex);
+    listRef.current?.scrollToOffset({ offset: nextIndex * width, animated: true });
   };
 
-  // Svaypда joriy slaydni aniqlaymiz — nuqtalar va tugma matni shunга qarab
   const onScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>): void => {
-    const page = Math.round(event.nativeEvent.contentOffset.x / width);
-    if (page !== index) setIndex(page);
+    setIndex(Math.round(event.nativeEvent.contentOffset.x / width));
   };
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      {/* Yuqori qator: logotip + o'tkazish */}
-      <View style={styles.top}>
-        <View style={styles.brand}>
-          <Image source={images.logoMark} style={styles.logo} resizeMode="contain" />
-          <Text style={styles.wordmark}>LOOK SAVE</Text>
-        </View>
-        <Pressable
-          onPress={finish}
-          hitSlop={12}
-          accessibilityRole="button"
-          style={({ pressed }) => [styles.skip, pressed && { opacity: 0.6 }]}
-        >
-          <Text style={styles.skipText}>{t.onboarding.skip}</Text>
+      <LinearGradient
+        colors={['#FFFFFF', '#FBF8FF', '#F1E8FF']}
+        locations={[0, 0.62, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={styles.topbar}>
+        <Text style={styles.wordmark}>
+          LOOK<Text style={styles.wordmarkAccent}>SAVE</Text>
+          <Text style={styles.wordmarkSeller}> · SELLER</Text>
+        </Text>
+        <Pressable accessibilityRole="button" hitSlop={12} onPress={finish}>
+          <Text style={styles.skip}>O‘tkazib yuborish</Text>
         </Pressable>
       </View>
-
       <FlatList
         ref={listRef}
-        data={slides}
-        keyExtractor={(item) => item.icon}
+        data={SLIDES}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
+        keyExtractor={(item) => item.id}
         onMomentumScrollEnd={onScrollEnd}
         renderItem={({ item }) => (
           <View style={[styles.slide, { width }]}>
-            {/* Glow doira — ikonka LookSave urg'usida nurlab turadi */}
-            <View style={styles.glowOuter}>
-              <View style={styles.glowInner}>
-                <Icon name={item.icon} size={52} color={colors.accent} />
-              </View>
+            <View style={styles.artStage}>
+              <View style={styles.artGlow} />
+              <Image source={item.image} style={styles.art} resizeMode="contain" />
             </View>
             <Text style={styles.title}>{item.title}</Text>
             <Text style={styles.body}>{item.body}</Text>
           </View>
         )}
       />
-
-      {/* Pastki qism: nuqtalar + tugma */}
       <View style={styles.bottom}>
         <View style={styles.dots}>
-          {slides.map((slide, i) => (
-            <View key={slide.icon} style={[styles.dot, i === index && styles.dotActive]} />
+          {SLIDES.map((item, itemIndex) => (
+            <View key={item.id} style={[styles.dot, itemIndex === index && styles.dotActive]} />
           ))}
         </View>
-
-        <Pressable
-          onPress={onNext}
-          accessibilityRole="button"
-          style={({ pressed }) => [styles.cta, pressed && { opacity: 0.9 }]}
-        >
+        <Pressable accessibilityRole="button" onPress={next}>
           <LinearGradient
-            colors={[colors.primary, colors.primaryDim]}
+            colors={[colors.accent, colors.primaryDim]}
             start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
-          <Text style={styles.ctaText}>{last ? t.onboarding.start : t.onboarding.next}</Text>
-          <View style={styles.ctaChevron}>
-            <Icon name="next" size={18} color={colors.text} />
-          </View>
+            end={{ x: 1, y: 0 }}
+            style={styles.cta}
+          >
+            <Text style={styles.ctaText}>{last ? 'Boshlash' : 'Keyingi'}</Text>
+            <Icon name={last ? 'check' : 'next'} size={22} color={colors.textOnPrimary} />
+          </LinearGradient>
         </Pressable>
       </View>
     </SafeAreaView>
   );
 }
 
-const GLOW = 180;
-
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-
-  top: {
+  topbar: {
+    height: 70,
+    paddingHorizontal: spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+    zIndex: 2,
   },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  logo: { width: 30, height: 21 },
-  wordmark: { ...text.wordmark, color: colors.accent },
-  skip: { paddingVertical: spacing.xs, paddingHorizontal: spacing.sm },
-  skipText: { ...text.bodyMed, color: colors.textMuted },
-
-  slide: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-    gap: spacing.md,
+  wordmark: {
+    ...text.bodyMed,
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 1.4,
   },
-  // Tashqi yumshoq nurlanish
-  glowOuter: {
-    width: GLOW,
-    height: GLOW,
-    borderRadius: GLOW / 2,
-    backgroundColor: colors.accentGlow,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.lg,
-  },
-  // Ichki to'liq doira — ikonka shu yerda
-  glowInner: {
-    width: GLOW - 48,
-    height: GLOW - 48,
-    borderRadius: (GLOW - 48) / 2,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.borderAccent,
+  wordmarkAccent: { color: colors.accent },
+  wordmarkSeller: { color: colors.textMuted, fontWeight: '600' },
+  skip: { ...text.small, color: colors.textMuted, fontWeight: '600' },
+  slide: { flex: 1, alignItems: 'center', paddingHorizontal: spacing.xl },
+  artStage: {
+    width: '100%',
+    height: '52%',
+    minHeight: 300,
+    maxHeight: 430,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { ...text.h1, color: colors.text, textAlign: 'center' },
-  body: { ...text.body, color: colors.textMuted, textAlign: 'center', maxWidth: 320 },
-
-  bottom: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, gap: spacing.lg },
-  dots: { flexDirection: 'row', justifyContent: 'center', gap: spacing.sm },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.surface3,
+  artGlow: {
+    position: 'absolute',
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: 'rgba(139,44,245,0.08)',
   },
-  dotActive: { width: 24, backgroundColor: colors.accent },
-
+  art: { width: '93%', height: '93%' },
+  title: {
+    ...text.h1,
+    color: colors.text,
+    textAlign: 'center',
+    fontSize: 31,
+    lineHeight: 37,
+    marginTop: spacing.sm,
+  },
+  body: {
+    ...text.body,
+    color: colors.textMuted,
+    textAlign: 'center',
+    fontSize: 16,
+    lineHeight: 24,
+    marginTop: spacing.md,
+  },
+  bottom: { paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, gap: spacing.xl },
+  dots: { flexDirection: 'row', justifyContent: 'center', gap: 10 },
+  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#E3D9EF' },
+  dotActive: { backgroundColor: colors.primary },
   cta: {
     height: 58,
-    borderRadius: radius.xxl,
+    borderRadius: radius.xl,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.md,
     gap: spacing.sm,
-    overflow: 'hidden',
+    shadowColor: colors.primary,
+    shadowOpacity: 0.25,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 9 },
   },
-  ctaText: { ...text.h3, color: colors.text },
-  ctaChevron: { position: 'absolute', right: spacing.md },
+  ctaText: { ...text.h3, color: colors.textOnPrimary },
 });

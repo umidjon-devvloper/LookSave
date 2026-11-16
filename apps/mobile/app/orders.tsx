@@ -80,7 +80,7 @@ export default function Orders(): JSX.Element {
                 end={{ x: 1, y: 1 }}
                 style={styles.tab}
               >
-                <Text style={[styles.tabText, { color: colors.text }]}>{t.order[item]}</Text>
+                <Text style={[styles.tabText, styles.tabTextActive]}>{t.order[item]}</Text>
               </LinearGradient>
             ) : (
               <View style={[styles.tab, styles.tabIdle]}>
@@ -197,6 +197,7 @@ const styles = StyleSheet.create({
   // Faol tab gradient bilan chiziladi, bu esa tanlanmagani
   tabIdle: { borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
   tabText: { ...text.small, color: colors.textMuted, fontWeight: '600' },
+  tabTextActive: { color: colors.textOnPrimary },
 
   list: { padding: spacing.md, gap: spacing.sm },
   card: {

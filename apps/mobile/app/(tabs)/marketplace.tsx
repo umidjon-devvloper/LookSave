@@ -22,7 +22,7 @@ import { colors, radius, spacing, text } from '../../src/theme/tokens';
  * Hero balandligi — cho'zilish nisbati shunga o'lchanadi (`styles.hero.minHeight`).
  * Home ekranidagi bilan bir xil usul (`Hero.tsx` dagi izohga qarang).
  */
-const HERO_HEIGHT = 420;
+const HERO_HEIGHT = 590;
 
 interface Collection {
   key: string;
@@ -40,15 +40,21 @@ function CollectionCard({
   subtitle,
   onPress,
   isRTL,
+  dark,
 }: {
   collection: Collection;
   subtitle: string;
   onPress: () => void;
   isRTL: boolean;
+  dark: boolean;
 }): JSX.Element {
   return (
     <Pressable
-      style={({ pressed }) => [styles.card, pressed && { borderColor: collection.accent }]}
+      style={({ pressed }) => [
+        styles.card,
+        dark && styles.cardDark,
+        pressed && { borderColor: collection.accent },
+      ]}
       onPress={onPress}
     >
       {/* Foto o'ngda — deckdagi kompozitsiya. Chap yarmi matn uchun bo'sh qoladi. */}
@@ -58,28 +64,29 @@ function CollectionCard({
         resizeMode="cover"
       />
 
-      {/* Chapdan — matn fotoga tushib qolsa ham o'qiladi */}
+      {/* Atelier: krem oqim matn tomondan — foto o'ng tomonda ochiq ko'rinadi */}
       <LinearGradient
-        colors={['rgba(10,10,15,0.99)', 'rgba(10,10,15,0.9)', 'rgba(10,10,15,0.05)']}
-        locations={[0, 0.5, 1]}
+        colors={
+          dark
+            ? ['rgba(18,15,31,0.98)', 'rgba(27,20,45,0.84)', 'rgba(18,15,31,0)']
+            : ['rgba(255,255,255,0.98)', 'rgba(250,247,255,0.86)', 'rgba(255,255,255,0)']
+        }
+        locations={[0, 0.55, 1]}
         start={{ x: isRTL ? 1 : 0, y: 0.5 }}
-        end={{ x: isRTL ? 0 : 1, y: 0.5 }}
-        style={StyleSheet.absoluteFill}
-      />
-      {/* O'ng chetni biroz qoraytirish — strelka fotoning yorug' joyiga tushmasin */}
-      <LinearGradient
-        colors={['rgba(10,10,15,0)', 'rgba(10,10,15,0.72)']}
-        start={{ x: isRTL ? 0.22 : 0.78, y: 0.5 }}
         end={{ x: isRTL ? 0 : 1, y: 0.5 }}
         style={StyleSheet.absoluteFill}
       />
 
       <View style={[styles.cardBody, rtlStyles.row(isRTL)]}>
-        <Icon name={collection.icon} size={26} color={collection.accent} />
+        <Icon name={collection.icon} size={22} color={collection.accent} />
 
         <View style={[styles.cardText, rtlStyles.align(isRTL)]}>
-          <Text style={[styles.cardTitle, rtlStyles.text(isRTL)]}>{collection.title}</Text>
-          <Text style={[styles.cardSubtitle, rtlStyles.text(isRTL)]}>{subtitle}</Text>
+          <Text style={[styles.cardSubtitle, dark && styles.textMutedDark, rtlStyles.text(isRTL)]}>
+            {subtitle}
+          </Text>
+          <Text style={[styles.cardTitle, dark && styles.textDark, rtlStyles.text(isRTL)]}>
+            {collection.title}
+          </Text>
           {collection.tagline ? (
             <Text style={[styles.tagline, rtlStyles.text(isRTL), { color: collection.accent }]}>
               {collection.tagline}
@@ -88,7 +95,7 @@ function CollectionCard({
         </View>
 
         <View style={[styles.chevron, { borderColor: collection.accent }]}>
-          <Icon name={isRTL ? 'back' : 'next'} size={18} color={colors.text} />
+          <Icon name={isRTL ? 'back' : 'next'} size={16} color={collection.accent} />
         </View>
       </View>
     </Pressable>
@@ -100,6 +107,8 @@ export default function Marketplace(): JSX.Element {
   const t = useI18n((state) => state.t);
   const isRTL = useI18n((state) => state.isRTL);
   const insets = useSafeAreaInsets();
+  // Marketplace foydalanuvchi tizim temasidan qat'i nazar oq premium ko'rinishda.
+  const dark = false;
 
   /*
    * Scroll holati — Home ekranidagi bilan bir xil tizim: fon rezinkadek
@@ -162,7 +171,9 @@ export default function Marketplace(): JSX.Element {
 
   return (
     <Screen>
+      <View style={[StyleSheet.absoluteFill, dark && styles.screenDark]} pointerEvents="none" />
       <Animated.ScrollView
+        style={dark ? styles.screenDark : undefined}
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         /* `16` — 60 FPS; kattaroq son cho'zilishni sakratadi */
@@ -171,7 +182,7 @@ export default function Marketplace(): JSX.Element {
           useNativeDriver: true,
         })}
       >
-        <View style={[styles.hero, { paddingTop: headerHeight }]}>
+        <View style={[styles.hero, dark && styles.heroDark, { paddingTop: headerHeight }]}>
           {/*
             ⚠️ CHO'ZILUVCHI FON QATLAMI — rasm VA gradientlar BIRGA.
             Alohida bo'lsa pastga tortilganda rasm gradient ostidan sirg'alib
@@ -187,44 +198,62 @@ export default function Marketplace(): JSX.Element {
               resizeMode="cover"
             />
             <LinearGradient
-              colors={['rgba(10,10,15,0.98)', 'rgba(10,10,15,0.88)', 'rgba(10,10,15,0.04)']}
-              locations={[0, 0.5, 1]}
+              colors={
+                dark
+                  ? ['rgba(10,8,18,0.98)', 'rgba(15,10,28,0.78)', 'rgba(15,10,28,0.02)']
+                  : ['rgba(251,250,255,0.98)', 'rgba(251,250,255,0.80)', 'rgba(251,250,255,0)']
+              }
+              locations={[0, 0.55, 1]}
               start={{ x: isRTL ? 1 : 0, y: 0.55 }}
               end={{ x: isRTL ? 0 : 1, y: 0.1 }}
               style={StyleSheet.absoluteFill}
             />
-            {/* Tepa qorong'ilashuvi — sarlavha va status bar doim o'qilsin */}
-            <LinearGradient
-              colors={['rgba(10,10,15,0.85)', 'rgba(10,10,15,0)']}
-              style={styles.topFade}
-              pointerEvents="none"
-            />
           </Animated.View>
 
-          <Text style={[styles.heroLine, rtlStyles.text(isRTL)]}>{t.marketplace.heroLine1}</Text>
-          <Text style={[styles.heroLine, rtlStyles.text(isRTL)]}>
+          <View style={styles.marketChip}>
+            <Icon name="slotTop" size={16} color={colors.primary} />
+            <Text style={styles.marketChipText}>{t.marketplace.title}</Text>
+          </View>
+
+          <Text style={[styles.heroLine, dark && styles.textDark, rtlStyles.text(isRTL)]}>
+            {t.marketplace.heroLine1}
+          </Text>
+          <Text style={[styles.heroLine, dark && styles.textDark, rtlStyles.text(isRTL)]}>
             <Text style={{ color: colors.primary }}>{t.marketplace.heroAccent}</Text>
             {t.marketplace.heroLine2}
           </Text>
-          <Text style={[styles.heroSubtitle, rtlStyles.text(isRTL)]}>
+          <Text style={[styles.heroSubtitle, dark && styles.textMutedDark, rtlStyles.text(isRTL)]}>
             {t.marketplace.heroSubtitle}
           </Text>
 
-          {/* Rasmning pastki cheti fonga singib ketsin — keskin chiziq qolmasin */}
+          <Pressable
+            style={({ pressed }) => [styles.heroCta, pressed && { opacity: 0.86 }]}
+            onPress={() => router.push('/catalog')}
+          >
+            <Text style={styles.heroCtaText}>{t.home.exploreNow}</Text>
+            <Icon name={isRTL ? 'back' : 'next'} size={20} color="#FFFFFF" />
+          </Pressable>
+
+          <View style={styles.sliderDots}>
+            <View style={styles.sliderDotActive} />
+            <View style={styles.sliderDot} />
+            <View style={styles.sliderDot} />
+          </View>
+
+          {/* Pastki chet fonga aralashsin — krem rangning shaffof→solid */}
           <LinearGradient
-            colors={['rgba(10,10,15,0)', colors.bg]}
+            colors={dark ? ['rgba(10,8,18,0)', '#0A0812'] : ['rgba(251,250,255,0)', colors.bg]}
             style={styles.heroFade}
             pointerEvents="none"
           />
         </View>
 
-        {/* Deckdagi "◆ CHOOSE CATEGORY ◆" ajratgichi */}
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerDiamond}>◆</Text>
-          <Text style={styles.dividerText}>{t.marketplace.chooseCategory}</Text>
-          <Text style={styles.dividerDiamond}>◆</Text>
-          <View style={styles.dividerLine} />
+        <View style={styles.categoryHeader}>
+          <Text style={styles.categoryTitle}>{t.marketplace.chooseCategory}</Text>
+          <Pressable style={styles.viewAll} onPress={() => router.push('/catalog')}>
+            <Text style={styles.viewAllText}>{t.home.viewAll}</Text>
+            <Icon name={isRTL ? 'back' : 'next'} size={18} color={colors.primary} />
+          </Pressable>
         </View>
 
         <View style={styles.cards}>
@@ -234,6 +263,7 @@ export default function Marketplace(): JSX.Element {
               collection={collection}
               subtitle={t.marketplace.collection}
               isRTL={isRTL}
+              dark={dark}
               onPress={() => router.push(collection.href)}
             />
           ))}
@@ -241,7 +271,7 @@ export default function Marketplace(): JSX.Element {
       </Animated.ScrollView>
 
       {/* Tepa fon — sarlavha qatori ORQASIDA (`ScrollFade` izohiga qarang) */}
-      <ScrollFade scrollY={scrollY} height={headerHeight} />
+      <ScrollFade scrollY={scrollY} height={headerHeight} tone={dark ? 'dark' : 'light'} />
 
       {/*
         FIXED header — MARKETPLACE sarlavhasi va savat. Ilgari scroll ichida
@@ -249,13 +279,12 @@ export default function Marketplace(): JSX.Element {
       */}
       <View style={[styles.headerBar, { paddingTop: insets.top + spacing.sm }]}>
         <View style={[styles.topBar, rtlStyles.row(isRTL)]}>
-          <View style={[styles.titleWrap, rtlStyles.align(isRTL)]}>
-            <Text style={styles.title}>{t.marketplace.title}</Text>
-            <Text style={styles.motto}>{t.marketplace.motto}</Text>
+          <View style={[styles.brandWrap, rtlStyles.row(isRTL)]}>
+            <View style={[styles.titleWrap, rtlStyles.align(isRTL)]}>
+              <Text style={styles.title}>Look Save</Text>
+              <Text style={styles.brandSubtitle}>{t.marketplace.title}</Text>
+            </View>
           </View>
-          <Pressable style={styles.cartButton} onPress={() => router.push('/(tabs)/cart')}>
-            <Icon name="cart" size={20} color={colors.text} />
-          </Pressable>
         </View>
       </View>
     </Screen>
@@ -263,24 +292,15 @@ export default function Marketplace(): JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingHorizontal: spacing.md, gap: spacing.lg, paddingBottom: spacing.xl },
+  screenDark: { backgroundColor: '#0A0812' },
+  scroll: { paddingHorizontal: spacing.md, gap: spacing.lg, paddingBottom: 120 },
 
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  // Sarlavha chapda, savat o'ngda — markazlashtirish olib tashlandi
+  brandWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   titleWrap: { flex: 1, alignItems: 'flex-start' },
-  title: { ...text.h2, color: colors.text, letterSpacing: 1, textTransform: 'uppercase' },
-  motto: { ...text.tiny, color: colors.accent, letterSpacing: 1, marginTop: 1 },
-  cartButton: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
+  // Atelier: Fraunces serif sarlavha, ALL CAPS yo'q
+  title: { ...text.h2, color: colors.text },
+  brandSubtitle: { ...text.small, color: colors.textMuted },
   hero: {
     // Ekran chetlariga chiqadi — Home ekranidagi hero bilan bir xil usul.
     // Yumaloq burchak olib tashlandi: rasm o'ng chetga to'liq yopishadi va
@@ -312,6 +332,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.bg,
   },
+  heroDark: { backgroundColor: '#0A0812' },
   // Rasm blokdan uzunroq va yuqoriga surilgan — `cover` markazni kesib
   // model boshini yo'qotmasligi uchun (kolleksiya kartalaridagi bilan bir usul).
   // Rasm status bar ostidan emas, biroz pastdan boshlanadi — model boshi
@@ -324,19 +345,79 @@ const styles = StyleSheet.create({
   topFade: { position: 'absolute', left: 0, right: 0, top: 0, height: 200 },
   headerBar: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: spacing.md },
   heroFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 56 },
-  heroLine: { ...text.h1, color: colors.text, textTransform: 'uppercase', letterSpacing: 2 },
+  // Atelier: Fraunces display, natural case
+  heroLine: { ...text.hero, color: colors.text },
   heroSubtitle: {
-    ...text.small,
+    ...text.body,
     color: colors.textMuted,
     marginTop: spacing.sm,
     maxWidth: '70%',
-    letterSpacing: 2,
   },
+  heroCta: {
+    alignSelf: 'flex-start',
+    minWidth: 190,
+    height: 54,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  heroCtaText: { ...text.bodyMed, color: '#FFFFFF' },
 
-  divider: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  dividerLine: { flex: 1, height: 1, backgroundColor: colors.borderStrong },
-  dividerDiamond: { color: colors.primary, fontSize: 10 },
-  dividerText: { ...text.label, color: colors.text },
+  marketChip: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: 'rgba(247,242,255,0.88)',
+  },
+  marketChipText: { ...text.small, color: colors.text },
+  sliderDots: { flexDirection: 'row', gap: 7, marginTop: spacing.lg, alignItems: 'center' },
+  sliderDotActive: { width: 34, height: 6, borderRadius: radius.pill, backgroundColor: colors.primary },
+  sliderDot: { width: 8, height: 8, borderRadius: radius.pill, backgroundColor: colors.borderStrong },
+  trustRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.lg,
+  },
+  trustItem: { flexDirection: 'row', alignItems: 'center', gap: 7, flex: 1 },
+  trustIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  trustTitle: { ...text.small, color: colors.text, fontFamily: 'Inter_700Bold' },
+  trustHint: { ...text.tiny, color: colors.textMuted },
+  trustDivider: { width: 1, height: 36, marginHorizontal: 8, backgroundColor: colors.borderStrong },
+
+  categoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.sm,
+  },
+  categoryTitle: { ...text.h2, color: colors.text },
+  viewAll: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  viewAllText: { ...text.bodyMed, color: colors.primary },
 
   cards: { gap: spacing.md },
   // Rasmlar vertikal (1086×1448), karta esa past va keng. `cover` markazni
@@ -346,16 +427,28 @@ const styles = StyleSheet.create({
   heroImage: { position: 'absolute', right: 0, top: 44, width: '62%', height: 400 },
   // LTR ning ko'zgu aksi. `width` shart — Hero.tsx dagi izohga qarang.
   heroImageRTL: { position: 'absolute', left: 0, top: 44, width: '62%', height: 400 },
-  cardImage: { position: 'absolute', right: 0, top: -42, width: '74%', height: 300 },
-  cardImageRTL: { position: 'absolute', left: 0, top: -42, width: '80%', height: 300 },
+  cardImage: { position: 'absolute', right: 0, top: 0, width: '100%', height: '100%' },
+  cardImageRTL: { position: 'absolute', left: 0, top: 0, width: '100%', height: '100%' },
+  // Atelier: kolleksiya karta — toza oq, kichik radius, hair-thin
   card: {
     height: 150,
     borderRadius: radius.lg,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: colors.border,
     backgroundColor: colors.surface,
+    shadowColor: '#6D28D9',
+    shadowOpacity: 0.10,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 3,
   },
+  cardDark: {
+    borderColor: 'rgba(192,132,252,0.34)',
+    backgroundColor: '#151120',
+  },
+  textDark: { color: '#FFFFFF' },
+  textMutedDark: { color: '#C7C0D4' },
   cardBody: {
     flex: 1,
     flexDirection: 'row',
@@ -363,10 +456,11 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingHorizontal: spacing.md,
   },
-  cardText: { flex: 1 },
-  cardTitle: { ...text.h2, color: colors.text, textTransform: 'uppercase' },
-  cardSubtitle: { ...text.tiny, color: colors.textMuted, letterSpacing: 2 },
-  tagline: { ...text.tiny, marginTop: spacing.xs, letterSpacing: 1.2 },
+  cardText: { flex: 1, gap: 2 },
+  // Sarlavha Fraunces display, kichik eyebrow uning ustida
+  cardTitle: { ...text.h2, color: colors.text },
+  cardSubtitle: { ...text.eyebrow, color: colors.textMuted },
+  tagline: { ...text.eyebrow, marginTop: spacing.xs },
   chevron: {
     width: 36,
     height: 36,

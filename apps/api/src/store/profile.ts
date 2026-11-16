@@ -161,6 +161,7 @@ export async function updateStoreProfile(storeId: string, input: UpdateStoreInpu
   if (input.landmark !== undefined) push('landmark', input.landmark);
   if (input.city !== undefined) push('city', input.city);
   if (input.district !== undefined) push('district', input.district);
+  if (input.audience !== undefined) push('audience', input.audience);
   if (input.workingHours !== undefined) push('working_hours', JSON.stringify(input.workingHours));
   if (input.deliveryEnabled !== undefined) push('delivery_enabled', input.deliveryEnabled);
   if (input.pickupEnabled !== undefined) push('pickup_enabled', input.pickupEnabled);

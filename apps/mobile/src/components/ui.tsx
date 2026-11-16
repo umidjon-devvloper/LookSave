@@ -1,4 +1,3 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { forwardRef, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
@@ -170,8 +169,18 @@ export const Button = forwardRef<View, ButtonProps>(function Button(
     }).start();
   };
 
-  // Ikonka yozuv bilan bir rangda — qizil tugmada oq ikonka begona ko'rinardi
-  const contentColor = variant === 'danger' ? colors.danger : colors.text;
+  /*
+   * Atelier: tugma ichidagi matn va ikonka rangi varianti bo'yicha.
+   *  - primary: anor to'ldirilgan fon → krem (textOnPrimary) matn
+   *  - ghost:   oq quti, chegara → ink matn
+   *  - danger:  xira qizil quti → danger matn/ikonka
+   */
+  const contentColor =
+    variant === 'danger'
+      ? colors.danger
+      : variant === 'primary'
+        ? colors.textOnPrimary
+        : colors.text;
 
   const label = <Text style={[styles.buttonText, { color: contentColor }]}>{title}</Text>;
 
@@ -194,21 +203,16 @@ export const Button = forwardRef<View, ButtonProps>(function Button(
         ]}
       >
         {/*
-          Asosiy tugma gradient bilan: yassi bir rang "veb-sahifa tugmasi"
-          bo'lib ko'rinadi, ikki tomonlama o'tish esa hajm beradi va
-          brendning binafsha shkalasini ishlatadi.
+          Atelier: primary tugma TOZA bir rangli anor. Oldingi gradient
+          "SaaS brand gradient" klişesi edi; endi moda-uyining qat'iy
+          to'ldirilgan quti — rang bir xil, hajmni tipografika beradi.
         */}
         {variant === 'primary' ? (
-          <LinearGradient
-            colors={[colors.primary, colors.primaryDim]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.primary }]} />
         ) : null}
 
         {loading ? (
-          <ActivityIndicator color={colors.text} />
+          <ActivityIndicator color={contentColor} />
         ) : (
           <View style={styles.buttonRow}>
             {icon ? <Icon name={icon} size={20} color={contentColor} /> : null}
@@ -306,13 +310,15 @@ const styles = StyleSheet.create({
    * qiladi; sababni ikonka bildiradi, matn esa o'qilishi kerak.
    */
   errorTitle: { ...text.body, color: colors.text, textAlign: 'center', maxWidth: 300 },
+  // Atelier: xato ikonkasi doirasi — primarySoft bilan bir qarindosh
+  // (danger anorning quyuqrog'i), chegara shu oilaning to'q qatlami
   errorIcon: {
     width: 64,
     height: 64,
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    backgroundColor: 'rgba(142,45,34,0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
+    borderColor: 'rgba(142,45,34,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xs,
@@ -322,7 +328,7 @@ const styles = StyleSheet.create({
 
   button: {
     height: 52,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
@@ -342,7 +348,8 @@ const styles = StyleSheet.create({
   buttonDanger: {
     borderWidth: 1,
     borderColor: colors.danger,
-    backgroundColor: 'rgba(239,68,68,0.08)',
+    // Danger ham anor oilasining quyuq qatlami — palette yaxlit qoladi
+    backgroundColor: 'rgba(142,45,34,0.08)',
   },
   buttonText: { ...text.bodyMed, color: colors.text, flexShrink: 1, textAlign: 'center' },
 
@@ -350,7 +357,7 @@ const styles = StyleSheet.create({
   label: { ...text.label, color: colors.textDim, marginBottom: spacing.sm },
   input: {
     height: 52,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,

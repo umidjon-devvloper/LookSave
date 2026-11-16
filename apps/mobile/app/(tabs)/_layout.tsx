@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, type IconName } from '../../src/components/Icon';
 import { useNotificationOpen } from '../../src/hooks/usePush';
 import { useI18n } from '../../src/i18n';
+import { useLookStore } from '../../src/store/lookStore';
 import { colors, radius, text } from '../../src/theme/tokens';
 
 /**
@@ -44,6 +45,16 @@ function PremiumTabBar({
   navigation,
 }: BottomTabBarProps): JSX.Element {
   const insets = useSafeAreaInsets();
+  const t = useI18n((state) => state.t);
+  /*
+   * «Look» bilan yig'ilgan kiyimlar soni — markaziy tugmada.
+   *
+   * ⚠️ NEGA AYNAN SHU YERDA. Bosh sahifadagi AI tugmasida ham shu son bor,
+   * lekin u sarlavhada — kartalarni varaqlaganda sarlavha ekrandan chiqib
+   * ketadi va foydalanuvchi «Look» bosganda hech narsa yig'ilmagandek
+   * tuyuladi. Tab qatori esa doim ko'rinib turadi.
+   */
+  const lookCount = useLookStore((state) => state.items.length);
 
   return (
     <View
@@ -78,7 +89,11 @@ function PremiumTabBar({
             <View key={route.key} style={styles.tabItem} pointerEvents="box-none">
               <Pressable
                 accessibilityRole="tab"
-                accessibilityLabel={title}
+                accessibilityLabel={
+                  lookCount > 0
+                    ? `${title} — ${t.tryon.collected.replace('{n}', String(lookCount))}`
+                    : title
+                }
                 accessibilityState={{ selected: focused }}
                 onPress={open}
                 hitSlop={10}
@@ -89,6 +104,11 @@ function PremiumTabBar({
                 ]}
               >
                 <Icon name="tryon" size={25} color={colors.textOnPrimary} />
+                {lookCount > 0 ? (
+                  <View style={styles.centerBadge}>
+                    <Text style={styles.centerBadgeText}>{lookCount}</Text>
+                  </View>
+                ) : null}
               </Pressable>
             </View>
           );
@@ -278,5 +298,26 @@ const styles = StyleSheet.create({
   centerButtonActive: {
     borderWidth: 2,
     borderColor: colors.surface,
+  },
+  // Yig'ilgan kiyimlar soni — binafsha tugma ustida oq nishon, burchakda
+  centerBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    minWidth: 22,
+    height: 22,
+    paddingHorizontal: 5,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+  },
+  centerBadgeText: {
+    ...text.tiny,
+    lineHeight: 14,
+    color: colors.primary,
+    fontVariant: ['tabular-nums'],
   },
 });

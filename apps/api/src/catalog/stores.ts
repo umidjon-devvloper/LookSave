@@ -62,6 +62,13 @@ export async function findNearbyStores(query: NearbyQuery): Promise<NearbyRow[]>
     )`);
   }
 
+  // Market'dagi «Erkaklar»/«Ayollar» bo'limi (migratsiya 036). `both` do'kon
+  // ikkala bo'limda ham chiqadi; filtrsiz esa barcha do'konlar qaytadi.
+  if (query.audience !== undefined) {
+    params.push(query.audience);
+    conditions.push(`(s.audience = $${params.length} OR s.audience = 'both')`);
+  }
+
   params.push(query.limit);
   const limitIndex = params.length;
 

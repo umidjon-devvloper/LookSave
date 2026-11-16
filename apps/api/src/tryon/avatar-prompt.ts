@@ -81,11 +81,6 @@ const ANGLE_TEXT: Record<AvatarAngle, string> = {
     'elbows relaxed and slightly away from the body. The feet are shoulder-width apart, ' +
     'planted flat. Keep the body axis upright, with relaxed shoulders, an elegant confident ' +
     'stance, realistic anatomy and no exaggerated curve or lean.',
-  /*
-   * ⚠️ YON VA ORQA MATNI VARAQ BILAN BIR XIL (`buildAvatarSheetPrompt`).
-   * Ikki joyda ikki xil tavsif bo'lsa, avtomatik va operator rejimidagi
-   * avatarlar turli tomonga qarab chiqardi.
-   */
   side:
     'The whole body turned 90 degrees so we see a clean full side profile, facing the LEFT ' +
     'edge of the image. Standing straight, arms relaxed at the sides and slightly away from ' +
@@ -203,7 +198,15 @@ export function buildAvatarPrompt(
    */
   parts.push(
     `${ANGLE_TEXT[angle]} The entire body is visible from head to feet, nothing is cropped. ` +
-      'Same distance and framing in every view.',
+      'Same distance and framing in every view. ' +
+      // ⚠️ BOSH O'LCHAMI (so'rovga ko'ra, 2026-11-16). Yuz surati ko'pincha
+      // yaqin olingan selfi — model boshni gavdaga nisbatan katta qilib
+      // qo'yadi. Yuz faqat shaxsni aniqlash uchun; yaqin kadr bosh o'lchamiga
+      // ta'sir qilmasin.
+      'HEAD-TO-BODY PROPORTION: keep the head at a natural, realistic size for an adult body ' +
+      '(about one seventh to one eighth of the standing height). The reference face photo may ' +
+      'be a tight close-up used ONLY for identity — its framing must NOT enlarge the head. No ' +
+      'oversized, zoomed-in, bobble-head or caricature head; keep well-balanced proportions.',
   );
 
   // 3-jumla: kiyim — yangisi ustiga qo'yiladi
@@ -256,7 +259,16 @@ export function faceLock(panels: boolean): string {
         'facing camera. Side view: the TRUE profile of that same face (same nose silhouette, same ' +
         'lip shape, same chin, same brow line, same ear). Back view: hairstyle, hair colour, head ' +
         'shape, ears and neckline match image 1 exactly.'
-      : 'Hairstyle, hair colour, hair parting and hair volume stay exactly as in image 1.',
+      : /*
+         * ⚠️ TO'LIQ BO'YLI KADRDA YUZ KICHIK (2026-11-11, so'rovga ko'ra).
+         * Kichik yuzni model soddalashtirishga moyil — shuning uchun ochiq
+         * aytiladi. «do not zoom in» SHART: usiz «yuzni aniq chiz» buyrug'i
+         * kadrni yaqinlashtirib, oyoqlarni kesib yuborishi mumkin.
+         */
+        'Hairstyle, hair colour, hair parting and hair volume stay exactly as in image 1. ' +
+        'This is a full-body shot, so the face is small in the frame — that is NOT a licence to ' +
+        'simplify it: render the face in sharp focus with every feature of image 1 intact, never ' +
+        'soft, blurred, generic or averaged. Keep the full-body framing — do not zoom in or crop.',
     '🔒 FINAL CHECK before output: compare your rendered face side-by-side with image 1. If any ' +
       'feature differs, REDRAW using image 1 as the exact template. Only output when the two faces ' +
       'are the same person.',
@@ -264,27 +276,27 @@ export function faceLock(panels: boolean): string {
 }
 
 /**
- * Uch burchak BITTA rasmda — «turnaround sheet» (operator rejimi).
+ * Operator uchun avatar prompti — YAKKA OLD KO'RINISH (2026-11-11, so'rovga
+ * ko'ra). Operator bu matnni panelda nusxalab, yuz surati bilan birga
+ * brauzerdagi AI ga beradi va bitta tik portret oladi.
  *
- * Operator bu matnni brauzerdagi AI ga beradi va bitta landshaft rasm
- * oladi: chapdan o'ngga OLD · YON · ORQA. Server uni uchta teng bo'lakka
- * kesadi va har birini o'z slotiga yozadi (`avatar-sheet.ts`).
+ * Ilgari bu yerda uch burchakli varaq (old · yon · orqa) so'ralardi. Ilova
+ * endi faqat old ko'rinishni ko'rsatadi; varaqda esa har figura kadrning
+ * uchdan biri edi va yuzga bir necha o'n piksel qolardi — o'xshashlik uchun
+ * ham, yuz almashtirish (`facefusion`) uchun ham kam.
  *
- * ⚠️ NEGA BITTA RASMDA, UCHTA ALOHIDA EMAS:
- *   1. Bir generatsiya — uchta emas: vaqt va kredit uch barobar kam.
- *   2. Model uchala ko'rinishni BIR VAQTDA chizadi, ya'ni yuz, soch,
- *      gavda va kiyim bir xil chiqadi. Alohida so'rovlarda «yon» dagi odam
- *      «old» dagidan sezilarli farq qilardi.
+ * ⚠️ «turnaround sheet» VA «PANEL 1» SO'ZLARI BU MATNDA BO'LMASLIGI KERAK.
+ * Yangilanmagan kengaytma varaqni aynan shu ikki so'zdan taniydi va topsa
+ * landshaft natija kutadi — tik portretni rad etardi.
  *
- * ⚠️ KESISH TENG UCHDAN BIRGA TAYANADI. Shuning uchun matnda eng qat'iy
- * talab — har odam O'Z panelining markazida, qo'shni panelga o'tmaydi
- * va hammasi bir xil o'lchamda. Bu buzilsa bo'laklarda qo'l yoki oyoq
- * kesilib qoladi.
+ * ⚠️ KIYIM ALOHIDA «CLOTHING:» SATRIDA. Yangilanmagan kengaytma do'kon
+ * kiyimini qo'shsa shu satrni butunlay olib tashlaydi; kiyim boshqa
+ * jumlaga qo'shilib ketsa ikki ko'rsatma urishardi.
  *
- * ⚠️ FON — SHAFFOF PNG, HAR DOIM. Bo'laklar to'g'ridan-to'g'ri sahnaga
+ * ⚠️ FON — SHAFFOF PNG, HAR DOIM. Surat to'g'ridan-to'g'ri sahnaga
  * qo'yiladi; oq yoki kulrang fon qolsa avatar qutida turgandek ko'rinadi.
  */
-export function buildAvatarSheetPrompt(
+export function buildAvatarFrontPrompt(
   gender: AvatarGender,
   measurements: AvatarMeasurements,
 ): string {
@@ -299,44 +311,45 @@ export function buildAvatarSheetPrompt(
     (sizes ? `, who ${sizes}` : '');
 
   return [
-    'Create ONE single image: a photorealistic character turnaround sheet of the person in the ' +
-      `reference photo — ${who}.`,
+    '🔒 YOU ARE EDITING A PHOTO OF A REAL PERSON. The reference photo is the face of that real ' +
+      'person — the single most important input. If the output face does not match the ' +
+      'reference photo, you have FAILED the task.',
 
-    faceLock(true),
+    'Create ONE single image: a photorealistic full-body FRONT view portrait of the person in ' +
+      `the reference photo — ${who}.`,
 
-    'LAYOUT: the same person is shown THREE times, side by side in one horizontal row, in three ' +
-      'equal-width vertical panels — each panel is exactly one third of the image width. From ' +
-      'left to right:',
+    'ONE FIGURE, FRONT VIEW ONLY: the person appears exactly ONCE in the image, seen from the ' +
+      'front. No side view, no back view, no second pose, no mirror image, no multi-panel or ' +
+      'collage layout, no inset close-ups.',
 
-    `PANEL 1 (left third) — FRONT VIEW: ${ANGLE_TEXT.front}`,
+    faceLock(false),
 
-    `PANEL 2 (middle third) — SIDE VIEW: ${ANGLE_TEXT.side}`,
+    `POSE: ${ANGLE_TEXT.front}`,
 
-    `PANEL 3 (right third) — BACK VIEW: ${ANGLE_TEXT.back}`,
+    'FRAMING: vertical full-body shot — the entire body is visible from head to feet with a ' +
+      'small empty margin above the head and below the feet, nothing is cropped. Eye-level ' +
+      'camera, straight on, no tilt. The figure is centered horizontally and fills about ' +
+      '85–90% of the image height.',
 
-    'EXACTLY THREE FIGURES of the same single person — never four, never two people in one ' +
-      'panel, no mirror images, no extra poses, no close-ups or inset portraits.',
+    // ⚠️ BOSH O'LCHAMI (so'rovga ko'ra, 2026-11-16) — yaqin selfi'dan bosh katta chiqmasin.
+    'HEAD-TO-BODY PROPORTION: render the head at a natural, realistic size for an adult body ' +
+      '(about one seventh to one eighth of the standing height). The reference face photo may ' +
+      'be a tight close-up used ONLY for identity — its close framing must NOT enlarge the ' +
+      'head. Never render an oversized, zoomed-in, bobble-head or caricature-like head.',
 
-    'CONSISTENCY (very important): identical person, face, body proportions, hairstyle and ' +
-      'clothing in all three panels, lit from the same direction. Same camera distance, eye-level ' +
-      'camera and the same scale — the top of the head and the soles of the feet are at the same ' +
-      'height in every panel.',
-
-    'FRAMING FOR CUTTING (the image will be cut into three equal vertical strips): each figure ' +
-      'is centered horizontally in its own third and fills about 85–90% of the image height, ' +
-      'with a small empty margin above the head and below the feet. Leave clear empty space — ' +
-      'at least 8% of the image width — between neighbouring figures, so no hand, elbow, foot or ' +
-      'hair ever touches or crosses the invisible line between panels. The entire body is ' +
-      'visible from head to feet in every panel — nothing is cropped.',
-
-    `CLOTHING: ${baseLayer(gender)}, the same in all three views.`,
+    `CLOTHING: ${baseLayer(gender)}.`,
 
     'BACKGROUND: fully TRANSPARENT PNG with an alpha channel — no background colour at all, no ' +
-      'floor, no wall, no ground shadow, no reflection, no divider lines or panel borders ' +
-      'between the views, no text, labels, numbers or watermarks. Only the three cut-out figures.',
+      'floor, no wall, no ground shadow, no reflection, no text, labels, numbers or watermarks. ' +
+      'Only the cut-out figure.',
 
-    'OUTPUT: landscape 3:2 image (for example 1536x1024), PNG with transparency. Soft even ' +
-      'studio lighting on the subject, sharp focus, photorealistic.',
+    'OUTPUT: exactly ONE image — vertical portrait 2:3 (for example 1024x1536), PNG with ' +
+      'transparency. Soft even studio lighting on the subject, sharp focus, photorealistic.',
+
+    /* ⚠️ RECENCY — oxirgi gap modelga eng kuchli ta'sir qiladi, yuz qulfi qisqa takrorlanadi. */
+    '🔒 REMEMBER: the face MUST be the exact face from the reference photo. If the final face ' +
+      'differs in ANY feature, the output is wrong. Do not idealise, do not beautify, do not ' +
+      '"improve" — copy the reference face as-is.',
   ].join('\n\n');
 }
 

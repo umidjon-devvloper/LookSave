@@ -1,4 +1,7 @@
-import * as FileSystem from 'expo-file-system';
+// `expo-file-system/legacy` — Expo SDK 54 da `documentDirectory` va imperative
+// API (getInfoAsync/writeAsStringAsync) shu yerda. Yangi top-level API'da
+// `documentDirectory` olib tashlangan (endpoints.ts, brightness.ts ham shu import).
+import * as FileSystem from 'expo-file-system/legacy';
 import { create } from 'zustand';
 
 /**

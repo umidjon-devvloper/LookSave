@@ -4,10 +4,11 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Notifications from 'expo-notifications';
 import { SaveFormat, manipulateAsync } from 'expo-image-manipulator';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -41,6 +42,7 @@ import { averageBrightness, MIN_BRIGHTNESS } from '../../src/photo/brightness';
 import { Button, ErrorView, Field, Loading } from '../../src/components/ui';
 import { useI18n, type Dictionary } from '../../src/i18n';
 import { useAuthStore } from '../../src/store/authStore';
+import { isFaceLocked, setFaceLocked } from '../../src/store/faceLock';
 import { SignInRequired } from '../../src/components/SignInRequired';
 import { useAiFlowStore } from '../../src/store/aiFlowStore';
 import { useLocationStore } from '../../src/store/locationStore';
@@ -93,7 +95,7 @@ const STEPS: Array<{ key: StepKey; icon: IconName }> = [
   { key: 'gender', icon: 'profile' },
   { key: 'body', icon: 'slotTop' },
   { key: 'store', icon: 'stores' },
-  { key: 'done', icon: 'authentic' },
+  { key: 'done', icon: 'check' },
 ];
 
 /** Qadam yorlig'i — i18n (`t.avatar`) dan. */
@@ -291,6 +293,8 @@ export default function AvatarFlow(): JSX.Element {
   const setStore = useAiFlowStore((state) => state.setStore);
   const storeId = useAiFlowStore((state) => state.storeId);
 
+  const params = useLocalSearchParams<{ signup?: string }>();
+
   const [step, setStep] = useState<StepKey>('face');
   /*
    * Boshlang'ich qadam bir marta aniqlanadi.
@@ -400,6 +404,20 @@ export default function AvatarFlow(): JSX.Element {
   const goNext = (): void => {
     const index = STEPS.findIndex((item) => item.key === step);
     setError(null);
+
+    /*
+     * ⚠️ RO'YXATDAN O'TISHDAN KELGAN XARIDOR — YUZDAN KEYIN BOZORGA.
+     *
+     * `?signup=1` bayrog'i faqat sign-up oxirida qo'yiladi. Boshqa
+     * paytlarda (profil orqali kirsa) odatiy tartib davom etadi:
+     * tana → do'kon → tayyor. Yangi foydalanuvchi uchun esa o'lchov
+     * majburiy emas, u ilovaga nima uchun kelganini birinchi marta
+     * ko'rishi kerak.
+     */
+    if (step === 'face' && params.signup === '1') {
+      router.replace('/(tabs)/marketplace');
+      return;
+    }
 
     const rest = STEPS.slice(index + 1);
     const next = profile.data
@@ -781,6 +799,31 @@ function FaceStep({
   }
 
   const scan = async (): Promise<void> => {
+    /*
+     * Yuz qulfi — qurilma darajasi. Yoqilgan bo'lsa skanerni to'xtatamiz
+     * va foydalanuvchiga sozlamalarni ko'rsatamiz. Himoya emas, UX
+     * himoyasi: boshqa qurilma hali ham yangilashi mumkin.
+     */
+    if (await isFaceLocked()) {
+      /*
+       * Qulf bor-lekin-surat-yo'q holati ba'zan kelib qoladi (masalan,
+       * surat sotrudnik yoki delete orqali olib tashlangan, qulf esa
+       * SecureStore'da qolib ketgan). Shuning uchun dialog'dan to'g'ridan-
+       * to'g'ri qulfni ochish variantini beramiz — foydalanuvchi uchta
+       * ekran bosib sozlamaga bormasin.
+       */
+      Alert.alert(t.facePhoto.lockedTitle, t.facePhoto.lockedBody, [
+        { text: t.common.cancel, style: 'cancel' },
+        {
+          text: t.facePhoto.unlock,
+          onPress: () => {
+            void setFaceLocked(false);
+          },
+        },
+      ]);
+      return;
+    }
+
     setScanning(true);
 
     /*
@@ -1393,20 +1436,16 @@ function DoneStep({
  * To'liq bo'yli surat esa haqiqiy natija beradi — u sintetik emas.
  * Shuning uchun bu yo'l yashirilmaydi, faqat ikkinchi o'rinda turadi.
  */
-function RealPhotoLink(): JSX.Element {
-  const t = useI18n((state) => state.t);
-  const router = useRouter();
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={() => router.push('/ai/photo')}
-      hitSlop={8}
-      style={styles.realPhoto}
-    >
-      <Text style={styles.realPhotoText}>{t.avatar.realPhoto}</Text>
-    </Pressable>
-  );
+/*
+ * ⚠️ RASM YUKLASH TUGMASI YASHIRILDI (2026-11-06, so'rovga ko'ra).
+ *
+ * Avval mijoz yuz skanerining o'rniga to'liq bo'yli rasmni yuklashi mumkin
+ * edi. Reviewer uchun bu kerak edi (simulatorda haqiqiy kamera yo'q) —
+ * endi demo akkaunt oldindan sozlangan, qolgan mijozlar faqat yuz skaneri
+ * orqali avatar yasashi kerak.
+ */
+function RealPhotoLink(): JSX.Element | null {
+  return null;
 }
 
 const styles = StyleSheet.create({
@@ -1485,13 +1524,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  // Atelier: soya o'rniga toza anor to'ldirish. "Glow" klişesi yo'q.
   stepDotActive: {
     backgroundColor: colors.primary,
-    borderColor: colors.accent,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.6,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 0 },
+    borderColor: colors.primary,
   },
   stepDotDone: { backgroundColor: colors.primaryDark, borderColor: colors.primaryDark },
   stepLabel: { ...text.tiny, color: colors.textDim, fontSize: 10 },
@@ -1502,8 +1538,11 @@ const styles = StyleSheet.create({
   error: {
     ...text.small,
     color: colors.danger,
-    backgroundColor: 'rgba(239,68,68,0.10)',
-    borderRadius: radius.md,
+    // Atelier: xato ham anor oilasida (danger = quyuq anor)
+    backgroundColor: 'rgba(142,45,34,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(142,45,34,0.25)',
+    borderRadius: radius.sm,
     padding: spacing.sm,
   },
 
@@ -1512,9 +1551,10 @@ const styles = StyleSheet.create({
    * qatlamlar aynan shu farq bilan ajraladi — chegara chizig'i o'zi yetarli
    * emas, u faqat yaqindan ko'rinadi.
    */
+  // Atelier: kichikroq radius, toza oq karta, hair-thin chegara
   card: {
     backgroundColor: colors.surface,
-    borderRadius: radius.xxl,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.lg,
@@ -1529,19 +1569,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xs,
     paddingVertical: spacing.xl,
-    borderRadius: radius.xl,
-    // `overflow: hidden` — gradient burchaklardan chiqib ketmasin
+    borderRadius: radius.md,
     overflow: 'hidden',
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
   },
+  // Atelier: tanlangan karta — anor chegara, soya yo'q
   genderCardActive: {
-    borderColor: colors.borderAccent,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.45,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 4 },
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
   },
   genderIcon: {
     width: 68,
@@ -1580,9 +1617,10 @@ const styles = StyleSheet.create({
    * "bu yerga qarang" degan ishorani beradi. To'liq chegara chizig'i esa
    * kameraning o'zini quti ichiga qamab qo'yardi.
    */
+  // Atelier: kameraning atrofi — oq photo booth kabi, kichik radius
   viewfinder: {
     backgroundColor: colors.bgElevated,
-    borderRadius: radius.xxl,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     paddingVertical: spacing.lg,
@@ -1594,7 +1632,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 22,
     height: 22,
-    borderColor: colors.borderAccent,
+    borderColor: colors.primary,
   },
   corner_tl: {
     top: spacing.sm,
@@ -1668,16 +1706,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: colors.bg,
   },
+  // Atelier: oval halqa — anor rang, kam shaffoflik
   ovalRing: {
     position: 'absolute',
     width: 250,
     height: 280,
     borderRadius: 135,
     borderWidth: 2,
-    borderColor: colors.accent,
-    opacity: 0.8,
+    borderColor: colors.primary,
+    opacity: 0.85,
   },
-  // Ichki punktir halqa — rasmdagi ikki qatlamli ramka
   ovalRingInner: {
     position: 'absolute',
     width: 228,
@@ -1685,11 +1723,9 @@ const styles = StyleSheet.create({
     borderRadius: 124,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: colors.accent,
+    borderColor: colors.primary,
     opacity: 0.4,
   },
-  // Vertikal yo'naltirgich chiziq: foydalanuvchi yuzini unga tenglashtiradi,
-  // bosh qiyshaymaydi. Juda yupqa va shaffof — kadrni to'smaydi.
   ovalCenterLine: {
     position: 'absolute',
     left: '50%',
@@ -1697,8 +1733,8 @@ const styles = StyleSheet.create({
     bottom: 12,
     width: 1,
     marginLeft: -0.5,
-    backgroundColor: colors.accent,
-    opacity: 0.25,
+    backgroundColor: colors.primary,
+    opacity: 0.3,
   },
 
   facePill: {
@@ -1714,7 +1750,7 @@ const styles = StyleSheet.create({
 
   tipsCard: {
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.md,
@@ -1755,12 +1791,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     padding: spacing.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface2,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  storeRowActive: { borderColor: colors.borderAccent, backgroundColor: colors.primarySoft },
+  storeRowActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   storeIcon: {
     width: 36,
     height: 36,

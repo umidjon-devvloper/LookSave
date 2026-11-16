@@ -337,15 +337,15 @@ export function FilterSheet({
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(5,4,9,0.6)' },
+  // Atelier: pastki panel kichikroq yumaloq burchak bilan
   sheet: {
     backgroundColor: colors.bg,
-    borderTopLeftRadius: radius.xxl,
-    borderTopRightRadius: radius.xxl,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
     borderTopWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
-    // Ekranning uchdan ikkisidan oshmasin — ostidagi katalog ko'rinib tursin
     maxHeight: '76%',
   },
   grabber: {

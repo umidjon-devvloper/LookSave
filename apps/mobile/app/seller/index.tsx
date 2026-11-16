@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getStoreDashboard, getStoreProfile } from '../../src/api/endpoints';
@@ -13,6 +13,8 @@ import { useI18n } from '../../src/i18n';
 import { useAuthStore } from '../../src/store/authStore';
 import { money } from '../../src/theme/format';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
+
+const REVENUE_BAG = require('../../assets/seller-dashboard-bag-v2.png');
 
 /**
  * Sotuvchi paneli — bosh ekran (Dashboard).
@@ -68,14 +70,39 @@ export default function SellerDashboard(): JSX.Element {
         </View>
         <Text style={styles.applyTitle}>{t.sellerDashboard.notSellerTitle}</Text>
         <Text style={styles.applyDesc}>{t.sellerDashboard.notSellerDesc}</Text>
-        <Pressable style={styles.applyBtn} onPress={() => router.push('/seller/apply')}>
-          <Text style={styles.applyBtnText}>{t.sellerDashboard.applyNow}</Text>
+        <Pressable
+          style={({ pressed }) => [styles.applyBtnWrap, pressed && { opacity: 0.85 }]}
+          onPress={() => router.push('/become-seller')}
+        >
+          <LinearGradient
+            colors={['#B936F4', '#8B2CF5', '#6D28D9']}
+            locations={[0, 0.55, 1]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.applyBtn}
+          >
+            <Icon name="stores" size={18} color="#FFFFFF" />
+            <Text style={styles.applyBtnText}>{t.sellerDashboard.applyNow}</Text>
+            <Icon name="next" size={18} color="#FFFFFF" />
+          </LinearGradient>
         </Pressable>
       </View>
     );
   }
 
-  if (dashboard.isLoading || profile.isLoading) return <Loading />;
+  if (dashboard.isLoading || profile.isLoading) {
+    // Loading paytida sahifa layout'i bilan mos fon — "bo'sh oq oraliq" chiqmaydi
+    return (
+      <View style={styles.flex}>
+        <LinearGradient
+          colors={['#F7F1FF', '#FFFFFF', '#F6F2FF']}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+        <Loading />
+      </View>
+    );
+  }
   if (dashboard.isError) {
     return <ErrorView error={dashboard.error} onRetry={() => void dashboard.refetch()} />;
   }
@@ -91,6 +118,11 @@ export default function SellerDashboard(): JSX.Element {
 
   return (
     <View style={styles.flex}>
+      <LinearGradient
+        colors={['#F7F1FF', '#FFFFFF', '#F6F2FF']}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
       {/* Status bar ustidan to'liq fon — scroll ortga chiqmasin */}
       <View style={[styles.topSafe, { height: insets.top }]} />
 
@@ -111,12 +143,10 @@ export default function SellerDashboard(): JSX.Element {
             {store?.name ?? ''}
           </Text>
         </View>
-        <View
-          style={[
-            styles.statusDot,
-            { backgroundColor: store?.isOpen ? colors.success : colors.textMuted },
-          ]}
-        />
+        <Pressable style={styles.notificationBtn} onPress={() => router.push('/seller/orders')}>
+          <Icon name="bell" size={22} color={colors.text} />
+          {data.newOrders > 0 ? <View style={styles.notificationDot} /> : null}
+        </Pressable>
       </View>
 
       <ScrollView
@@ -133,44 +163,55 @@ export default function SellerDashboard(): JSX.Element {
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
-        {/* Dekorativ nurli halqalar — kartaga tiniq chuqurlik beradi,
-            toza binafsha blokdan uzoqlashtiradi. */}
-        <View style={styles.revenueOrb1} pointerEvents="none" />
-        <View style={styles.revenueOrb2} pointerEvents="none" />
         <View style={styles.revenueTextWrap}>
           <Text style={styles.revenueLabel}>{t.sellerDashboard.revenueThisMonth}</Text>
           <Text style={styles.revenueValue}>
             {money(data.revenueMonth, data.currency)}
           </Text>
           <View style={styles.revenueChip}>
-            <Icon name="orders" size={12} color={colors.text} />
+            <Icon name="orders" size={12} color={colors.textOnPrimary} />
             <Text style={styles.revenueChipText}>
               {t.sellerDashboard.ordersThisMonth.replace('{n}', String(data.completedMonth))}
             </Text>
           </View>
         </View>
-        <View style={styles.revenueIco}>
-          <Icon name="premium" size={32} color={colors.text} />
-        </View>
+        <Image source={REVENUE_BAG} style={styles.revenueBag} resizeMode="contain" />
       </View>
 
       {/* 4 ta ko'rsatkich */}
       <View style={styles.tiles}>
         {TILES.map((tile) => (
-          <View key={tile.key} style={[styles.tile, { borderColor: `${tile.tint}33` }]}>
+          <Pressable
+            key={tile.key}
+            onPress={() =>
+              router.push(tile.key === 'productCount' ? '/seller/products' : '/seller/orders')
+            }
+            style={[styles.tile, { borderColor: `${tile.tint}55`, backgroundColor: `${tile.tint}0C` }]}
+          >
             <View style={styles.tileTop}>
               <View style={[styles.tileIco, { backgroundColor: `${tile.tint}22` }]}>
                 <Icon name={tile.icon} size={18} color={tile.tint} />
               </View>
               <Text style={styles.tileValue}>{metrics[tile.key]}</Text>
             </View>
-            <Text style={styles.tileLabel}>{t.sellerDashboard[tile.key]}</Text>
-          </View>
+            <View style={styles.tileBottom}>
+              <Text style={styles.tileLabel}>{t.sellerDashboard[tile.key]}</Text>
+              <View style={[styles.tileArrow, { backgroundColor: `${tile.tint}18` }]}>
+                <Icon name="next" size={16} color={tile.tint} />
+              </View>
+            </View>
+          </Pressable>
         ))}
       </View>
 
       {/* Tez ishga tushadigan amallar */}
-      <Text style={styles.section}>{t.sellerDashboard.quickActions}</Text>
+      <View style={styles.sectionRow}>
+        <View style={styles.sectionTitleWrap}>
+          <Icon name="limited" size={22} color={colors.primary} />
+          <Text style={styles.section}>{t.sellerDashboard.quickActions}</Text>
+        </View>
+        <Text style={styles.sectionAction}>Barchasi</Text>
+      </View>
       <QuickAction
         icon="camera"
         title={t.sellerDashboard.addProduct}
@@ -226,10 +267,10 @@ function QuickAction({
       accessibilityRole="button"
     >
       <View style={[styles.actionIco, primary && styles.actionIcoPrimary]}>
-        <Icon name={icon} size={20} color={primary ? colors.text : colors.accent} />
+        <Icon name={icon} size={20} color={primary ? colors.textOnPrimary : colors.accent} />
       </View>
       <View style={styles.actionBody}>
-        <Text style={styles.actionTitle}>{title}</Text>
+        <Text style={[styles.actionTitle, primary && styles.actionTitlePrimary]}>{title}</Text>
         <Text
           style={[styles.actionDesc, primary && styles.actionDescPrimary]}
           numberOfLines={1}
@@ -242,40 +283,60 @@ function QuickAction({
           <Text style={styles.badgeText}>{badge}</Text>
         </View>
       ) : (
-        <Icon name="next" size={18} color={primary ? colors.text : colors.textMuted} />
+        <Icon name="next" size={18} color={primary ? colors.textOnPrimary : colors.textMuted} />
       )}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.bg },
+  flex: { flex: 1, backgroundColor: '#F8F4FF' },
   content: { paddingHorizontal: spacing.md, paddingTop: spacing.md },
 
-  topSafe: { backgroundColor: colors.surface },
+  topSafe: { backgroundColor: 'transparent' },
 
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingVertical: spacing.md,
+    backgroundColor: 'transparent',
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: colors.surface2,
+    width: 42,
+    height: 42,
+    borderRadius: radius.lg,
+    backgroundColor: 'rgba(255,255,255,0.82)',
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerText: { flex: 1, minWidth: 0 },
-  hello: { ...text.tiny, color: colors.textMuted, letterSpacing: 1 },
-  storeName: { ...text.h3, color: colors.text, marginTop: 2 },
-  statusDot: { width: 10, height: 10, borderRadius: 5 },
+  hello: { ...text.small, color: colors.primary },
+  storeName: { ...text.h2, color: colors.text, marginTop: -2 },
+  notificationBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.82)',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  notificationDot: {
+    position: 'absolute',
+    right: 8,
+    top: 7,
+    width: 8,
+    height: 8,
+    borderRadius: radius.pill,
+    backgroundColor: colors.danger,
+    borderWidth: 1.5,
+    borderColor: colors.surface,
+  },
 
   revenueCard: {
     borderRadius: radius.xl,
@@ -284,44 +345,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: spacing.md,
-    minHeight: 128,
+    minHeight: 180,
     shadowColor: '#7C3AED',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.35,
     shadowRadius: 20,
     elevation: 8,
   },
-  // Yarim shaffof nurli halqalar — kartaning yorqin burchagini ta'kidlaydi.
-  revenueOrb1: {
-    position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    top: -80,
-    right: -60,
-  },
-  revenueOrb2: {
-    position: 'absolute',
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    bottom: -60,
-    left: -20,
-  },
-  revenueTextWrap: { flex: 1 },
+  revenueTextWrap: { flex: 1, zIndex: 2 },
   revenueLabel: {
-    ...text.tiny,
-    color: 'rgba(255,255,255,0.78)',
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    fontWeight: '700',
+    ...text.body,
+    color: 'rgba(255,255,255,0.88)',
   },
   revenueValue: {
-    fontSize: 32,
+    fontSize: 40,
     fontWeight: '800',
-    color: colors.text,
+    color: colors.textOnPrimary,
     marginTop: 8,
     marginBottom: 10,
     letterSpacing: -0.5,
@@ -336,16 +375,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     alignSelf: 'flex-start',
   },
-  revenueChipText: { ...text.tiny, color: colors.text, fontWeight: '600' },
-  revenueIco: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  revenueChipText: { ...text.small, color: colors.textOnPrimary, fontWeight: '600' },
+  revenueBag: {
+    position: 'absolute',
+    width: 172,
+    height: 172,
+    right: -6,
+    bottom: -6,
   },
 
   tiles: {
@@ -361,8 +397,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
+    minHeight: 116,
     padding: spacing.md,
-    gap: 10,
+    gap: spacing.sm,
   },
   // Yuqori qator — ikonka chapda, qiymat o'ngda, bir chiziqda.
   tileTop: {
@@ -378,17 +415,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tileValue: { fontSize: 26, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
-  tileLabel: { ...text.tiny, color: colors.textMuted, letterSpacing: 0.3 },
+  tileBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  tileLabel: { ...text.small, color: colors.text, flex: 1 },
+  tileArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
-  section: {
-    ...text.tiny,
-    color: colors.textDim,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    fontWeight: '700',
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginTop: spacing.sm,
     marginBottom: spacing.sm,
   },
+  sectionTitleWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  section: { ...text.h2, color: colors.text },
+  sectionAction: { ...text.small, color: colors.textMuted },
 
   action: {
     flexDirection: 'row',
@@ -403,7 +449,7 @@ const styles = StyleSheet.create({
   },
   // Birlamchi harakat (yangi mahsulot) — binafsha fon, ko'proq urg'u.
   actionPrimary: {
-    backgroundColor: colors.primaryDark,
+    backgroundColor: colors.primary,
     borderColor: 'rgba(139,92,246,0.45)',
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
@@ -423,6 +469,7 @@ const styles = StyleSheet.create({
   actionIcoPrimary: { backgroundColor: 'rgba(255,255,255,0.2)' },
   actionBody: { flex: 1, minWidth: 0 },
   actionTitle: { ...text.bodyMed, color: colors.text },
+  actionTitlePrimary: { color: colors.textOnPrimary, fontFamily: text.h3.fontFamily },
   actionDesc: { ...text.tiny, color: colors.textMuted, marginTop: 2 },
   actionDescPrimary: { color: 'rgba(255,255,255,0.78)' },
 
@@ -435,7 +482,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.danger,
   },
-  badgeText: { ...text.tiny, color: colors.text, fontWeight: '800' },
+  badgeText: { ...text.tiny, color: colors.textOnPrimary, fontWeight: '800' },
 
   applyWrap: {
     flex: 1,
@@ -465,11 +512,21 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
     maxWidth: 320,
   },
+  applyBtnWrap: {
+    borderRadius: radius.pill,
+    shadowColor: '#A855F7',
+    shadowOpacity: 0.5,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
+  },
   applyBtn: {
-    backgroundColor: colors.accent,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
   },
-  applyBtnText: { ...text.bodyMed, color: colors.text, fontWeight: '700' },
+  applyBtnText: { ...text.bodyMed, color: '#FFFFFF', fontWeight: '700' },
 });

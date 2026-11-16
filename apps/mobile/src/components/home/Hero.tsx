@@ -7,12 +7,11 @@ import { Icon, type IconName } from '../Icon';
 import { colors, radius, spacing, text } from '../../theme/tokens';
 
 /**
- * Home ekranining hero bloki — deckning 01-slaydi.
+ * Home ekranining hero bloki — Atelier identity.
  *
- * Deckda hero ekranning butun kengligini egallaydi va logotip qatori uning
- * USTIDA turadi — alohida sarlavha yo'q. Shuning uchun bu komponent `header`
- * ni o'z ichiga oladi va ro'yxatning chetlaridan tashqariga chiqadi
- * (`marginHorizontal: -16`).
+ * Editorial moda-jurnali ochilishi: o'ngda portret foto, chapda serif
+ * sarlavha. Krem fon rasmning chap chekkasiga oqib tushadi — matn foto
+ * ustida ham o'qiladi, lekin dark-overlay klişesi yo'q.
  *
  * ⚠️ FON REZINKADEK CHO'ZILADI (`scrollY`). Ro'yxat pastga tortilganda
  * (`scrollY < 0`) fon rasmi cho'ziladi, lekin TEPASI ekran tepasida
@@ -22,13 +21,17 @@ import { colors, radius, spacing, text } from '../../theme/tokens';
  *   scale     = 1 + s/H   →  yangi balandlik H + s
  *   translateY = -s/2      →  markazdan cho'zilish tepaga surilgani qaytariladi
  *
- * Natijada rasm tepasi aynan y=0 da qoladi, pasti esa s px pastga cho'ziladi.
  * Transform tartibi MUHIM: `[translateY, scale]` — scale avval markazdan
- * qo'llaniladi, keyin translate suradi (aks holda surish ham kattalashadi).
+ * qo'llaniladi, keyin translate suradi.
  */
 
 /** Hero balandligi — cho'zilish nisbati shunga o'lchanadi (`styles.wrap.minHeight`) */
-export const HERO_HEIGHT = 540;
+export const HERO_HEIGHT = 560;
+
+const HERO_DARK = 'rgba(10,8,18,0.98)';
+const HERO_SOFT = 'rgba(16,10,28,0.74)';
+const HERO_CLEAR = 'rgba(16,10,28,0.08)';
+
 export function Hero({
   headerInset,
   title,
@@ -52,7 +55,7 @@ export function Hero({
   ctaLabel: string;
   ctaHint: string;
   onCta: () => void;
-  badges: Array<{ icon: IconName; title: string; hint: string }>;
+  badges?: Array<{ icon: IconName; title: string; hint: string }>;
   image?: ImageSourcePropType;
   /** Arabcha: rasm chapga, matn o'ngga — butun kompozitsiya ko'zguga solinadi */
   isRTL: boolean;
@@ -60,25 +63,41 @@ export function Hero({
   scrollY?: Animated.Value;
 }): JSX.Element {
   /*
-   * Faqat PASTGA tortilganda (`scrollY < 0`) cho'ziladi. `extrapolateRight:
-   * 'clamp'` — yuqoriga scroll qilinganda rasm o'z o'lchamida qoladi
-   * (parallax yo'q: hero baribir ekrandan chiqib ketadi).
+   * Pull-down (negativ scrollY): rasm ekranda QOTIB TURADI — counter-translate
+   * bilan scroll shiftini bekor qilamiz, refresh gesturi odatdagidek ishlaydi
+   * (scroll gesture o'zi o'zgarmaydi, faqat vizualда rasm qimirlamaydi).
+   * Scroll pastga: parallax saqlanadi (yarim tezlik).
+   */
+  /*
+   * ScrollView pull-down da scrollY NEGATIVE bo'ladi. Kontent (shu
+   * jumladan hero) scroll bilan birga pastga suriladi; rasmni ekranda
+   * QOTIB tutish uchun ayni yo'nalishda qarshi translate kerak:
+   *   scrollY=-50 → translateY=-50 (rasmni yuqoriga tortib qaytaradi).
+   * Scroll pastga (positiv) uchun translate yarim tezlikda — parallax.
    */
   const stretchStyle = scrollY
     ? {
         transform: [
           {
             translateY: scrollY.interpolate({
-              inputRange: [-HERO_HEIGHT, 0],
-              outputRange: [-HERO_HEIGHT / 2, 0],
-              extrapolateRight: 'clamp' as const,
+              inputRange: [-1000, 0, HERO_HEIGHT],
+              outputRange: [-1000, 0, HERO_HEIGHT * 0.18],
+              extrapolate: 'clamp',
             }),
           },
+        ],
+      }
+    : null;
+
+  /* Matn ham refreshda qotadi va scroll pastga parallax qiladi */
+  const parallaxStyle = scrollY
+    ? {
+        transform: [
           {
-            scale: scrollY.interpolate({
-              inputRange: [-HERO_HEIGHT, 0],
-              outputRange: [2, 1],
-              extrapolateRight: 'clamp' as const,
+            translateY: scrollY.interpolate({
+              inputRange: [-1000, 0, HERO_HEIGHT],
+              outputRange: [-1000, 0, HERO_HEIGHT * 0.42],
+              extrapolate: 'clamp',
             }),
           },
         ],
@@ -88,176 +107,263 @@ export function Hero({
   return (
     <View style={styles.wrap}>
       {/*
-        ⚠️ FON QATLAMI — rasm VA uning qorong'ilashuvi BIRGA cho'ziladi.
-
-        Ilgari faqat rasm cho'zilardi, gradientlar esa joyida qolardi:
-        pastga tortilganda rasm tepaga chiqib, gradientsiz YORQIN chekka
-        ochilib qolardi. Endi ikkalasi bitta transformda — qanchalik
-        cho'zilmasin, qorong'ilashuv rasm bilan birga ketadi.
+        Fon qatlami: rasm + krem oqim. Dark gradient o'rniga krem gradient —
+        rasmning chap chekkasi fon rangiga aralashadi, o'ng tomoni esa
+        to'liq ko'rinadi. Atelier jurnalidagi chet-chetlab tushgan portret.
       */}
       <Animated.View style={[StyleSheet.absoluteFill, stretchStyle]}>
-        {/* Foto o'ngda, to'liq bo'y — deckdagi kompozitsiya */}
         {image ? (
           <Image source={image} style={isRTL ? styles.imageRTL : styles.image} resizeMode="cover" />
         ) : null}
 
-        {/* Chapdan o'ngga qorong'ilashuv — matn fotoga tushsa ham o'qiladi */}
+        {/* Qora-binafsha oqim matnni tiniq, modelni esa yorqin qoldiradi. */}
         <LinearGradient
-          colors={['rgba(10,10,15,0.97)', 'rgba(10,10,15,0.8)', 'rgba(10,10,15,0)']}
-          locations={[0, 0.45, 1]}
+          colors={[HERO_DARK, HERO_SOFT, HERO_CLEAR]}
+          locations={[0, 0.5, 1]}
           start={{ x: 0, y: 0.6 }}
           end={{ x: 1, y: 0 }}
           style={StyleSheet.absoluteFill}
         />
 
         {/*
-          Tepa qorong'ilashuvi — logotip qatori va status bar doim o'qilsin.
-
-          ⚠️ FON QATLAMI ICHIDA: rasm bilan birga cho'zilgani uchun tepasi
-          har doim rasm tepasiga yopishib turadi. Tashqarida bo'lsa
-          overscroll'da rasm uning ostidan sirg'alib chiqib ketardi.
+          Premium accent: o'ng chekkada tikka neon binafsha chiziq — ref
+          dizaynidagi "studio light" effekti. Bir nechta qatlamli gradient
+          bilan glow sezilarli bo'ladi.
         */}
+        <View style={isRTL ? styles.neonBarRTL : styles.neonBar} pointerEvents="none">
+          <LinearGradient
+            colors={['rgba(192,132,252,0)', 'rgba(192,132,252,0.95)', 'rgba(192,132,252,0)']}
+            locations={[0, 0.5, 1]}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+        <View style={isRTL ? styles.neonGlowRTL : styles.neonGlow} pointerEvents="none">
+          <LinearGradient
+            colors={['rgba(168,85,247,0)', 'rgba(168,85,247,0.35)', 'rgba(168,85,247,0)']}
+            locations={[0, 0.5, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+
+        {/* Orbital binafsha nur — chap yuqori burchakda, sekin ko'rinmas aura. */}
+        <View style={styles.leftAura} pointerEvents="none">
+          <LinearGradient
+            colors={['rgba(124,58,237,0.42)', 'rgba(124,58,237,0.08)', 'rgba(124,58,237,0)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[StyleSheet.absoluteFill, { borderRadius: 160 }]}
+          />
+        </View>
+
         <LinearGradient
-          colors={['rgba(10,10,15,0.85)', 'rgba(10,10,15,0)']}
+          colors={['rgba(10,8,18,0.72)', 'rgba(10,8,18,0)']}
           style={styles.topFade}
           pointerEvents="none"
         />
       </Animated.View>
-      {/* Pastki chetini fonga ulash — kesilgan chegara ko'rinmasin */}
+      {/* Pastki chet oq kontentga yumshoq ulanadi. */}
       <LinearGradient
-        colors={['rgba(10,10,15,0)', colors.bg]}
+        colors={['rgba(10,8,18,0)', 'rgba(24,12,43,0.94)']}
         style={styles.bottomFade}
         pointerEvents="none"
       />
 
-      <View style={[styles.content, { paddingTop: headerInset }]}>
+      <Animated.View
+        style={[styles.content, { paddingTop: headerInset + spacing.md }, parallaxStyle]}
+      >
         <View style={[styles.body, rtlStyles.align(isRTL)]}>
-          {/* Sarlavha yuqorida, tugma va belgilar pastda — orasi bo'sh qoladi */}
           <View>
-            <Text style={[styles.heroLine, rtlStyles.text(isRTL)]}>{title}</Text>
-            <Text style={[styles.heroLine, rtlStyles.text(isRTL), { color: colors.primary }]}>
-              {titleAccent}
+            {/* Eyebrow — moda jurnali uslubi: italic Fraunces, ALL CAPS emas */}
+            <View style={styles.eyebrowPill}>
+              <Icon name="stores" size={14} color={colors.primary} />
+              <Text style={[styles.eyebrow, rtlStyles.text(isRTL)]}>Atelye · Toshkent</Text>
+            </View>
+
+            {/* Sarlavha — title + titleAccent bir qatorda, titleEnd pastda */}
+            <Text style={[styles.heroLine, rtlStyles.text(isRTL)]}>
+              {title} <Text style={styles.heroAccent}>{titleAccent}</Text>
             </Text>
             <Text style={[styles.heroLine, rtlStyles.text(isRTL)]}>{titleEnd}</Text>
 
             <Text style={[styles.subtitle, rtlStyles.text(isRTL)]}>{subtitle}</Text>
           </View>
 
-          <View>
+          <View style={styles.ctaBlock}>
+            {/* Premium CTA — gradient to'ldirish + binafsha glow shadow */}
             <Pressable
-              style={({ pressed }) => [
-                styles.cta,
-                rtlStyles.row(isRTL),
-                pressed && { borderColor: colors.accent },
-              ]}
+              style={({ pressed }) => [styles.ctaWrap, pressed && { opacity: 0.85 }]}
               onPress={onCta}
             >
               <LinearGradient
-                colors={[colors.primary, colors.primaryDark]}
+                colors={['#B936F4', '#8B2CF5', '#6D28D9']}
+                locations={[0, 0.55, 1]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={styles.ctaIcon}
+                style={[styles.cta, rtlStyles.row(isRTL)]}
               >
-                <Icon name="cart" size={20} color={colors.text} />
-              </LinearGradient>
+                <View style={styles.ctaIcon}>
+                  <Icon name="cart" size={18} color={colors.textOnPrimary} />
+                </View>
 
-              <View style={styles.ctaText}>
-                <Text style={styles.ctaLabel}>{ctaLabel}</Text>
-                <Text style={[styles.ctaHint, rtlStyles.text(isRTL)]}>{ctaHint}</Text>
-              </View>
-              <Icon name={isRTL ? 'back' : 'next'} size={20} color={colors.textMuted} />
+                <View style={styles.ctaText}>
+                  <Text style={styles.ctaLabel}>{ctaLabel}</Text>
+                  <Text style={[styles.ctaHint, rtlStyles.text(isRTL)]}>{ctaHint}</Text>
+                </View>
+                <Icon name={isRTL ? 'back' : 'next'} size={18} color={colors.textOnPrimary} />
+              </LinearGradient>
             </Pressable>
 
-            <View style={[styles.badges, rtlStyles.row(isRTL)]}>
-              {badges.map((badge, index) => (
-                <View key={badge.title} style={[styles.badgeRow, rtlStyles.row(isRTL)]}>
-                  {index > 0 ? <View style={styles.badgeDivider} /> : null}
-                  <View style={[styles.badge, rtlStyles.row(isRTL)]}>
-                    <Icon name={badge.icon} size={16} color={colors.accent} />
-                    <View style={styles.badgeText}>
-                      <Text style={[styles.badgeTitle, rtlStyles.text(isRTL)]} numberOfLines={1}>
-                        {badge.title}
-                      </Text>
-                      <Text style={[styles.badgeHint, rtlStyles.text(isRTL)]} numberOfLines={1}>
-                        {badge.hint}
-                      </Text>
+            {/* Belgilar — soch-ingichka chiziq bilan ajraladi */}
+            {badges && badges.length > 0 ? (
+              <View style={[styles.badges, rtlStyles.row(isRTL)]}>
+                {badges.map((badge, index) => (
+                  <View key={badge.title} style={[styles.badgeRow, rtlStyles.row(isRTL)]}>
+                    {index > 0 ? <View style={styles.badgeDivider} /> : null}
+                    <View style={[styles.badge, rtlStyles.row(isRTL)]}>
+                      <Icon name={badge.icon} size={14} color={colors.primary} />
+                      <View style={styles.badgeText}>
+                        <Text style={[styles.badgeTitle, rtlStyles.text(isRTL)]} numberOfLines={1}>
+                          {badge.title}
+                        </Text>
+                        <Text style={[styles.badgeHint, rtlStyles.text(isRTL)]} numberOfLines={1}>
+                          {badge.hint}
+                        </Text>
+                      </View>
                     </View>
                   </View>
-                </View>
-              ))}
-            </View>
+                ))}
+              </View>
+            ) : null}
           </View>
         </View>
-      </View>
+      </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: {
-    // Ekran chetlariga chiqish: ro'yxatning 16px paddingi bekor qilinadi
     marginHorizontal: -spacing.md,
-    backgroundColor: colors.bg,
-    // Baland blok — model ko'proq ko'rinadi va matn siqilib qolmaydi
+    backgroundColor: '#0A0812',
     minHeight: HERO_HEIGHT,
-    /*
-     * ⚠️ `visible` SHART. Cho'zilganda rasm wrap chegarasidan TEPAGA chiqadi
-     * (tepasini ekranda ushlab turish uchun). `hidden` bo'lsa aynan o'sha
-     * qism kesiladi va rezinka effekti o'rniga bo'sh chiziq ko'rinadi.
-     */
+    // overflow:visible — refresh pull-down da counter-translate ishlaydi,
+    // rasm ekranda qotib turadi.
     overflow: 'visible',
   },
-  // Rasm o'ngga suriladi: chap tomonda sarlavha uchun toza joy qoladi
-  image: { position: 'absolute', right: -30, top: 0, width: '100%', height: '100%' },
-  // Arabchada rasm chapga o'tadi — LTR joylashuvining aniq ko'zgu aksi.
-  // ⚠️ `width` shart: `left: 0, right: 0` qilinsa blok kengayib ketadi va
-  // `cover` vertikal rasmni haddan tashqari kesadi (modeldan yelka qoladi).
-  imageRTL: { position: 'absolute', left: -30, top: 0, width: '100%', height: '100%' },
-  /*
-   * Tepa qorong'ilashuvi. 220px — status bar + logotip qatori + sarlavha
-   * boshigacha yetadi, keyin sezilmay yo'qoladi.
-   */
-  topFade: { position: 'absolute', left: 0, right: 0, top: 0, height: 220 },
-  bottomFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 90 },
+  // Rasm o'ngga chiqib turadi — chap chekkasi fonga aralashadi
+  image: { position: 'absolute', right: 0, top: 0, width: '100%', height: '100%' },
+  imageRTL: { position: 'absolute', left: 0, top: 0, width: '100%', height: '100%' },
+  topFade: { position: 'absolute', left: 0, right: 0, top: 0, height: 180 },
+  bottomFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 80 },
 
-  // `flex: 1` shart — bo'lmasa ichkaridagi `body` ning `flex-end` i ishlamaydi
-  // va matn blokidan keyin bo'sh joy qolib ketadi.
+  // Premium neon accents
+  neonBar: {
+    position: 'absolute',
+    right: 14,
+    top: 80,
+    bottom: 100,
+    width: 2.5,
+  },
+  neonBarRTL: {
+    position: 'absolute',
+    left: 14,
+    top: 80,
+    bottom: 100,
+    width: 2.5,
+  },
+  neonGlow: {
+    position: 'absolute',
+    right: -8,
+    top: 60,
+    bottom: 80,
+    width: 70,
+  },
+  neonGlowRTL: {
+    position: 'absolute',
+    left: -8,
+    top: 60,
+    bottom: 80,
+    width: 70,
+  },
+  leftAura: {
+    position: 'absolute',
+    left: -80,
+    top: -40,
+    width: 320,
+    height: 320,
+  },
+
   content: { flex: 1, paddingHorizontal: spacing.md },
-  // Sarlavha yuqoriga, tugma pastga tortiladi — bo'sh joy ikkisining orasida
-  // qoladi va model fotosi ochiq ko'rinadi.
   body: {
     flex: 1,
     justifyContent: 'space-between',
     marginTop: spacing.lg,
-    // Tugma blokini pastdan ko'taradi — model fotosining pastki qismi
-    // (krossovka va aks) ochiq qoladi.
     paddingBottom: spacing.xxl,
   },
 
-  // `lineHeight` tokendagidan kattaroq: deckdagi kabi qatorlar orasi ochiq
-  heroLine: { ...text.hero, lineHeight: 54, color: colors.text, textTransform: 'uppercase' },
-  subtitle: {
-    ...text.small,
-    color: colors.textMuted,
-    marginTop: spacing.sm,
-    maxWidth: '58%',
+  // Eyebrow — italik serif, template "LABEL · fragment" uslubini butunlay almashtiradi
+  eyebrow: {
+    ...text.eyebrow,
+    color: '#FFFFFF',
+  },
+  eyebrowPill: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    marginBottom: spacing.md,
   },
 
+  // Sarlavha — Fraunces display, 2-3 qator, natural case. `text.hero` tokendan
+  heroLine: {
+    ...text.hero,
+    color: '#FFFFFF',
+    lineHeight: 64,
+    marginBottom: 4,
+  },
+  // Markaziy qator anorga bo'yaladi — Chanel qoidasi, bitta aksent
+  heroAccent: {
+    color: colors.primary,
+  },
+  subtitle: {
+    ...text.body,
+    color: '#D6D1E2',
+    marginTop: spacing.lg,
+    maxWidth: '62%',
+    lineHeight: 22,
+  },
+
+  // CTA bloki — body (alignItems: flex-start) ostida aniq kenglik beradi,
+  // aks holda ctaWrap ichidagi maxWidth: '66%' va ctaText flex: 1 noaniq
+  // ota-kenglikka nisbatan 0 ga tushib, yorliq matni qisiladi (badges olib
+  // tashlangach shunday bo'lgandi).
+  ctaBlock: { alignSelf: 'stretch' },
+  // Premium CTA: gradient wrap (shadow uchun) + ichida gradient fill
+  ctaWrap: {
+    borderRadius: radius.lg,
+    marginTop: spacing.lg,
+    maxWidth: '66%',
+    shadowColor: '#A855F7',
+    shadowOpacity: 0.55,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
+  },
   cta: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginTop: 0,
-    padding: spacing.sm + 2,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderAccent,
-    backgroundColor: 'rgba(20,18,28,0.88)',
-    // iOS'da rangli soya nurlanish beradi (06-dizayn.md §5)
-    shadowColor: colors.primary,
-    shadowOpacity: 0.4,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 0 },
   },
   ctaIcon: {
     width: 42,
@@ -265,23 +371,23 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colors.primaryDim,
   },
-  ctaText: { flex: 1 },
-  ctaLabel: { ...text.bodyMed, color: colors.text, letterSpacing: 1.4, flexShrink: 1 },
-  // Arabcha tartibda joy torroq — harflar orasi kengligi kamaytiriladi
-  ctaLabelRTL: { letterSpacing: 0 },
-  ctaHint: { ...text.tiny, color: colors.accent },
+  ctaText: { flex: 1, gap: 2 },
+  ctaLabel: { ...text.bodyMed, color: colors.textOnPrimary, lineHeight: 20 },
+  ctaHint: { ...text.tiny, color: colors.textOnPrimary, opacity: 0.8, lineHeight: 14 },
 
-  badges: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.md },
+  // Belgilar — ingichka chiziq bilan ajraladi, kichik tipografika
+  badges: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.lg },
   badgeRow: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
   badgeDivider: {
     width: 1,
     height: 22,
-    backgroundColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.24)',
     marginHorizontal: spacing.sm,
   },
   badge: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs + 2, flexShrink: 1 },
-  badgeText: { flexShrink: 1 },
-  badgeTitle: { ...text.tiny, color: colors.text },
-  badgeHint: { ...text.tiny, color: colors.textDim, fontSize: 9, letterSpacing: 0.6 },
+  badgeText: { flexShrink: 1, gap: 2 },
+  badgeTitle: { ...text.tiny, color: '#FFFFFF', lineHeight: 14 },
+  badgeHint: { ...text.tiny, color: '#BDB5CA', fontSize: 9, letterSpacing: 0.3, lineHeight: 12 },
 });

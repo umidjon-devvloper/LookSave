@@ -120,3 +120,271 @@
 .tryon-page article[class*='bg-surface'] {
   background: #fff !important;
 }
+
+/* Full-screen fitting room experience. */
+body:has(.tryon-experience) .landing-nav,
+body:has(.tryon-experience) footer { display:none !important; }
+body:has(.tryon-experience) main#content { padding-top:0 !important; }
+
+.tryon-experience {
+  min-height:100dvh;
+  padding:20px;
+  overflow:hidden;
+  color:#171020;
+  background:#eee8f5;
+}
+.tryon-experience::before { display:none; }
+.tryon-workspace {
+  position:relative;
+  min-height:calc(100dvh - 40px);
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.76);
+  border-radius:30px;
+  background:
+    linear-gradient(180deg,rgba(27,14,33,.08),rgba(247,240,255,.16) 54%,rgba(246,238,255,.72)),
+    url('/img/tryon-boutique-bg-v1.png') center/cover no-repeat;
+  box-shadow:0 24px 70px rgba(75,38,97,.2);
+}
+.tryon-stage-header {
+  position:absolute;
+  z-index:20;
+  top:34px;
+  left:50%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:8px;
+  color:#fff;
+  transform:translateX(-50%);
+  text-shadow:0 3px 18px rgba(33,12,42,.38);
+}
+.tryon-stage-brand {
+  display:flex;
+  align-items:center;
+  gap:11px;
+  color:#fff !important;
+  font-size:36px;
+  font-weight:850;
+  line-height:1;
+  letter-spacing:0;
+}
+.tryon-stage-brand svg { color:#fff; filter:drop-shadow(0 0 8px #9d20ff) drop-shadow(0 0 16px #7b0ce8); }
+.tryon-stage-header > button {
+  min-height:40px;
+  padding:0 18px !important;
+  border:1px solid rgba(255,255,255,.8) !important;
+  color:#25172d !important;
+  background:rgba(255,255,255,.9) !important;
+  box-shadow:0 8px 22px rgba(48,21,58,.17) !important;
+  backdrop-filter:blur(14px);
+}
+.tryon-stage-column { position:absolute; inset:0; }
+.tryon-stage {
+  position:absolute;
+  inset:0;
+  overflow:hidden;
+  border:0;
+  border-radius:0;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+.tryon-stage > img {
+  z-index:3;
+  left:50% !important;
+  top:17% !important;
+  width:44% !important;
+  height:58% !important;
+  object-fit:contain !important;
+  object-position:center bottom;
+  filter:drop-shadow(0 18px 18px rgba(34,18,38,.25));
+  transform:translateX(-50%);
+}
+.tryon-stage > div[aria-hidden='true']:first-child {
+  z-index:2;
+  left:33% !important;
+  right:33% !important;
+  bottom:21% !important;
+  height:9% !important;
+  border:2px solid rgba(255,242,211,.88);
+  background:rgba(255,206,134,.32) !important;
+  box-shadow:0 0 24px rgba(255,190,100,.82), inset 0 0 22px rgba(255,244,220,.7);
+  filter:blur(2px);
+}
+.tryon-stage-tools {
+  z-index:12;
+  left:30px !important;
+  top:39% !important;
+  width:104px;
+  padding:14px 11px;
+  border:1px solid rgba(255,255,255,.8);
+  border-radius:28px;
+  background:rgba(255,255,255,.88);
+  box-shadow:0 16px 38px rgba(52,25,64,.16);
+  backdrop-filter:blur(18px);
+}
+.tryon-stage-tools > button {
+  width:100% !important;
+  height:52px !important;
+  border:0 !important;
+  border-radius:17px !important;
+  color:#5d267b !important;
+  background:#f3eafb !important;
+  box-shadow:none !important;
+}
+.tryon-stage-tools > button:first-child { color:#fff !important; background:linear-gradient(145deg,#b72fff,#7211e8) !important; }
+.tryon-angle-picker {
+  position:fixed;
+  z-index:12;
+  top:40%;
+  right:31px;
+  left:auto;
+  width:116px;
+  padding:10px !important;
+  border:1px solid rgba(255,255,255,.82) !important;
+  border-radius:28px !important;
+  background:rgba(255,255,255,.88) !important;
+  box-shadow:0 16px 38px rgba(52,25,64,.16) !important;
+  backdrop-filter:blur(18px);
+}
+.tryon-angle-picker button {
+  min-height:48px;
+  border:1px solid transparent;
+  color:#4d4355 !important;
+  background:#f5effa !important;
+  font-weight:750;
+}
+.tryon-angle-picker button[aria-checked='true'] {
+  border-color:#8d17ea;
+  color:#7111c5 !important;
+  background:#fff !important;
+  box-shadow:0 0 0 3px rgba(157,31,238,.15);
+}
+.tryon-rotate-label {
+  position:absolute;
+  z-index:11;
+  left:50%;
+  bottom:23%;
+  display:flex;
+  align-items:center;
+  gap:22px;
+  color:#7211df;
+  transform:translateX(-50%);
+  text-shadow:0 0 9px #fff,0 0 15px #b62fff;
+}
+.tryon-rotate-label span {
+  display:grid;
+  width:42px;
+  height:42px;
+  place-items:center;
+  border-radius:50%;
+  background:rgba(255,255,255,.92);
+  box-shadow:0 7px 18px rgba(73,31,96,.18);
+}
+.tryon-rotate-label strong { font-size:27px; }
+.tryon-controls {
+  position:absolute;
+  z-index:15;
+  right:28px;
+  bottom:104px;
+  left:28px;
+  max-height:230px;
+  padding:20px 24px;
+  overflow:auto;
+  border:1px solid rgba(255,255,255,.88);
+  border-radius:28px;
+  color:#201628;
+  background:rgba(255,255,255,.9);
+  box-shadow:0 16px 42px rgba(61,27,78,.15);
+  backdrop-filter:blur(22px);
+}
+.tryon-controls > div:first-child {
+  display:grid !important;
+  grid-template-columns:repeat(6,minmax(94px,1fr));
+  gap:12px !important;
+  overflow:visible !important;
+}
+.tryon-controls > div:first-child button {
+  min-height:76px;
+  border:1px solid #e9ddf1 !important;
+  border-radius:18px !important;
+  color:#201628 !important;
+  background:#faf7fd;
+}
+.tryon-controls > div:first-child button[class*='bg-primarySoft'] {
+  border-color:#8f17e8 !important;
+  color:#fff !important;
+  background:linear-gradient(145deg,#b72dff,#7211e8) !important;
+  box-shadow:0 10px 22px rgba(137,24,229,.27) !important;
+}
+.tryon-controls > div:first-child button[class*='bg-primarySoft'] svg { color:#fff !important; }
+.tryon-controls > div:nth-child(2) {
+  flex-wrap:nowrap !important;
+  padding-bottom:4px;
+  overflow-x:auto;
+}
+.tryon-controls > div:nth-child(2) button {
+  min-width:112px;
+  min-height:42px;
+  border-radius:999px;
+  color:#44394d !important;
+  background:#fff;
+}
+.tryon-controls > div:nth-child(2) button[aria-pressed='true'] {
+  color:#fff !important;
+  background:linear-gradient(145deg,#b72dff,#7211e8) !important;
+  box-shadow:0 8px 20px rgba(137,24,229,.24);
+}
+.tryon-bottom-nav {
+  position:absolute;
+  z-index:18;
+  right:28px;
+  bottom:20px;
+  left:28px;
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  align-items:center;
+  height:74px;
+  padding:0 22px;
+  border:1px solid rgba(255,255,255,.9);
+  border-radius:28px;
+  background:rgba(255,255,255,.92);
+  box-shadow:0 15px 38px rgba(55,24,70,.16);
+  backdrop-filter:blur(22px);
+}
+.tryon-bottom-nav a {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  color:#18101f;
+  font-size:12px;
+  font-weight:700;
+}
+.tryon-bottom-nav a:first-child { color:#8f16e9; }
+.tryon-bottom-nav .tryon-bottom-main {
+  justify-self:center;
+  width:68px;
+  height:68px;
+  margin-top:-26px;
+  border:4px solid rgba(255,255,255,.94);
+  border-radius:50%;
+  color:#fff;
+  background:linear-gradient(145deg,#b72dff,#7211e8);
+  box-shadow:0 11px 26px rgba(133,22,223,.34);
+}
+
+@media (max-width:900px) {
+  .tryon-experience { padding:0; }
+  .tryon-workspace { min-height:100dvh; border-radius:0; }
+  .tryon-stage-header { top:24px; }
+  .tryon-stage-brand { font-size:28px; }
+  .tryon-stage > img { top:16% !important; width:72% !important; height:53% !important; }
+  .tryon-stage-tools { left:14px !important; width:74px; padding:9px 7px; }
+  .tryon-angle-picker { right:14px; width:88px; }
+  .tryon-rotate-label { bottom:27%; }
+  .tryon-controls { right:10px; bottom:92px; left:10px; max-height:225px; padding:15px; border-radius:24px; }
+  .tryon-controls > div:first-child { grid-template-columns:repeat(6,94px); overflow-x:auto !important; }
+  .tryon-bottom-nav { right:10px; bottom:8px; left:10px; height:70px; padding:0 8px; border-radius:25px; }
+  .tryon-bottom-nav a { font-size:10px; }
+}

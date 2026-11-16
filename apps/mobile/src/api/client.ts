@@ -209,6 +209,8 @@ export interface RequestOptions {
   /** `POST /orders` uchun majburiy */
   idempotencyKey?: string;
   retried?: boolean;
+  /** Maxsus timeout (ms). Odatiy 25s; komplekt/batch uchun 60s+ oshiriladi. */
+  timeoutMs?: number;
 }
 
 /**
@@ -227,9 +229,12 @@ export interface RequestOptions {
  */
 const REQUEST_TIMEOUT_MS = 25_000;
 
-async function withTimeout(run: (signal: AbortSignal) => Promise<Response>): Promise<Response> {
+async function withTimeout(
+  run: (signal: AbortSignal) => Promise<Response>,
+  timeoutMs: number = REQUEST_TIMEOUT_MS,
+): Promise<Response> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     return await run(controller.signal);
@@ -254,13 +259,14 @@ async function fetchWithRetry(
   input: string,
   init: RequestInit,
   retryable: boolean,
+  timeoutMs?: number,
 ): Promise<Response> {
   try {
-    return await withTimeout((signal) => fetch(input, { ...init, signal }));
+    return await withTimeout((signal) => fetch(input, { ...init, signal }), timeoutMs);
   } catch (err) {
     if (!retryable) throw err;
     await new Promise((resolve) => setTimeout(resolve, RETRY_BACKOFF_MS));
-    return withTimeout((signal) => fetch(input, { ...init, signal }));
+    return withTimeout((signal) => fetch(input, { ...init, signal }), timeoutMs);
   }
 }
 
@@ -282,6 +288,7 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       },
       isIdempotent(method) && !options.idempotencyKey,
+      options.timeoutMs,
     );
   } catch {
     throw new ApiError('NETWORK', 'Internetga ulanib bo`lmadi', 0);

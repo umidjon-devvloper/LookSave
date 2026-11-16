@@ -61,17 +61,39 @@ const SHEET_BACK =
   'camera, the face is NOT visible. Standing straight, arms relaxed at the sides and slightly ' +
   'away from the body, feet shoulder-width apart.';
 
+/*
+ * ⚠️ BOSH O'LCHAMI (so'rovga ko'ra, 2026-11-16). Yuz surati ko'pincha
+ * kameraga yaqin olingan "selfi" — model shu yaqin kadrni gavdaga ko'chirib,
+ * boshni haddan tashqari katta chizib qo'yadi (karikaturaga o'xshaydi).
+ * Yuz FAQAT shaxsni aniqlash uchun; uning yaqin kadri bosh o'lchamiga
+ * ta'sir qilmasligi kerak. Bu matn `bodyLine` orqali IKKALA funksiyaga
+ * (bitta kiyim va komplekt) tushadi.
+ *
+ * ⚠️ Kengaytmadagi nusxa (`apps/browser-extension/src/shared/prompt.ts`
+ * → `bodyLine`) ham shu bilan birga yangilanadi — aks holda qo'lda va
+ * avtomatik natijalar boshqacha chiqadi.
+ */
+const HEAD_PROPORTION =
+  ' HEAD-TO-BODY PROPORTION: render the head at a natural, realistic size for an adult ' +
+  'standing body — a normal adult head is only about one seventh to one eighth of the full ' +
+  'standing height. The reference face photo is often a tight close-up (a selfie) and is used ' +
+  'ONLY to copy the identity — its close framing must NOT enlarge the head. Never render an ' +
+  'oversized, zoomed-in, bobble-head or caricature-like head; keep average, anatomically ' +
+  'correct, well-balanced head-to-body proportions.';
+
 function bodyLine(person: string, measurements: AvatarMeasurements): string {
   const parts: string[] = [];
   if (measurements.height) parts.push(`${Math.round(measurements.height)} cm tall`);
   if (measurements.weight) parts.push(`${Math.round(measurements.weight)} kg`);
   if (measurements.topSize) parts.push(`wears size ${measurements.topSize} tops`);
   if (measurements.bottomSize) parts.push(`wears size ${measurements.bottomSize} trousers`);
-  return parts.length > 0
-    ? `BODY: a ${person}, ${parts.join(', ')} — build a natural, realistic body with exactly ` +
+  const base =
+    parts.length > 0
+      ? `BODY: a ${person}, ${parts.join(', ')} — build a natural, realistic body with exactly ` +
         'these proportions; the garment must drape as their true size would, neither tighter ' +
         'nor looser.'
-    : `BODY: a ${person} of average, healthy build.`;
+      : `BODY: a ${person} of average, healthy build.`;
+  return base + HEAD_PROPORTION;
 }
 
 /**
@@ -96,6 +118,24 @@ export function buildTryonBundleSheetPrompt(
     .map((slot, i) => `IMAGE ${i + 2} (${slot}) ${PLACEMENT[slot] ?? 'in its natural position'}`)
     .join('; ');
 
+  /*
+   * Qatlam tartibi — GPT tez-tez kurtkani "bo'sh" qoldirib, tagdagi kiyim
+   * yenglarini ko'rsatmaydi (qo'llar yo'qoladi). Shuning uchun aniq instruksiya:
+   * avval HAR BIR kiyimni turini tanisin, keyin tabiiy qavatma-qavat kiygizsin.
+   */
+  const hasTop = slots.includes('top');
+  const hasOuter = slots.includes('outer');
+  const layeringNote = hasTop && hasOuter
+    ? 'LAYERING ORDER (very important): the TOP garment (hoodie / sweater / shirt / t-shirt) is ' +
+      'the BASE layer worn first and covers the torso AND the full length of both arms — its ' +
+      'sleeves fill the arms completely. The OUTER garment (jacket / coat / windbreaker) goes ' +
+      'OVER the top garment. The outer jacket\'s sleeves fit OVER the top\'s sleeves, so the ' +
+      'arms are inside both layers. The top garment\'s hood / collar / cuffs / hem may peek ' +
+      'out from under the jacket where natural (hood at the neck, cuffs if the top\'s sleeves ' +
+      'are longer, hem if the top is longer than the jacket). Never show an empty / hollow ' +
+      'jacket sleeve — the arm with the base-layer sleeve is always inside it.'
+    : '';
+
   return [
     'Create ONE single image: a photorealistic fashion turnaround sheet of ONE real person, ' +
       'shown three times side by side.',
@@ -108,11 +148,25 @@ export function buildTryonBundleSheetPrompt(
 
     bodyLine(person, measurements),
 
+    'STEP 1 — RECOGNISE EACH GARMENT BEFORE DRESSING: look at every garment image carefully ' +
+      'and identify its type (t-shirt / hoodie / shirt / sweater / jacket / coat / trousers / ' +
+      'shorts / shoes), sleeve length, hood / collar type, cut and length. Only after you have ' +
+      'identified them, decide the layering order below.',
+
     `CLOTHING — WEAR ALL OF THEM TOGETHER AT ONCE: ${garmentList}. Each garment must be ` +
       'reproduced EXACTLY from its source image (same colour, same pattern, same cut, same ' +
       'details and any printed artwork). On the back view show the back of each garment. ' +
       'Combine them into one complete outfit on one single person — never show the garments ' +
       'separately, never create extra figures, never swap garments between panels.',
+
+    ...(layeringNote ? [layeringNote] : []),
+
+    'ARMS AND HANDS: both arms MUST be visibly filled with the sleeves of EVERY worn layer — ' +
+      'never leave a garment sleeve empty, floating or deflated. Hands are naturally placed ' +
+      '(in trouser pockets for the front pose, relaxed at the sides for the side and back ' +
+      'poses) — hands stay visible and anatomically correct, with fingers clearly resolved, ' +
+      'the correct number of fingers, and natural wrist thickness. If pockets are used, the ' +
+      'wrist still passes cleanly through the outer-layer sleeve.',
 
     'LAYOUT: three equal-width vertical panels in one horizontal row — each panel is exactly one ' +
       'third of the image width. From left to right:',

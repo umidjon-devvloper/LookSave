@@ -15,8 +15,8 @@ import { presignRead, uploadObject } from '../integrations/r2';
 import { makeCutout } from '../store/cutout';
 import { logger } from '../logger';
 import {
+  buildAvatarFrontPrompt,
   buildAvatarPrompt,
-  buildAvatarSheetPrompt,
   missingForAvatar,
   type AvatarAngle,
   type AvatarGender,
@@ -241,12 +241,14 @@ export async function requestAvatar(
     const task = await enqueueTask('avatar', userId, userId, {
       faceUrl: row.face_texture_url,
       /*
-       * ⚠️ OPERATORGA UCH BURCHAKLI VARAQ PROMPTI. Operator bitta rasm
-       * oladi (old · yon · orqa), natija topshirilganda server uni uchga
-       * bo'ladi (`developer-ai/tasks.ts` → `storeAvatarSheet`). Avtomatik
-       * rejim hozircha bitta old ko'rinish yasaydi — `prompt` o'sha uchun.
+       * ⚠️ OPERATORGA HAM FAQAT OLD KO'RINISH (2026-11-11, so'rovga ko'ra).
+       * Ilgari uch burchakli varaq (old · yon · orqa) so'ralardi. Bu matn
+       * panelda ko'rsatiladi va qo'lda nusxalanadi; kengaytma uni
+       * ishlatmaydi — o'z promptini o'lchovlardan tuzadi. Eski varaq
+       * natijasi kelsa server uni baribir uchga bo'la oladi
+       * (`developer-ai/tasks.ts` → `storeAvatarSheet`).
        */
-      prompt: buildAvatarSheetPrompt(row.gender, row.measurements ?? {}),
+      prompt: buildAvatarFrontPrompt(row.gender, row.measurements ?? {}),
       gender: row.gender,
       measurements: row.measurements ?? {},
       storeId,

@@ -26,6 +26,11 @@ export const nearbyQuerySchema = z.object({
    */
   onlyTryon: boolQuery,
   openNow: boolQuery,
+  /**
+   * Do'kon jinsi — Market'da «Erkaklar»/«Ayollar» bo'limi (migratsiya 036).
+   * Berilsa, faqat shu jinsdagi va `both` do'konlar qaytadi.
+   */
+  audience: z.enum(['men', 'women']).optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 

@@ -1,11 +1,11 @@
-import { FittingExperience } from '../../src/components/ai/FittingExperience';
+import { LookRoom } from '../../src/components/ai/LookRoom';
 
 /**
- * AI oqimidagi kiyintirish qadami.
+ * Kiyib ko'rish — bosh sahifadagi AI tugmasidan ochiladigan ekran.
  *
- * Tana `FittingExperience` da — u pastdagi «Kiyib ko'rish» tabi bilan
- * bir xil. Bu yerdagi yagona farq: oqimga orqaga qaytish tugmasi kerak.
+ * Tana `LookRoom` da — u pastdagi markaziy tab bilan bir xil. Bu yerdagi
+ * yagona farq: tab qatori yo'q, shuning uchun orqaga tugmasi kerak.
  */
 export default function FittingScreen(): JSX.Element {
-  return <FittingExperience showBack />;
+  return <LookRoom showBack />;
 }

@@ -20,21 +20,14 @@ export default function AuthLayout(): JSX.Element {
         contentStyle: transparent — ImageBackground status bar ostiga to'liq chiqadi.
         animation: 'slide_from_right' — tabiiy iOS navigatsiya hissi.
       */}
+      {/* Atelier: ekranlar o'z krem fonini chizadi, transparent kerak emas */}
       <Stack.Screen
         name="sign-in"
-        options={{
-          headerShown: false,
-          contentStyle: { backgroundColor: 'transparent' },
-          animation: 'slide_from_right',
-        }}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
       />
       <Stack.Screen
         name="sign-up"
-        options={{
-          headerShown: false,
-          contentStyle: { backgroundColor: 'transparent' },
-          animation: 'slide_from_right',
-        }}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
       />
     </Stack>
   );

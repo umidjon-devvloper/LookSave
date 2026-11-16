@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   Image,
@@ -11,23 +12,29 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
+  type TextInputProps,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GARMENT_STYLES, type GarmentStyle } from '@looksave/validation';
 
 import {
   createStoreProduct,
   getCategories,
+  getMyProduct,
+  updateStoreProduct,
   uploadStoreImage,
   type Category,
 } from '../../src/api/endpoints';
 import { explainError } from '../../src/api/explainError';
-import { Icon } from '../../src/components/Icon';
-import { SellerHeader } from '../../src/components/SellerHeader';
-import { Button, Field, Screen } from '../../src/components/ui';
+import { Icon, type IconName } from '../../src/components/Icon';
+import { Screen } from '../../src/components/ui';
 import { useI18n, type Dictionary } from '../../src/i18n';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 import { goBack } from '../../src/navigation/back';
+
+const SELLER_BAG = require('../../assets/seller-dashboard-bag-v2.png');
 
 /**
  * Yangi mahsulot.
@@ -45,9 +52,13 @@ import { goBack } from '../../src/navigation/back';
  */
 
 /** Kiyim uchun standart o'lchamlar — eng ko'p ishlatiladigani. */
-const SIZE_PRESETS = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+// Kiyim razmerlari (ustki/pastki/ustki qavat) — harf bilan.
+const CLOTHING_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+// Oyoq kiyim razmerlari — SON bilan (EU), harf bilan EMAS (so'rovga ko'ra,
+// 2026-11-16). `feet` slotli kategoriyada shu ro'yxat ko'rsatiladi.
+const SHOE_SIZES = ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'];
 
-const GENDERS: Array<'male' | 'female' | 'unisex'> = ['male', 'female', 'unisex'];
+const GENDERS: Array<'male' | 'female' | 'unisex'> = ['male', 'female'];
 
 /** Daraxtdagi barcha kategoriyalarni yassi ro'yxatga aylantiradi. */
 function flatten(list: Category[]): Category[] {
@@ -79,13 +90,18 @@ export default function NewProduct(): JSX.Element {
    * Aks holda sarlavha soat va batareya ustiga chiqib ketadi.
    */
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const t = useI18n((state) => state.t);
+  // Edit mode — `?id=xxx` orqali kelsa mahsulot ma'lumotlari oldindan to'ldiriladi.
+  // id yo'q bo'lsa oddiy yangi mahsulot formasi.
+  const { id: editId } = useLocalSearchParams<{ id?: string }>();
+  const isEdit = Boolean(editId);
 
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
-  const [gender, setGender] = useState<'male' | 'female' | 'unisex'>('unisex');
+  const [gender, setGender] = useState<'male' | 'female' | 'unisex'>('male');
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [style, setStyle] = useState<GarmentStyle | null>(null);
   /*
@@ -103,10 +119,76 @@ export default function NewProduct(): JSX.Element {
   const categories = useQuery({ queryKey: ['categories'], queryFn: getCategories });
   const options = flatten(categories.data ?? []).filter((item) => item.slot !== null);
 
+  // Tanlangan kategoriya slotiga qarab razmer ro'yxati: oyoq kiyim (`feet`)
+  // → sonli EU, qolgani → harfli (XS–XXL).
+  const selectedSlot = options.find((item) => item.id === categoryId)?.slot ?? null;
+  const sizePresets = selectedSlot === 'feet' ? SHOE_SIZES : CLOTHING_SIZES;
+
+  // Edit mode: mahsulotni serverdan olib, formadagi barcha maydonlarni to'ldiramiz
+  const existing = useQuery({
+    queryKey: ['store', 'product', editId],
+    queryFn: () => getMyProduct(editId!),
+    enabled: isEdit,
+  });
+  useEffect(() => {
+    if (!existing.data) return;
+    const data = existing.data;
+    setTitle(data.title);
+    setPrice(data.price);
+    setDescription(data.description ?? '');
+    setGender(data.gender);
+    setCategoryId(data.categoryId);
+    // Styles are stored in tags array — pick the first known one
+    const knownStyle = (data.tags ?? []).find((tag) =>
+      (GARMENT_STYLES as readonly string[]).includes(tag),
+    ) as GarmentStyle | undefined;
+    setStyle(knownStyle ?? null);
+    // Images: null-padded to 3 slots
+    const padded: (string | null)[] = [null, null, null];
+    data.images.slice(0, 3).forEach((url, idx) => {
+      padded[idx] = url;
+    });
+    setImages(padded);
+    // Sizes: variantlardan birinchisining o'lchamlari
+    const firstVariant = data.variants[0];
+    if (firstVariant) {
+      const next: Record<string, string> = {};
+      firstVariant.sizes.forEach((s) => {
+        next[s.size] = String(s.stock);
+      });
+      setSizes(next);
+    }
+  }, [existing.data]);
+
   const create = useMutation({
     mutationFn: createStoreProduct,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['store', 'products'] });
+      router.replace('/seller/products');
+    },
+    onError: (err) => setError(explainError(err, t)),
+  });
+
+  // Edit mode uchun — faqat asosiy maydonlar yangilanadi (variantlar/o'lchamlar
+  // alohida `updateVariantStock` orqali). Shu bois formadagi size ro'yxati
+  // edit holatida faqat ko'rsatma — qoldiq alohida ekrandan tahrirlanadi.
+  const update = useMutation({
+    mutationFn: (status: 'draft' | 'pending') => {
+      const filledImages = images.filter((item): item is string => Boolean(item));
+      return updateStoreProduct(editId!, {
+        title: title.trim(),
+        ...(description.trim() ? { description: description.trim() } : {}),
+        categoryId: categoryId!,
+        gender,
+        basePrice: Number(price).toFixed(2),
+        tags: style ? [style] : [],
+        images: filledImages,
+        status,
+      });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['store', 'products'] });
+      await queryClient.invalidateQueries({ queryKey: ['store', 'product', editId] });
       router.replace('/seller/products');
     },
     onError: (err) => setError(explainError(err, t)),
@@ -199,6 +281,12 @@ export default function NewProduct(): JSX.Element {
       return setError(t.seller.err3Images);
     }
 
+    // Edit mode: variantlar alohida tahrirlanadi, bu yerda faqat asosiy maydon
+    if (isEdit) {
+      update.mutate(status);
+      return;
+    }
+
     create.mutate({
       title: title.trim(),
       ...(description.trim() ? { description: description.trim() } : {}),
@@ -228,21 +316,53 @@ export default function NewProduct(): JSX.Element {
 
   return (
     <Screen>
-      <SellerHeader
-        title={t.seller.newTitle}
-        subtitle={t.seller.newSubtitle}
-        onBack={() => goBack('/seller/products')}
-      />
-
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.sm }]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.topbar}>
+            <Pressable style={styles.roundButton} onPress={() => goBack('/seller/products')}>
+              <Icon name="back" size={25} color={colors.text} />
+            </Pressable>
+            <Text style={styles.wordmark} numberOfLines={1}>
+              LOOK<Text style={styles.wordmarkAccent}>SAVE</Text>
+              <Text style={styles.wordmarkSeller}> · SELLER</Text>
+            </Text>
+            <View style={styles.headerSpacer} />
+          </View>
+
+          <View style={styles.hero}>
+            <View style={styles.heroCopy}>
+              <Text style={styles.heroTitle}>
+                {isEdit ? 'Mahsulotni tahrirlash' : t.seller.newTitle}
+              </Text>
+              <Text style={styles.heroSubtitle}>
+                {isEdit ? "Ma'lumotlarni yangilash" : t.seller.newSubtitle}
+              </Text>
+            </View>
+            <View style={styles.heroBagWrap}>
+              <Image source={SELLER_BAG} style={styles.heroBag} resizeMode="contain" />
+              <View style={styles.heroPlus}>
+                <Text style={styles.heroPlusText}>+</Text>
+              </View>
+            </View>
+          </View>
+
           {/* Rasmlar */}
-          <Text style={styles.label}>{t.seller.imagesLabel}</Text>
-          <Text style={styles.hint}>{t.seller.imagesHint}</Text>
-          {/*
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHead}>
+              <Icon name="compare" size={22} color={colors.primary} />
+              <View style={styles.sectionHeadCopy}>
+                <Text style={styles.sectionTitle}>{t.seller.imagesLabel}</Text>
+                <Text style={styles.hint}>{t.seller.imagesHint}</Text>
+              </View>
+            </View>
+            {/*
             ⚠️ UCHTA BELGILANGAN UYACHA, umumiy gallereya EMAS.
 
             Ilgari oddiy massiv edi: sotuvchi uchta rasm qo'yardi, lekin
@@ -252,60 +372,63 @@ export default function NewProduct(): JSX.Element {
 
             Tartib `GARMENT_ANGLE_ORDER` bilan bir xil: old, orqa, yon.
           */}
-          <View style={styles.images}>
-            {IMAGE_SLOT_KEYS.map((slotKey, index) => {
-              const url = images[index];
-              const slotLabel = t.seller[slotKey];
-              return (
-                <View key={slotKey} style={styles.imageWrap}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={slotLabel}
-                    onPress={() => void pickImage(index)}
-                    disabled={uploading}
-                    style={styles.imageAdd}
-                  >
-                    {url ? (
-                      <Image source={{ uri: url }} style={styles.image} resizeMode="cover" />
-                    ) : (
-                      <Icon
-                        name="camera"
-                        size={22}
-                        color={uploading ? colors.textDim : colors.accent}
-                      />
-                    )}
-                  </Pressable>
-
-                  {url ? (
+            <View style={styles.images}>
+              {IMAGE_SLOT_KEYS.map((slotKey, index) => {
+                const url = images[index];
+                const slotLabel = t.seller[slotKey];
+                return (
+                  <View key={slotKey} style={styles.imageWrap}>
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel={slotLabel}
-                      onPress={() =>
-                        setImages((current) => {
-                          const next = [...current];
-                          next[index] = null;
-                          return next;
-                        })
-                      }
-                      style={styles.imageRemove}
+                      onPress={() => void pickImage(index)}
+                      disabled={uploading}
+                      style={styles.imageAdd}
                     >
-                      <Icon name="close" size={12} color={colors.text} />
+                      {url ? (
+                        <Image source={{ uri: url }} style={styles.image} resizeMode="cover" />
+                      ) : (
+                        <Icon
+                          name="camera"
+                          size={22}
+                          color={uploading ? colors.textDim : colors.accent}
+                        />
+                      )}
                     </Pressable>
-                  ) : null}
 
-                  <Text style={styles.slotLabel}>{slotLabel}</Text>
-                </View>
-              );
-            })}
+                    {url ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={slotLabel}
+                        onPress={() =>
+                          setImages((current) => {
+                            const next = [...current];
+                            next[index] = null;
+                            return next;
+                          })
+                        }
+                        style={styles.imageRemove}
+                      >
+                        <Icon name="close" size={12} color={colors.text} />
+                      </Pressable>
+                    ) : null}
+
+                    <Text style={styles.slotLabel}>{slotLabel}</Text>
+                  </View>
+                );
+              })}
+            </View>
           </View>
 
-          <Field
+          <ProductField
+            icon="limited"
             label={t.seller.nameLabel}
             value={title}
             onChangeText={setTitle}
             placeholder={t.seller.phProductName}
           />
-          <Field
+          <ProductField
+            icon="orders"
             label={t.seller.priceField}
             value={price}
             onChangeText={(value) => setPrice(value.replace(/[^0-9.]/g, ''))}
@@ -314,98 +437,135 @@ export default function NewProduct(): JSX.Element {
           />
 
           {/* Kategoriya */}
-          <Text style={styles.label}>{t.seller.categoryLabel}</Text>
-          <View style={styles.chips}>
-            {options.map((item) => (
-              <Pressable
-                key={item.id}
-                accessibilityRole="button"
-                onPress={() => setCategoryId(item.id)}
-                style={[styles.chip, categoryId === item.id && styles.chipActive]}
-              >
-                <Text style={[styles.chipText, categoryId === item.id && { color: colors.text }]}>
-                  {item.name}
-                </Text>
-              </Pressable>
-            ))}
+          <View style={styles.sectionCard}>
+            <View style={styles.inlineTitle}>
+              <Icon name="looks" size={22} color={colors.primary} />
+              <Text style={styles.sectionTitle}>{t.seller.categoryLabel}</Text>
+            </View>
+            <View style={styles.chips}>
+              {options.map((item) => (
+                <Pressable
+                  key={item.id}
+                  accessibilityRole="button"
+                  onPress={() => {
+                    // Oyoq kiyim ↔ kiyim orasida almashsa, razmer turi
+                    // o'zgaradi (son ↔ harf) — eski tanlovni tozalaymiz.
+                    if ((item.slot === 'feet') !== (selectedSlot === 'feet')) setSizes({});
+                    setCategoryId(item.id);
+                  }}
+                  style={[styles.chip, categoryId === item.id && styles.chipActive]}
+                >
+                  <Text style={[styles.chipText, categoryId === item.id && { color: colors.text }]}>
+                    {item.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
 
           {/* Jins */}
-          <Text style={styles.label}>{t.seller.genderLabel}</Text>
-          <View style={styles.chips}>
-            {GENDERS.map((key) => {
-              const label =
-                key === 'male' ? t.avatar.male : key === 'female' ? t.avatar.female : t.seller.unisex;
-              return (
-                <Pressable
-                  key={key}
-                  accessibilityRole="button"
-                  onPress={() => setGender(key)}
-                  style={[styles.chip, gender === key && styles.chipActive]}
-                >
-                  <Text style={[styles.chipText, gender === key && { color: colors.text }]}>
-                    {label}
-                  </Text>
-                </Pressable>
-              );
-            })}
+          <View style={styles.sectionCard}>
+            <View style={styles.inlineTitle}>
+              <Icon name="profile" size={22} color={colors.primary} />
+              <Text style={styles.sectionTitle}>{t.seller.genderLabel}</Text>
+            </View>
+            <View style={styles.chips}>
+              {GENDERS.map((key) => {
+                const label =
+                  key === 'male'
+                    ? t.avatar.male
+                    : key === 'female'
+                      ? t.avatar.female
+                      : t.seller.unisex;
+                return (
+                  <Pressable
+                    key={key}
+                    accessibilityRole="button"
+                    onPress={() => setGender(key)}
+                    style={[styles.chip, gender === key && styles.chipActive]}
+                  >
+                    <Text style={[styles.chipText, gender === key && { color: colors.text }]}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
 
           {/* Uslub */}
-          <Text style={styles.label}>{t.ai.styleLabel}</Text>
-          <Text style={styles.hint}>{t.seller.styleHint}</Text>
-          <View style={styles.chips}>
-            {GARMENT_STYLES.map((item) => (
-              <Pressable
-                key={item}
-                accessibilityRole="button"
-                // Qayta bosilsa bekor bo'ladi — uslub majburiy emas
-                onPress={() => setStyle((current) => (current === item ? null : item))}
-                style={[styles.chip, style === item && styles.chipActive]}
-              >
-                <Text style={[styles.chipText, style === item && { color: colors.text }]}>
-                  {t.seller[STYLE_LABEL[item]]}
-                </Text>
-              </Pressable>
-            ))}
+          <View style={styles.sectionCard}>
+            <View style={styles.inlineTitle}>
+              <Icon name="logo" size={22} color={colors.primary} />
+              <View>
+                <Text style={styles.sectionTitle}>{t.ai.styleLabel}</Text>
+                <Text style={styles.hint}>{t.seller.styleHint}</Text>
+              </View>
+            </View>
+            <View style={styles.chips}>
+              {GARMENT_STYLES.map((item) => (
+                <Pressable
+                  key={item}
+                  accessibilityRole="button"
+                  // Qayta bosilsa bekor bo'ladi — uslub majburiy emas
+                  onPress={() => setStyle((current) => (current === item ? null : item))}
+                  style={[styles.chip, style === item && styles.chipActive]}
+                >
+                  <Text style={[styles.chipText, style === item && { color: colors.text }]}>
+                    {t.seller[STYLE_LABEL[item]]}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
 
           {/* O'lchamlar */}
-          <Text style={styles.label}>{t.seller.sizesLabel}</Text>
-          <View style={styles.chips}>
-            {SIZE_PRESETS.map((size) => (
-              <Pressable
-                key={size}
-                accessibilityRole="button"
-                onPress={() => toggleSize(size)}
-                style={[styles.chip, size in sizes && styles.chipActive]}
-              >
-                <Text style={[styles.chipText, size in sizes && { color: colors.text }]}>
-                  {size}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          {Object.keys(sizes).length > 0 ? (
-            <View style={styles.stockList}>
-              {Object.keys(sizes).map((size) => (
-                <View key={size} style={styles.stockRow}>
-                  <Text style={styles.stockSize}>{size}</Text>
-                  <Field
-                    value={sizes[size] ?? ''}
-                    onChangeText={(value) =>
-                      setSizes((current) => ({ ...current, [size]: value.replace(/[^0-9]/g, '') }))
-                    }
-                    keyboardType="number-pad"
-                    placeholder={t.seller.phPcs}
-                  />
-                </View>
+          <View style={styles.sectionCard}>
+            <View style={styles.inlineTitle}>
+              <Icon name="slotTop" size={22} color={colors.primary} />
+              <Text style={styles.sectionTitle}>{t.seller.sizesLabel}</Text>
+            </View>
+            <View style={styles.chips}>
+              {sizePresets.map((size) => (
+                <Pressable
+                  key={size}
+                  accessibilityRole="button"
+                  onPress={() => toggleSize(size)}
+                  style={[styles.chip, size in sizes && styles.chipActive]}
+                >
+                  <Text style={[styles.chipText, size in sizes && { color: colors.text }]}>
+                    {size}
+                  </Text>
+                </Pressable>
               ))}
             </View>
-          ) : null}
 
-          <Field
+            {Object.keys(sizes).length > 0 ? (
+              <View style={styles.stockList}>
+                {Object.keys(sizes).map((size) => (
+                  <View key={size} style={styles.stockRow}>
+                    <Text style={styles.stockSize}>{size}</Text>
+                    <TextInput
+                      value={sizes[size] ?? ''}
+                      onChangeText={(value) =>
+                        setSizes((current) => ({
+                          ...current,
+                          [size]: value.replace(/[^0-9]/g, ''),
+                        }))
+                      }
+                      keyboardType="number-pad"
+                      placeholder={t.seller.phPcs}
+                      placeholderTextColor={colors.textDim}
+                      style={styles.stockInput}
+                    />
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </View>
+
+          <ProductField
+            icon="list"
             label={t.seller.descLabel}
             value={description}
             onChangeText={setDescription}
@@ -416,17 +576,27 @@ export default function NewProduct(): JSX.Element {
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <View style={styles.actions}>
-            <Button
-              title={t.seller.submitReview}
+            <Pressable
+              disabled={create.isPending || update.isPending}
               onPress={() => submit('pending')}
-              loading={create.isPending}
-            />
-            <Button
-              title={t.seller.saveDraft}
-              variant="ghost"
+            >
+              <LinearGradient
+                colors={[colors.accent, colors.primaryDim]}
+                style={styles.submitButton}
+              >
+                <View style={styles.submitIcon}>
+                  <Text style={styles.submitIconText}>+</Text>
+                </View>
+                <Text style={styles.submitText}>{isEdit ? 'Saqlash' : t.seller.submitReview}</Text>
+              </LinearGradient>
+            </Pressable>
+            <Pressable
+              disabled={create.isPending || update.isPending}
               onPress={() => submit('draft')}
-              disabled={create.isPending}
-            />
+              style={styles.draftButton}
+            >
+              <Text style={styles.draftText}>{t.seller.saveDraft}</Text>
+            </Pressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -434,18 +604,139 @@ export default function NewProduct(): JSX.Element {
   );
 }
 
+function ProductField({
+  icon,
+  label,
+  multiline,
+  ...props
+}: TextInputProps & { icon: IconName; label: string }): JSX.Element {
+  return (
+    <View style={styles.fieldCard}>
+      <View style={styles.inlineTitle}>
+        <Icon name={icon} size={22} color={colors.primary} />
+        <Text style={styles.sectionTitle}>{label}</Text>
+      </View>
+      <TextInput
+        {...props}
+        multiline={multiline}
+        placeholderTextColor={colors.textDim}
+        style={[styles.fieldInput, multiline && styles.fieldInputMultiline]}
+      />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  content: { paddingHorizontal: spacing.md, paddingBottom: 126, gap: 12 },
+  topbar: {
+    height: 60,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  roundButton: {
+    width: 46,
+    height: 46,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderWidth: 1,
+    borderColor: '#E8DFF7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#6D28D9',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+  },
+  headerSpacer: { width: 46 },
+  wordmark: {
+    ...text.bodyMed,
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+  },
+  wordmarkAccent: { color: colors.accent },
+  wordmarkSeller: { color: colors.textMuted, fontWeight: '600' },
+  hero: { height: 128, justifyContent: 'center', overflow: 'hidden' },
+  heroCopy: { zIndex: 2, maxWidth: '65%' },
+  heroTitle: { ...text.h1, color: colors.text, fontSize: 31, lineHeight: 37 },
+  heroSubtitle: { ...text.body, color: colors.textMuted, marginTop: 3 },
+  heroBagWrap: { position: 'absolute', right: -4, top: -12, width: 145, height: 145 },
+  heroBag: { width: 145, height: 145 },
+  heroPlus: {
+    position: 'absolute',
+    right: 28,
+    top: 50,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: colors.accent,
+    borderWidth: 2,
+    borderColor: '#DDBBFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroPlusText: { color: colors.textOnPrimary, fontSize: 30, lineHeight: 31 },
+  sectionCard: {
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    borderWidth: 1,
+    borderColor: '#E5D8F6',
+    borderRadius: radius.xl,
+    padding: spacing.md,
+    shadowColor: '#6D28D9',
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 7 },
+  },
+  fieldCard: {
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    borderWidth: 1,
+    borderColor: '#E5D8F6',
+    borderRadius: radius.xl,
+    padding: 12,
+    shadowColor: '#6D28D9',
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+  },
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    marginBottom: 12,
+  },
+  sectionHeadCopy: { flex: 1 },
+  inlineTitle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  sectionTitle: { ...text.h3, color: colors.text, fontWeight: '700' },
+  hint: { ...text.tiny, color: colors.textMuted, marginTop: 2 },
+  fieldInput: {
+    minHeight: 44,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: '#DCCEF0',
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    paddingHorizontal: 13,
+    ...text.body,
+    color: colors.text,
+  },
+  fieldInputMultiline: {
+    minHeight: 66,
+    borderRadius: radius.md,
+    paddingTop: 10,
+    textAlignVertical: 'top',
+  },
 
-  content: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.xs },
-
-  label: { ...text.label, color: colors.textDim, marginTop: spacing.md },
-  hint: { ...text.tiny, color: colors.textDim, marginBottom: spacing.xs },
-
-  images: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
+  images: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm },
   imageWrap: { position: 'relative', alignItems: 'center', gap: spacing.xs },
-  slotLabel: { ...text.tiny, color: colors.textMuted },
-  image: { width: 84, height: 84, borderRadius: radius.md, backgroundColor: colors.surface2 },
+  slotLabel: { ...text.small, color: colors.text },
+  image: { width: 90, height: 92, borderRadius: radius.lg, backgroundColor: colors.surface2 },
   imageRemove: {
     position: 'absolute',
     top: -6,
@@ -453,36 +744,73 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: radius.pill,
-    backgroundColor: colors.danger,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
   imageAdd: {
-    width: 84,
-    height: 84,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    width: 90,
+    height: 92,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
     borderStyle: 'dashed',
     borderColor: colors.borderStrong,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.sm },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    minWidth: 66,
+    paddingHorizontal: 13,
+    paddingVertical: 6,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#DCCEF0',
+    alignItems: 'center',
   },
-  chipActive: { borderColor: colors.borderAccent, backgroundColor: colors.primarySoft },
+  chipActive: { borderColor: colors.primary, backgroundColor: '#F0E3FF' },
   chipText: { ...text.small, color: colors.textMuted },
 
   stockList: { gap: 0, marginBottom: spacing.sm },
-  stockRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  stockRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.sm },
   stockSize: { ...text.bodyMed, color: colors.text, width: 44 },
+  stockInput: {
+    width: 92,
+    height: 42,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: '#DCCEF0',
+    backgroundColor: colors.surface2,
+    textAlign: 'center',
+    ...text.bodyMed,
+    color: colors.text,
+  },
 
   error: { ...text.small, color: colors.danger, marginBottom: spacing.sm },
   actions: { gap: spacing.sm, marginTop: spacing.md },
+  submitButton: {
+    height: 58,
+    borderRadius: radius.pill,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.25,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 9 },
+  },
+  submitIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  submitIconText: { color: colors.textOnPrimary, fontSize: 27, lineHeight: 29 },
+  submitText: { ...text.h3, color: colors.textOnPrimary },
+  draftButton: { height: 44, alignItems: 'center', justifyContent: 'center' },
+  draftText: { ...text.bodyMed, color: colors.primary },
 });

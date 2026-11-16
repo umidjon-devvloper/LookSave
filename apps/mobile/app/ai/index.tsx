@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HologramFigure } from '../../src/components/ai/HologramFigure';
 import { Icon, type IconName } from '../../src/components/Icon';
-import { Button } from '../../src/components/ui';
 import { useI18n } from '../../src/i18n';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 import { MOODS, OCCASIONS, STYLES, useAiFlowStore } from '../../src/store/aiFlowStore';
@@ -13,33 +12,22 @@ import { goBack } from '../../src/navigation/back';
 /**
  * AI Designer — oqimning kirish ekrani.
  *
- * Butun ekran bitta gologramma rasmiga qurilgan: unda tadbir/uslub/kayfiyat
- * kartalari va kiyim plitkalari ham bor, shuning uchun ular alohida
- * chizilmaydi.
+ * ⚠️ BU EKRAN DARK ATELIER. Qolgan ilova krem; AI oqimi esa moda
+ * studiyasining "chiroqlar o'chdi, oyna nurlanmoqda" momenti. Hologramma
+ * PNG'i qora fonda, uning atrofida ham qora kerak — brend foni emas.
  *
- * ⚠️ TANLOV ENDI BU YERDA YO'Q. Ilgari uchta bosiladigan karta bor edi,
- * lekin ular rasmdagilar bilan takrorlanardi. Hozir `aiFlowStore` dagi
- * qiymatlar SUKUT bo'yicha qoladi (`Kundalik`, `Smart Casual`, `Ishonchli`)
- * va ular komplekt nomida hamda kiyim filtrida ishlatiladi.
- *
- * Foydalanuvchiga tanlash imkonini qaytarish kerak bo'lsa — uni avatar
- * oqimiga qadam qilib qo'shish mantiqiyroq, bu ekranni yana to'ldirmasdan.
- *
- * ⚠️ Scroll yo'q: hamma narsa bitta ekranga sig'adi, rasm esa qolgan bo'sh
- * joyni egallab kichrayadi.
+ * Tanlov endi bu yerda — bosilgan sari keyingi qiymatga o'tadi.
  */
 
-/** Ikonkalar — matni i18n'dan render paytida qo'shiladi (`how1..how3`). */
 const HOW_ICONS: IconName[] = ['looks', 'tryon', 'favorite'];
 
-/**
- * Bitta tanlov qatori — bosilganda keyingi qiymatga o'tadi.
- *
- * ⚠️ RO'YXAT EMAS, AYLANTIRISH. Har tanlov uchun pastdan chiqadigan
- * panel ochish uch marta bosishni talab qilardi va oqim cho'zilardi.
- * Variantlar oz (4–5 ta), shuning uchun bosgan sari keyingisiga o'tadi —
- * joriy qiymat doim ko'rinib turadi.
- */
+// AI sub-oqimidagi iliq qora palette — brend foni (#0A0A0F) va PNG (#000000)
+// o'rtasida. Qora-qoraga aralashadi, lekin cream matn ustida iliqroq.
+const INK = '#000000';
+const INK_WARM = '#0A0906';
+const INK_LINE = 'rgba(247,242,234,0.12)';
+const INK_SOFT = 'rgba(247,242,234,0.06)';
+
 function Choice<T extends string>({
   label,
   value,
@@ -89,8 +77,6 @@ export default function AiDesigner(): JSX.Element {
 
   return (
     <View style={styles.root}>
-      {/* Scroll yo'q: hamma narsa bitta ekranga sig'adi, rasm esa qolgan
-          bo'sh joyni egallab kichrayadi */}
       <View
         style={[
           styles.content,
@@ -104,32 +90,29 @@ export default function AiDesigner(): JSX.Element {
           hitSlop={10}
           style={styles.close}
         >
-          <Icon name="close" size={20} color={colors.textMuted} />
+          <Icon name="close" size={18} color={colors.textOnPrimary} />
         </Pressable>
 
-        <Text style={styles.title}>
-          <Text style={styles.titleAccent}>AI</Text> DESIGNER
-        </Text>
+        {/* Eyebrow (italic serif) + sarlavha (Fraunces hero). "AI DESIGNER"
+            ALL CAPS o'rniga — editorial moda jurnali boshi. */}
+        <Text style={styles.eyebrow}>Atelye · AI Mirror</Text>
+        <Text style={styles.title}>Kiyinish kechasi</Text>
         <Text style={styles.subtitle}>{t.ai.subtitle}</Text>
 
         <Text style={styles.lead}>{t.ai.lead}</Text>
 
-        {/*
-          Gologramma to'liq ko'rsatiladi — rasm ichida kartalar va kiyim
-          plitkalari ham bor, shuning uchun ular alohida chizilmaydi.
-        */}
         <View style={styles.figure}>
           <HologramFigure />
         </View>
 
-        {/* Qanday ishlaydi */}
+        {/* Qanday ishlaydi — ingichka chiziqli uch qadam */}
         <View style={styles.howCard}>
           <Text style={styles.howTitle}>{t.ai.howTitle}</Text>
           <View style={styles.howRow}>
             {howItWorks.map((step, index) => (
               <View key={step.title} style={styles.howStep}>
                 <View style={styles.howIcon}>
-                  <Icon name={step.icon} size={18} color={colors.accent} />
+                  <Icon name={step.icon} size={16} color={colors.primary} />
                 </View>
                 <Text style={styles.howText}>
                   {index + 1}. {step.title}
@@ -139,89 +122,75 @@ export default function AiDesigner(): JSX.Element {
           </View>
         </View>
 
-        {/*
-          ⚠️ 3D OQIMIGA EMAS, SURAT OQIMIGA. Ilgari bu tugma `/ai/avatar`
-          ga — 3D maneken yasash qadamlariga olib borardi. Undan voz
-          kechildi: maneken "realistik" darajaga chiqmasdi, chunki buning
-          uchun o'n minglab uchburchakli model, teri ostidan yorug'lik
-          o'tishi va haqiqiy soch kerak.
-
-          Yangi yo'lda foydalanuvchi qadamlardan o'tadi (jins, o'lchovlar,
-          oyoq, do'kon), oxirida yuzini skaner qiladi va AI qolgan gavdani
-          o'lchovlardan yasaydi.
-
-          ⚠️ TO'LIQ BO'YLI SURAT SO'RALMAYDI: buning uchun joy, oyna va
-          ko'pincha boshqa odamning yordami kerak — ko'p foydalanuvchi shu
-          yerda to'xtardi. Selfi esa hammaga qulay.
-        */}
-        {/*
-          Tanlovlar — maketdagi OCCASION / STYLE / MOOD kartalari.
-
-          ⚠️ ULAR QAYTA TIKLANDI. Bir vaqtlar olib tashlangan edi
-          («gologramma rasmida ular allaqachon bor») — lekin rasmdagilari
-          BEZAK, bosib bo'lmaydi. Natijada `aiFlowStore` dagi qiymatlar
-          sukut bo'yicha qolib ketardi va AI hammaga bir xil komplekt
-          taklif qilardi. Deckning va'dasi esa aynan shu: «user shares
-          the occasion».
-        */}
         <View style={styles.choices}>
           <Choice label={t.ai.occasionLabel} value={occasion} options={OCCASIONS} onPick={setOccasion} />
           <Choice label={t.ai.styleLabel} value={style} options={STYLES} onPick={setStyle} />
           <Choice label={t.ai.moodLabel} value={mood} options={MOODS} onPick={setMood} />
         </View>
 
-        <View style={styles.cta}>
-          <Button title={t.ai.makeOutfit} onPress={() => router.push('/ai/look')} />
-        </View>
+        {/* Solid anor pill — AI oqimi uchun ham bir xil CTA uslubi */}
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/ai/look')}
+          style={({ pressed }) => [
+            styles.cta,
+            pressed && { backgroundColor: colors.primaryDim },
+          ]}
+        >
+          <Text style={styles.ctaText}>{t.ai.makeOutfit}</Text>
+          <View style={styles.ctaArrow}>
+            <Icon name="next" size={18} color={colors.textOnPrimary} />
+          </View>
+        </Pressable>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  choices: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.md },
-  choice: {
-    flex: 1,
-    gap: 2,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: 'rgba(10, 10, 15, 0.72)',
-  },
-  choiceLabel: { ...text.tiny, color: colors.textDim },
-  choiceValue: { ...text.bodyMed, color: colors.text },
-
-  /*
-   * Sof qora — brend foni `#0A0A0F` emas. Sabab: gologramma rasmi shaffof
-   * emas va uning foni `#000000`. Ranglar bir xil bo'lmasa rasm atrofida
-   * to'rtburchak chekka ko'rinadi.
-   */
-  root: { flex: 1, backgroundColor: '#000000' },
+  // Qora — hologramma PNG'ining aynan foniga mos
+  root: { flex: 1, backgroundColor: INK },
   content: { flex: 1, paddingHorizontal: spacing.md, gap: spacing.xs },
-  close: { alignSelf: 'flex-start', padding: spacing.xs, marginBottom: spacing.xs },
+  close: {
+    alignSelf: 'flex-start',
+    width: 40,
+    height: 40,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: INK_LINE,
+    backgroundColor: INK_SOFT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
+  },
 
-  title: { ...text.h1, color: colors.text, textAlign: 'center', letterSpacing: 0.5 },
-  titleAccent: { color: colors.accent },
-  subtitle: { ...text.bodyMed, color: colors.textMuted, textAlign: 'center' },
+  eyebrow: {
+    ...text.eyebrow,
+    color: colors.primary,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+  },
+  // Sarlavha — Fraunces hero, cream ustida qora (chunki fon qora)
+  title: {
+    ...text.hero,
+    color: colors.textOnPrimary,
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  subtitle: {
+    ...text.body,
+    color: 'rgba(247,242,234,0.65)',
+    textAlign: 'center',
+    marginTop: spacing.xs,
+  },
   lead: {
     ...text.small,
-    color: colors.textDim,
+    color: 'rgba(247,242,234,0.45)',
     textAlign: 'center',
     marginTop: spacing.xs,
     paddingHorizontal: spacing.md,
   },
 
-  /*
-   * ⚠️ `flex: 1` SHART. Rasm ham `flex: 1` bilan chiziladi — konteynerda
-   * balandlik bo'lmasa u nolga siqiladi va umuman ko'rinmaydi. Xato jimgina
-   * yuz beradi: rasm yuklanadi, joylashuv "ishlaydi", faqat ekranda hech
-   * narsa yo'q.
-   *
-   * Manfiy chekka — `content` dagi yon bo'shliqni bekor qiladi, shunda
-   * gologramma ekran chetidan chetiga to'liq yoyiladi.
-   */
   figure: {
     flex: 1,
     alignItems: 'center',
@@ -229,33 +198,78 @@ const styles = StyleSheet.create({
     marginHorizontal: -spacing.md,
   },
 
+  // Dark Atelier karta — hair-thin cream chegara, shaffof ichki fon
   howCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    backgroundColor: INK_SOFT,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: INK_LINE,
     padding: spacing.md,
     marginTop: spacing.md,
   },
   howTitle: {
-    ...text.h3,
-    color: colors.accent,
+    ...text.eyebrow,
+    color: colors.primary,
     textAlign: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   howRow: { flexDirection: 'row', gap: spacing.sm },
   howStep: { flex: 1, alignItems: 'center', gap: spacing.xs },
   howIcon: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     borderRadius: radius.pill,
-    backgroundColor: colors.surface2,
+    backgroundColor: INK_WARM,
+    borderWidth: 1,
+    borderColor: INK_LINE,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  howText: { ...text.tiny, color: colors.textMuted, textAlign: 'center' },
+  howText: {
+    ...text.tiny,
+    color: 'rgba(247,242,234,0.7)',
+    textAlign: 'center',
+  },
 
-  cta: { marginTop: spacing.lg },
+  choices: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: 0,
+    marginTop: spacing.md,
+  },
+  choice: {
+    flex: 1,
+    gap: 2,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: INK_LINE,
+    backgroundColor: INK_SOFT,
+  },
+  choiceLabel: {
+    ...text.eyebrow,
+    color: 'rgba(247,242,234,0.5)',
+  },
+  choiceValue: { ...text.bodyMed, color: colors.textOnPrimary },
 
-  // ⚠️ Faqat dev — `__DEV__` bilan o'ralgan
+  cta: {
+    height: 56,
+    borderRadius: radius.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    marginTop: spacing.lg,
+    paddingLeft: spacing.lg,
+    paddingRight: spacing.sm,
+  },
+  ctaText: { ...text.bodyMed, color: colors.textOnPrimary, flex: 1, textAlign: 'center' },
+  ctaArrow: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primaryDim,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

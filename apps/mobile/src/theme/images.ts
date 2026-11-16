@@ -27,11 +27,11 @@ import type { ImageSourcePropType } from 'react-native';
 export const images = {
   /** "LS" belgisi — qora foni shaffofga aylantirilgan (sarlavha va splash uchun) */
   logoMark: require('../../assets/logo-mark.png') as ImageSourcePropType,
-  heroHome: require('../../assets/hero-home.jpg') as ImageSourcePropType,
+  heroHome: require('../../assets/hero-home-v2.png') as ImageSourcePropType,
   /** AI Designer kirish ekranidagi gologramma — markaziy figura kesib olinadi */
   aiHologram: require('../../assets/3d-person.jpg') as ImageSourcePropType,
-  heroMarket: require('../../assets/hero-market.jpg') as ImageSourcePropType,
-  collectionMen: require('../../assets/collection-men.jpg') as ImageSourcePropType,
-  collectionWomen: require('../../assets/collection-women.jpg') as ImageSourcePropType,
-  collectionLimited: require('../../assets/collection-limited.jpg') as ImageSourcePropType,
+  heroMarket: require('../../assets/hero-market-v2.jpg') as ImageSourcePropType,
+  collectionMen: require('../../assets/collection-men-v2.jpg') as ImageSourcePropType,
+  collectionWomen: require('../../assets/collection-women-v2.jpg') as ImageSourcePropType,
+  collectionLimited: require('../../assets/collection-limited-v2.jpg') as ImageSourcePropType,
 } as const;

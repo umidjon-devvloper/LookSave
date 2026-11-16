@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getFavorites, removeFavorite } from '../src/api/endpoints';
-import { Empty, ErrorView, Screen } from '../src/components/ui';
+import { Button, Empty, ErrorView, Screen } from '../src/components/ui';
 import { SignInRequired } from '../src/components/SignInRequired';
 import { SkeletonGrid } from '../src/components/Skeleton';
 import { useI18n } from '../src/i18n';
@@ -63,7 +63,19 @@ export default function Favorites(): JSX.Element {
         contentContainerStyle={styles.list}
         refreshing={favorites.isFetching}
         onRefresh={() => void favorites.refetch()}
-        ListEmptyComponent={<Empty title={t.favorites.emptyTitle} hint={t.favorites.emptyHint} />}
+        ListEmptyComponent={
+          <Empty
+            title={t.favorites.emptyTitle}
+            hint={t.favorites.emptyHint}
+            icon="favorite"
+            action={
+              <Button
+                title={t.home.marketplace}
+                onPress={() => router.push('/(tabs)/marketplace')}
+              />
+            }
+          />
+        }
         renderItem={({ item }) => (
           <Pressable
             style={styles.row}

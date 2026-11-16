@@ -260,6 +260,20 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
    * BITTA kiyimni darhol kiyintiradi — bu Flow buzilmaydi.
    */
   const [bundleSelection, setBundleSelection] = useState<Set<string>>(() => new Set());
+  /*
+   * ⚠️ KOMPLEKT MODEL PREVIEW (2026-11-10). Strip ostidagi "Komplekt
+   * modellar" railidan bitta karta bosilsa — shu URL asosiy sahnada
+   * ko'rsatiladi. Foydalanuvchi boshqa kiyimni bosganida tozalanadi.
+   */
+  const [previewCutoutUrl, setPreviewCutoutUrl] = useState<string | null>(null);
+  /*
+   * ⚠️ KOMPLEKT TARIXI (2026-11-10). Ko'p-do'kon komplektlarda barcha
+   * variantlar joriy do'konga tegishli bo'lmagani uchun `anyRenderByVariant`
+   * (strip so'rovidan) ularni topmaydi. Yuborilgan har bir komplekt'ning
+   * variant ID'larini bu yerda yig'ib boramiz va alohida so'rov orqali
+   * renderlarni olib "Komplekt modellar" railiga qo'shamiz.
+   */
+  const [bundleTracked, setBundleTracked] = useState<Set<string>>(() => new Set());
   const toggleBundleItem = useCallback((item: Garment): void => {
     // Keshga ham qo'shamiz — bundle yig'ilganda item ma'lumotlari kerak
     setSeen((prev) => (prev[item.variantId] ? prev : { ...prev, [item.variantId]: item }));
@@ -272,7 +286,7 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
   }, []);
 
   const stripRef = useRef<FlatList<Garment>>(null);
-  const scrollRef = useRef<Animated.ScrollView>(null);
+  const scrollRef = useRef<ScrollView>(null);
 
   const outfit = useAiFlowStore((state) => state.outfit);
   const wear = useAiFlowStore((state) => state.wear);
@@ -312,6 +326,7 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
      * boshqa kiyimlarni erkin sinab ko'rsin. Komplekt yig'ish kerak
      * bo'lsa — Look rejimi orqali bo'ladi (alohida oqim).
      */
+    setPreviewCutoutUrl(null);
     for (const layer of outfit) {
       if (layer.category !== category) {
         takeOff(layer.category);
@@ -352,6 +367,7 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
    * qilmaydi (chunki hamma qatorlar darhol pending→processing bo'ladi).
    */
   const putOnBundle = (variantIds: string[]): void => {
+    setPreviewCutoutUrl(null);
     // Avval eski outfit tozalanadi, keyin yangi qatlamlar qo'yiladi
     for (const layer of outfit) takeOff(layer.category);
     for (const id of variantIds) {
@@ -363,12 +379,19 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
     setSize(null);
     setNotice('Komplekt yuborildi — AI hammasini birgalikda kiyintiryapti…');
     if (angle !== 'front') setAngle('front');
+    // Komplekt modellar railida ko'rinishi uchun variant ID'larni eslaymiz
+    setBundleTracked((prev) => {
+      const next = new Set(prev);
+      for (const id of variantIds) next.add(id);
+      return next;
+    });
 
     // ONE-CALL backend chaqiruv
     void (async () => {
       try {
         await requestBundleRender(variantIds, 'front');
         void queryClient.invalidateQueries({ queryKey: ['renders'] });
+        void queryClient.invalidateQueries({ queryKey: ['renders', 'bundle-tracked'] });
       } catch (err) {
         if (err instanceof ApiError && err.code === 'RATE_LIMITED') {
           setLimitReached(true);
@@ -734,6 +757,20 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
     staleTime: 30_000,
   });
 
+  /*
+   * Ko'p-do'kon komplekt tarixi uchun renderlar — joriy do'kondan tashqari
+   * variantlar bo'lishi mumkin, shuning uchun alohida so'rov.
+   */
+  const trackedIds = useMemo(() => Array.from(bundleTracked).sort(), [bundleTracked]);
+  const bundleTrackedRenders = useQuery({
+    queryKey: ['renders', 'bundle-tracked', angle, trackedIds.join(',')],
+    queryFn: () => getRenders(trackedIds, angle, null, 'all'),
+    enabled: ready && trackedIds.length > 0,
+    refetchInterval: (query) =>
+      needsRenderRefresh(query.state.data as TryonRender[]) ? 1500 : false,
+    staleTime: 30_000,
+  });
+
   /** variantId → eng yangi tayyor render (har qanday base) */
   const anyRenderByVariant = useMemo(() => {
     const map = new Map<string, TryonRender>();
@@ -759,8 +796,8 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
        RN kesh'iga BAYT bilan solamiz — svaypda tarmoq umuman kutilmaydi. */
     const warm = (renders: TryonRender[] | undefined): void => {
       const top = topReady(resolveOutfit(outfit, indexRenders(renders ?? [])));
-      if (top?.cutoutUrl) void Image.prefetch(top.cutoutUrl);
-      if (top?.imageUrl) void Image.prefetch(top.imageUrl);
+      if (top?.cutoutUrl) Image.prefetch(top.cutoutUrl).catch(() => {});
+      if (top?.imageUrl) Image.prefetch(top.imageUrl).catch(() => {});
     };
 
     for (const other of ['front', 'side', 'back'] as const) {
@@ -794,10 +831,10 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
   useEffect(() => {
     if (!ready) return;
     const top = topReady(resolveOutfit(outfit, indexRenders(outfitRenders.data ?? [])));
-    if (top?.cutoutUrl) void Image.prefetch(top.cutoutUrl);
-    if (top?.imageUrl) void Image.prefetch(top.imageUrl);
+    if (top?.cutoutUrl) Image.prefetch(top.cutoutUrl).catch(() => {});
+    if (top?.imageUrl) Image.prefetch(top.imageUrl).catch(() => {});
     const ff = topReady(resolveOutfit(outfit, indexRenders(frontFallback.data ?? [])));
-    if (ff?.imageUrl) void Image.prefetch(ff.imageUrl);
+    if (ff?.imageUrl) Image.prefetch(ff.imageUrl).catch(() => {});
   }, [ready, outfit, outfitRenders.data, frontFallback.data]);
 
   /*
@@ -813,13 +850,13 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
     if (!ready) return;
     for (const render of stripRenders.data ?? []) {
       if (render.status !== 'ready') continue;
-      if (render.cutoutUrl) void Image.prefetch(render.cutoutUrl);
-      if (render.imageUrl) void Image.prefetch(render.imageUrl);
+      if (render.cutoutUrl) Image.prefetch(render.cutoutUrl).catch(() => {});
+      if (render.imageUrl) Image.prefetch(render.imageUrl).catch(() => {});
     }
     for (const render of anyStripRenders.data ?? []) {
       if (render.status !== 'ready') continue;
-      if (render.cutoutUrl) void Image.prefetch(render.cutoutUrl);
-      if (render.imageUrl) void Image.prefetch(render.imageUrl);
+      if (render.cutoutUrl) Image.prefetch(render.cutoutUrl).catch(() => {});
+      if (render.imageUrl) Image.prefetch(render.imageUrl).catch(() => {});
     }
   }, [ready, stripRenders.data, anyStripRenders.data]);
 
@@ -1299,6 +1336,10 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
        * shop fon ichida ghost bo'lib ko'rinardi. Overlay status matni
        * "Fon ajratilyapti" chiqadi.
        */
+      // ⚠️ KOMPLEKT RAIL PREVIEW — eng ustun; tanlangan model sahnani egallaydi
+      if (previewCutoutUrl) {
+        return { key: option.value, url: previewCutoutUrl, resizeMode: 'contain' as const };
+      }
       const sceneRender =
         shown?.status === 'ready'
           ? shown
@@ -1476,9 +1517,14 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
              * foydalanuvchi "Kiyilgan" ni Varsity'da ko'radi, lekin sahnada
              * eski Tommy Jeans rasm turadi.
              */
-            imageUrl={preparingCutout ? null : (shown?.imageUrl ?? worn?.imageUrl ?? wornFront?.imageUrl ?? baseImage)}
+            imageUrl={
+              previewCutoutUrl ? null :
+              preparingCutout ? null : (shown?.imageUrl ?? worn?.imageUrl ?? wornFront?.imageUrl ?? baseImage)
+            }
             cutoutUrl={
-              shown?.status === 'ready' ? (shown.cutoutUrl ?? null)
+              previewCutoutUrl
+                ? previewCutoutUrl
+                : shown?.status === 'ready' ? (shown.cutoutUrl ?? null)
                 : worn ? (worn.cutoutUrl ?? null)
                 : wornFront ? (wornFront.cutoutUrl ?? null)
                 : baseCutout
@@ -1785,43 +1831,6 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
             </View>
           ) : null}
 
-          {/*
-            ⚠️ KOMPLEKT MODEL (2026-11-10). Komplekt yig'ilgach, barcha outfit
-            kiyimlari bir xil result_url bilan render qilinadi. Shu URL'ni
-            topib, alohida "KOMPLEKT MODEL" kartasi sifatida strip tepasida
-            ko'rsatamiz. Tap qilsa — asosiy sahnaga yuqoridan scrollab chiqadi.
-          */}
-          {(() => {
-            const bundleRender = resolved
-              .map((l) => l.render)
-              .find((r): r is TryonRender =>
-                Boolean(r && r.status === 'ready' && r.cutoutUrl) &&
-                resolved.filter((o) => o.render?.cutoutUrl === r!.cutoutUrl).length >= 2,
-              );
-            if (!bundleRender) return null;
-            return (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Komplekt modelni sahnada ko'rsatish"
-                onPress={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}
-                style={styles.bundleModelCard}
-              >
-                <Image
-                  source={{ uri: bundleRender.cutoutUrl ?? undefined }}
-                  style={styles.bundleModelImage}
-                  resizeMode="contain"
-                />
-                <View style={styles.bundleModelInfo}>
-                  <Text style={styles.bundleModelTitle}>KOMPLEKT MODEL</Text>
-                  <Text style={styles.bundleModelHint}>
-                    {outfitItems.length} ta kiyim bitta rasmda · bosing — tepada ko'ring
-                  </Text>
-                </View>
-                <Icon name="tryon" size={18} color={colors.primary} />
-              </Pressable>
-            );
-          })()}
-
           {/* ── Kiyim tasmasi ── */}
           {usingFallback && !itemsLoading ? (
             <Text style={styles.fallbackNote}>
@@ -1981,7 +1990,26 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
             <FlatList
               ref={stripRef}
               style={styles.modelStrip}
-              data={items}
+              /*
+               * ⚠️ STRIP DEDUPE (2026-11-10). Komplekt natijasida bir nechta
+               * variant bir xil cutoutUrl ni egallaydi (bitta modelda bir
+               * nechta kiyim). Strip'da ularni takrorlab ko'rsatmaymiz —
+               * birinchi uchragan kiyim qoladi; qolgani «Komplekt modellar»
+               * railida alohida ko'rinadi.
+               */
+              data={(() => {
+                const seen = new Set<string>();
+                return items.filter((item) => {
+                  const render = renderIndex.get(renderKey(item.variantId, stripBase.baseRenderId))
+                    ?? anyRenderByVariant.get(item.variantId);
+                  const key = render?.status === 'ready' && render.cutoutUrl
+                    ? render.cutoutUrl
+                    : item.variantId;
+                  if (seen.has(key)) return false;
+                  seen.add(key);
+                  return true;
+                });
+              })()}
               keyExtractor={(item) => item.variantId}
               getItemLayout={(_data, index) => ({
                 length: STRIP_ITEM,
@@ -2099,37 +2127,169 @@ export function FittingExperience({ showBack = false }: FittingExperienceProps):
           )}
 
           {/*
-            ⚠️ BUNDLE QATORI (2026-11-10). Checkbox orqali tanlangan kiyimlar
-            soni ≥ 2 bo'lsa chiqadi. Bosganda hammasini birdaniga kiyintiradi.
+            ⚠️ KOMPLEKT MODELLAR RAILI (2026-11-10 — strip ostiga ko'chdi).
+            Bitta cutoutUrl'ni EGALLAGAN variantlar soni ≥ 2 bo'lsa — bu
+            komplekt natija. Rail'da outfit holatiga qarab emas, HAMMA
+            strip renderlariga qarab topamiz — chunki foydalanuvchi
+            komplektdan keyin bitta kiyimni almashtirgan bo'lishi mumkin,
+            komplekt esa bari bir ko'rinib tursin.
           */}
-          {bundleSelection.size >= 2 ? (
-            <View style={styles.bundleBar}>
-              <View style={styles.bundleBarLeft}>
-                <Icon name="looks" size={16} color={colors.primary} />
-                <Text style={styles.bundleBarText}>
-                  {bundleSelection.size} ta kiyim tanlangan
-                </Text>
+          {(() => {
+            const groups = new Map<string, { render: TryonRender; variantIds: Set<string> }>();
+            const addRender = (render: TryonRender): void => {
+              if (render.status !== 'ready' || !render.cutoutUrl) return;
+              const prev = groups.get(render.cutoutUrl);
+              if (prev) prev.variantIds.add(render.variantId);
+              else groups.set(render.cutoutUrl, {
+                render,
+                variantIds: new Set([render.variantId]),
+              });
+            };
+            for (const render of anyRenderByVariant.values()) addRender(render);
+            // Ko'p-do'kon komplekt tarixidan kelganlar — joriy strip do'konida yo'q
+            for (const render of bundleTrackedRenders.data ?? []) addRender(render);
+            const bundleGroups = Array.from(groups.values()).map((g) => ({
+              render: g.render,
+              count: g.variantIds.size,
+            }));
+            if (bundleGroups.length === 0) return null;
+            return (
+              <View style={styles.bundleRail}>
+                <View style={styles.bundleRailHead}>
+                  <Icon name="looks" size={14} color={colors.primary} />
+                  <Text style={styles.bundleRailTitle}>Komplekt modellar</Text>
+                </View>
+                <FlatList
+                  horizontal
+                  data={bundleGroups}
+                  keyExtractor={(g) => g.render.cutoutUrl ?? g.render.id}
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.bundleRailStrip}
+                  renderItem={({ item }) => (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        item.count >= 2
+                          ? `Komplekt (${item.count} ta kiyim) — sahnada ko'rsatish`
+                          : 'Modelni sahnada ko\'rsatish'
+                      }
+                      onPress={() => {
+                        setPreviewCutoutUrl(item.render.cutoutUrl);
+                        scrollRef.current?.scrollTo({ y: 0, animated: true });
+                      }}
+                      style={[
+                        styles.bundleRailCard,
+                        previewCutoutUrl === item.render.cutoutUrl && styles.bundleRailCardActive,
+                      ]}
+                    >
+                      <Image
+                        source={{ uri: item.render.cutoutUrl ?? undefined }}
+                        style={styles.bundleRailThumb}
+                        resizeMode="contain"
+                      />
+                      {item.count >= 2 ? (
+                        <View style={styles.bundleRailBadge}>
+                          <Text style={styles.bundleRailBadgeText}>{item.count}</Text>
+                        </View>
+                      ) : null}
+                      <Text style={styles.bundleRailCaption}>
+                        {item.count >= 2 ? 'Komplekt' : 'Model'}
+                      </Text>
+                    </Pressable>
+                  )}
+                />
               </View>
-              <View style={styles.bundleBarActions}>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => setBundleSelection(new Set())}
-                  hitSlop={8}
-                  style={({ pressed }) => [styles.bundleCancel, pressed && { opacity: 0.6 }]}
-                >
-                  <Text style={styles.bundleCancelText}>Bekor</Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => putOnBundle(Array.from(bundleSelection))}
-                  hitSlop={8}
-                  style={({ pressed }) => [styles.bundleGo, pressed && { opacity: 0.85 }]}
-                >
-                  <Text style={styles.bundleGoText}>Hammasini kiyintir</Text>
-                </Pressable>
+            );
+          })()}
+
+          {/*
+            ⚠️ BUNDLE QATORI (2026-11-10, ko'p do'kon 2026-11-10 kech).
+            Checkbox orqali tanlangan kiyimlar ko'rinadi. Turli do'konlardan
+            tanlagan bo'lsa ham `seen` keshida saqlanadi — do'kon almashsa
+            tanlov yo'qolmaydi. "Boshqa do'kondan qo'shish" tugmasi o'z
+            tanlovni saqlab turib StorePicker'ni ochadi.
+          */}
+          {bundleSelection.size >= 1 ? (() => {
+            const items = Array.from(bundleSelection)
+              .map((id) => seen[id])
+              .filter((g): g is Garment => Boolean(g));
+            const uniqueStoreIds = new Set(items.map((g) => g.store.id));
+            return (
+              <View style={styles.bundleSheet}>
+                <View style={styles.bundleSheetHead}>
+                  <View style={styles.bundleBarLeft}>
+                    <Icon name="looks" size={16} color={colors.primary} />
+                    <Text style={styles.bundleBarText}>
+                      {bundleSelection.size} ta kiyim
+                      {uniqueStoreIds.size > 1 ? ` · ${uniqueStoreIds.size} do'kondan` : ''}
+                    </Text>
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => setBundleSelection(new Set())}
+                    hitSlop={8}
+                    style={({ pressed }) => [styles.bundleCancel, pressed && { opacity: 0.6 }]}
+                  >
+                    <Text style={styles.bundleCancelText}>Bekor</Text>
+                  </Pressable>
+                </View>
+                <FlatList
+                  horizontal
+                  data={items}
+                  keyExtractor={(g) => g.variantId}
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.bundleSheetStrip}
+                  renderItem={({ item }) => (
+                    <View style={styles.bundleSheetCard}>
+                      <Image
+                        source={{ uri: item.image ?? undefined }}
+                        style={styles.bundleSheetThumb}
+                        resizeMode="cover"
+                      />
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`${item.title} — bundle dan olib tashlash`}
+                        onPress={() => toggleBundleItem(item)}
+                        hitSlop={8}
+                        style={styles.bundleSheetRemove}
+                      >
+                        <Icon name="close" size={10} color={colors.text} />
+                      </Pressable>
+                      <Text style={styles.bundleSheetStore} numberOfLines={1}>
+                        {item.store.name}
+                      </Text>
+                    </View>
+                  )}
+                />
+                <View style={styles.bundleSheetActions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => setStoreOpen(true)}
+                    hitSlop={8}
+                    style={({ pressed }) => [styles.bundleAddStore, pressed && { opacity: 0.7 }]}
+                  >
+                    <Icon name="stores" size={14} color={colors.primary} />
+                    <Text style={styles.bundleAddStoreText}>Boshqa do'kondan</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={bundleSelection.size < 2}
+                    onPress={() => putOnBundle(Array.from(bundleSelection))}
+                    hitSlop={8}
+                    style={({ pressed }) => [
+                      styles.bundleGo,
+                      bundleSelection.size < 2 && { opacity: 0.5 },
+                      pressed && bundleSelection.size >= 2 && { opacity: 0.85 },
+                    ]}
+                  >
+                    <Text style={styles.bundleGoText}>
+                      {bundleSelection.size >= 2 ? 'Hammasini kiyintir' : 'Yana 1 ta tanlang'}
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
-            </View>
-          ) : null}
+            );
+          })() : null}
 
           {current ? (
             <View style={styles.details}>
@@ -2889,6 +3049,66 @@ const styles = StyleSheet.create({
   bundleModelInfo: { flex: 1, gap: 2 },
   bundleModelTitle: { ...text.body, color: colors.primary, fontWeight: '800', letterSpacing: 0.4 },
   bundleModelHint: { ...text.tiny, color: colors.textMuted },
+  /* «Komplekt modellar» raili — strip ostida */
+  bundleRail: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+    gap: 4,
+  },
+  bundleRailHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.md,
+  },
+  bundleRailTitle: {
+    ...text.small,
+    color: colors.primary,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  bundleRailStrip: {
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
+  },
+  bundleRailCard: {
+    width: 76,
+    alignItems: 'center',
+    gap: 4,
+  },
+  bundleRailCardActive: {
+    transform: [{ scale: 1.05 }],
+  },
+  bundleRailThumb: {
+    width: 76,
+    height: 96,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    backgroundColor: colors.surface2,
+  },
+  bundleRailBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 5,
+    borderRadius: 10,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bundleRailBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  bundleRailCaption: {
+    ...text.tiny,
+    color: colors.primary,
+    fontWeight: '700',
+  },
   sectionHeadingAction: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   sectionHeadingActionText: { ...text.small, color: colors.primary, fontFamily: fonts.semibold },
   modelHint: {
@@ -3143,6 +3363,76 @@ const styles = StyleSheet.create({
   bundleCheckOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   bundleCheckPlus: { ...text.tiny, color: colors.primary, fontWeight: '800', lineHeight: 16 },
   /* Bundle action bar — Kiyintir va Bekor tugmalari */
+  /* Ko'p do'kon bundle paneli (2026-11-10) */
+  bundleSheet: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    padding: spacing.sm,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
+    gap: spacing.sm,
+  },
+  bundleSheetHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  bundleSheetStrip: {
+    gap: spacing.sm,
+    paddingVertical: 2,
+  },
+  bundleSheetCard: {
+    width: 60,
+    alignItems: 'center',
+    gap: 2,
+  },
+  bundleSheetThumb: {
+    width: 60,
+    height: 72,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface2,
+  },
+  bundleSheetRemove: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bundleSheetStore: {
+    ...text.tiny,
+    color: colors.textMuted,
+    fontSize: 10,
+    maxWidth: 60,
+  },
+  bundleSheetActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  bundleAddStore: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: 'transparent',
+  },
+  bundleAddStoreText: {
+    ...text.small,
+    color: colors.primary,
+    fontWeight: '700',
+  },
   bundleBar: {
     marginHorizontal: spacing.md,
     marginTop: spacing.sm,

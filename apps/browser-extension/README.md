@@ -16,7 +16,8 @@ surati AI'ga beriladi, natija `POST /tasks/:id/result` bilan yopiladi va
 mijozning `tryon_renders` yozuviga tushadi.
 
 **`avatar` — gavda, keyin butun do'kon.** Avval yuz suratidan to'liq bo'yli
-gavda yasaladi (prompt payloadda tayyor keladi) va ish yopiladi. Keyin o'sha
+gavda yasaladi — **bitta rasm, faqat old ko'rinish** (prompt shu yerda
+o'lchovlardan tuziladi, `payload.prompt` ishlatilmaydi) — va ish yopiladi. Keyin o'sha
 gavdaga do'konning AI'ga yaroqli hamma kiyimi bittalab kiydiriladi:
 **ustki kiyim birinchi**, so'ng `outer → bottom → feet`. Har kiyim tayyor
 bo'lishi bilan mijozga ketadi — u oxirini kutmaydi.

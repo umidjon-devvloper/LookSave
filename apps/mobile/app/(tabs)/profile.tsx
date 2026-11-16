@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRef } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -334,6 +334,28 @@ export default function Profile(): JSX.Element {
           <Text style={styles.restricted}>{t.profile.restricted}</Text>
         ) : null}
 
+        {/*
+          App Store 4.3(b) va face photo saqlanishi uchun — rozilik va shartlar
+          foydalanuvchi uchun doim ochiq bo'lishi kerak. Review'chi ham bu
+          havolalar borligini tekshiradi (Guideline 5.1.1).
+        */}
+        <View style={styles.group}>
+          <Row
+            icon="check"
+            label="Maxfiylik siyosati"
+            hint="Ma'lumotlaringiz qanday saqlanadi"
+            onPress={() => void Linking.openURL('https://looksave.uz/privacy')}
+            isRTL={isRTL}
+          />
+          <Row
+            icon="check"
+            label="Foydalanish shartlari"
+            hint="Ilovadan foydalanish qoidalari"
+            onPress={() => void Linking.openURL('https://looksave.uz/terms')}
+            isRTL={isRTL}
+          />
+        </View>
+
         <View style={{ flex: 1 }} />
 
         <Button
@@ -362,7 +384,7 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     paddingHorizontal: spacing.md,
-    paddingBottom: spacing.lg,
+    paddingBottom: 120,
     gap: spacing.lg,
   },
   header: {

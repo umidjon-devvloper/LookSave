@@ -2,30 +2,46 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { matches } from '../../src/ai/lookTray';
 import { ApiError, api } from '../../src/api/client';
 import { addFavorite, addToCart, removeFavorite, supportsAiTryon } from '../../src/api/endpoints';
 import { Icon, type IconName } from '../../src/components/Icon';
 import { Button, ErrorView, Loading, Screen } from '../../src/components/ui';
 import { useI18n } from '../../src/i18n';
-import { useAiFlowStore } from '../../src/store/aiFlowStore';
+import { useLookStore } from '../../src/store/lookStore';
 import { money } from '../../src/theme/format';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 import { goBack } from '../../src/navigation/back';
 
 /**
- * Karusel sahifasining kengligi.
+ * Product detail — Atelier editorial.
  *
- * ⚠️ Modul darajasida bir marta olinadi: `pagingEnabled` ekran kengligiga
- * to'xtaydi, ya'ni rasm ham AYNAN shuncha bo'lishi kerak. Aks holda har
- * sahifada siljish orta boradi.
+ * Yuqorida to'liq rasm, pastda jurnalning oyoqligi kabi tartiblangan
+ * tipografik blok. Dark overlay olib tashlandi: rasm ustida oq pill
+ * tugmalar va krem fonga oqadigan pastki chekka. Narx serifda —
+ * karta ichidagi eng muhim fakt.
  */
 const SCREEN_WIDTH = Dimensions.get('window').width;
-
-/** Rasm balandligi — ekranning yarmidan sal ko'prog'i (maketdagi kompozitsiya) */
 const IMAGE_HEIGHT = Math.round(SCREEN_WIDTH * 1.15);
+
+// colors.bg = #F7F2EA — krem rangning rgba'si gradient'lar uchun
+const CREAM_CLEAR = 'rgba(247,242,234,0)';
+const CREAM_SOLID = 'rgba(247,242,234,1)';
+
+/** Slotning texnik nomi → lug'atdagi yorliq (`t.look`). Notanish slot o'zicha ko'rsatiladi. */
+const SLOT_LABEL: Record<
+  string,
+  'slotTop' | 'slotOuter' | 'slotBottom' | 'slotFeet' | 'slotWrist'
+> = {
+  top: 'slotTop',
+  outer: 'slotOuter',
+  bottom: 'slotBottom',
+  feet: 'slotFeet',
+  wrist: 'slotWrist',
+};
 
 interface ProductDetail {
   id: string;
@@ -51,7 +67,7 @@ interface ProductDetail {
   isFavorite: boolean;
 }
 
-/** Rasm ustidagi doira tugma — orqaga, ulashish, sevimli */
+/** Rasm ustidagi oq doira tugma — orqaga, ulashish, sevimli */
 function RoundButton({
   icon,
   label,
@@ -86,10 +102,11 @@ export default function Product(): JSX.Element {
   const [cartError, setCartError] = useState<string | null>(null);
   const [favorite, setFavorite] = useState<boolean | null>(null);
   const [imageIndex, setImageIndex] = useState(0);
-  // Lookga qo'shish — mahsulotning joriy rangi (variant) outfit'ga qo'yiladi,
-  // keyin kiyintirish ekrani ochiladi: foydalanuvchi natijani darhol ko'radi.
-  const outfit = useAiFlowStore((state) => state.outfit);
-  const wear = useAiFlowStore((state) => state.wear);
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  // «Look» savati — bosh sahifadagi kartalar bilan BITTA ro'yxat (`lookStore`)
+  const lookItems = useLookStore((state) => state.items);
+  const addLook = useLookStore((state) => state.add);
+  const removeLook = useLookStore((state) => state.remove);
 
   const product = useQuery({
     queryKey: ['product', id],
@@ -117,10 +134,6 @@ export default function Product(): JSX.Element {
     },
   });
 
-  /**
-   * Sevimli holati darhol o'zgaradi (optimistik) — tarmoq javobini
-   * kutish yurak tugmasini sekin ko'rsatadi. Xato bo'lsa qaytariladi.
-   */
   const toggleFavorite = useMutation({
     mutationFn: (next: boolean) => (next ? addFavorite(id) : removeFavorite(id)),
     onMutate: (next) => {
@@ -145,38 +158,26 @@ export default function Product(): JSX.Element {
   const isFavorite = favorite ?? data.isFavorite;
 
   /*
-   * ⚠️ SHART 3D EMAS, KIYIM SURATI VA SLOT.
-   *
-   * Ilgari bu `asset3d.status === 'ready'` edi va tugma 3D ekranga olib
-   * borardi — u endi ishlamaydi. Kiyintirish AI orqali bo'ladi va unga
-   * 3D umuman kerak emas: kiyimning oddiy surati yetarli.
-   *
+   * ⚠️ SHART 3D EMAS, KIYIM SURATI VA SLOT. Kiyintirish AI orqali bo'ladi.
    * Model faqat kiyim uchun o'qitilgan, shuning uchun oyoq kiyim, soat va
-   * sumkada tugma ko'rsatilmaydi — natija ishonchsiz chiqardi.
+   * sumkada tugma ko'rsatilmaydi.
    */
   const canTryOn = supportsAiTryon(data.slot) && Boolean(data.images[0]);
 
-  const trust: Array<{ icon: IconName; label: string }> = [
-    { icon: 'authentic', label: t.product.trustOriginal },
-    { icon: 'reset', label: t.product.trustReturn },
-    { icon: 'delivery', label: t.product.trustDelivery },
+  const trust: Array<{ icon: IconName; label: string; hint: string }> = [
+    { icon: 'authentic', label: t.product.trustOriginal, hint: t.product.trustOriginalHint },
+    { icon: 'reset', label: t.product.trustReturn, hint: t.product.trustReturnHint },
+    { icon: 'delivery', label: t.product.trustDelivery, hint: t.product.trustDeliveryHint },
   ];
+
+  // Slot serverdan texnik nom bilan keladi («top») — foydalanuvchiga tarjimasi ko'rsatiladi
+  const slotKey = data.slot ? SLOT_LABEL[data.slot] : undefined;
+  const slotText = slotKey ? t.look[slotKey] : data.slot;
 
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/*
-          Rasm bloki — status bar OSTIGA chiqadi (`headerShown: false`).
-          Boshqaruv tugmalari rasm ustida suzadi, maketdagidek.
-        */}
         <View style={styles.hero}>
-          {/*
-            ⚠️ KENGLIK EKRANDAN OLINADI, qattiq yozilmaydi. Ilgari u 360
-            piksel edi va bu hech bir zamonaviy iPhone kengligiga to'g'ri
-            kelmasdi: keyingi rasm chetdan ko'rinib turardi, `pagingEnabled`
-            esa EKRAN kengligiga tayanib to'xtardi — natijada har sahifada
-            siljish orta borardi va rasmlar qiyshiq to'xtardi.
-          */}
           <ScrollView
             horizontal
             pagingEnabled
@@ -188,7 +189,14 @@ export default function Product(): JSX.Element {
           >
             {data.images.length > 0 ? (
               data.images.map((url) => (
-                <Image key={url} source={{ uri: url }} style={styles.image} resizeMode="cover" />
+                <Pressable
+                  key={url}
+                  accessibilityRole="button"
+                  accessibilityLabel="Rasmni kattalashtirish"
+                  onPress={() => setZoomedImage(url)}
+                >
+                  <Image source={{ uri: url }} style={styles.image} resizeMode="cover" />
+                </Pressable>
               ))
             ) : (
               <View style={[styles.image, styles.imagePlaceholder]} />
@@ -196,24 +204,15 @@ export default function Product(): JSX.Element {
           </ScrollView>
 
           {/*
-            Tepa qorong'ilashuv — ikki qatlam.
-
-            ⚠️ NEGA IKKITA. Bitta yumshoq gradient yetmasdi: yorug' rasmda
-            (sharshara, osmon) soat, batareya va tugmalar bir-biriga
-            qo'shilib ketardi — ekranda ular BIR QATORDA turgandek
-            ko'rinardi va o'qib bo'lmasdi.
-
-            Pastki qatlam — status bar sohasi bo'ylab QUYUQ fon, uning
-            ostida esa yumshoq gradient rasmga singib ketadi.
+            Atelier: status bar tagidagi fon — yorug' oq oqim bilan (dark
+            overlay klişesi yo'q). Rasm yorug' bo'lsa status bar ikoni
+            krem fonga qarshi o'qiladi, qora rasmda esa oq quti o'z-o'zidan
+            yetarli ta'kid beradi.
           */}
           <LinearGradient
-            colors={['rgba(6,5,10,0.95)', 'rgba(6,5,10,0.72)']}
-            style={[styles.statusFade, { height: insets.top }]}
-            pointerEvents="none"
-          />
-          <LinearGradient
-            colors={['rgba(6,5,10,0.72)', 'rgba(10,10,15,0)']}
-            style={[styles.topFade, { top: insets.top }]}
+            colors={['rgba(255,255,255,0.75)', 'rgba(255,255,255,0.3)', CREAM_CLEAR]}
+            locations={[0, 0.6, 1]}
+            style={[styles.topFade, { height: insets.top + 80 }]}
             pointerEvents="none"
           />
 
@@ -233,21 +232,21 @@ export default function Product(): JSX.Element {
               <RoundButton
                 icon={isFavorite ? 'favoriteOn' : 'favorite'}
                 label={t.profile.myFavorites}
-                color={isFavorite ? colors.accent : colors.text}
+                color={isFavorite ? colors.primary : colors.text}
                 onPress={() => toggleFavorite.mutate(!isFavorite)}
               />
             </View>
           </View>
 
-          {/* «Premium» — cheklangan seriya belgisi, maketdagi o'ng past burchak */}
+          {/* «Limited» — cheklangan seriya belgisi, pastki chap burchak. */}
           {data.isLimited ? (
             <View style={styles.premium}>
-              <Icon name="premium" size={15} color={colors.accent} />
+              <Icon name="premium" size={13} color={colors.primary} />
               <Text style={styles.premiumText}>{t.product.premium}</Text>
             </View>
           ) : null}
 
-          {/* Nuqtalar RASM USTIDA — ilgari ular rasmdan keyin alohida qatorda edi */}
+          {/* Nuqtalar — Atelier: ingichka dashlar */}
           {data.images.length > 1 ? (
             <View style={styles.dots}>
               {data.images.map((url, index) => (
@@ -255,13 +254,27 @@ export default function Product(): JSX.Element {
               ))}
             </View>
           ) : null}
+
+          {/* Pastki chet — rasm krem fonga oqib tushadi, kesilgan chegara ko'rinmasin */}
+          <LinearGradient
+            colors={[CREAM_CLEAR, CREAM_SOLID]}
+            style={styles.bottomFade}
+            pointerEvents="none"
+          />
         </View>
 
-        {/* Kontent rasmga ustma-ust chiqadi — yumaloq burchak bilan */}
+        {/* Kontent — rasmga biroz ustma-ust chiqadi; Atelier: kichik radius */}
         <View style={styles.body}>
+          {/* Eyebrow — brand + slot (moda jurnali rukni) */}
+          <View style={styles.eyebrowRow}>
+            {data.brand?.name ? (
+              <Text style={styles.brand}>{data.brand.name}</Text>
+            ) : null}
+            {slotText ? <Text style={styles.slot}>· {slotText}</Text> : null}
+          </View>
+
           <View style={styles.headRow}>
             <View style={styles.headText}>
-              {data.brand?.name ? <Text style={styles.brand}>{data.brand.name}</Text> : null}
               <Text style={styles.title}>{data.title}</Text>
 
               <View style={styles.priceRow}>
@@ -278,7 +291,7 @@ export default function Product(): JSX.Element {
               onPress={() => router.push(`/store/${data.store.id}`)}
               style={styles.storeCard}
             >
-              <Icon name="shop" size={20} color={colors.accent} />
+              <Icon name="shop" size={18} color={colors.primary} />
               <View style={styles.storeText}>
                 <Text style={styles.storeName} numberOfLines={1}>
                   {data.store.name}
@@ -290,11 +303,16 @@ export default function Product(): JSX.Element {
             </Pressable>
           </View>
 
-          {data.description ? <Text style={styles.description}>{data.description}</Text> : null}
+          {data.description ? (
+            <>
+              <View style={styles.rule} />
+              <Text style={styles.description}>{data.description}</Text>
+            </>
+          ) : null}
 
           {data.variants.length > 1 ? (
-            <View style={styles.panel}>
-              <Text style={styles.panelLabel}>{t.product.color}</Text>
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>{t.product.color}</Text>
               <View style={styles.row}>
                 {data.variants.map((item, index) => (
                   <Pressable
@@ -316,9 +334,9 @@ export default function Product(): JSX.Element {
             </View>
           ) : null}
 
-          <View style={styles.panel}>
+          <View style={styles.section}>
             <View style={styles.panelHead}>
-              <Text style={styles.panelLabel}>
+              <Text style={styles.sectionLabel}>
                 {t.product.size}
                 {data.sizeChart?.system ? ` (${data.sizeChart.system})` : ''}
               </Text>
@@ -348,7 +366,6 @@ export default function Product(): JSX.Element {
                   >
                     {item.size}
                   </Text>
-                  {/* Nechta borligi — sotilgan bo'lsa «sotilgan» */}
                   <Text
                     style={[
                       styles.sizeCount,
@@ -356,7 +373,9 @@ export default function Product(): JSX.Element {
                       !item.available && styles.sizeCountOut,
                     ]}
                   >
-                    {item.available ? `${item.stock} dona` : 'sotilgan'}
+                    {item.available
+                      ? t.product.stockCount.replace('{n}', String(item.stock))
+                      : t.product.sizeSoldOut}
                   </Text>
                 </Pressable>
               ))}
@@ -366,37 +385,57 @@ export default function Product(): JSX.Element {
           {cartError ? <Text style={styles.cartError}>{cartError}</Text> : null}
 
           {canTryOn && variant ? (() => {
-            const inLook = outfit.some((layer) => layer.variantId === variant.id);
-            // ⚠️ Hech qanday navigatsiya yo'q — faqat qo'shadi/olib tashlaydi.
-            // Primerkani FAQAT headerdagi AI ikonka ochadi, u yerda butun
-            // yig'ilgan komplekt birdaniga ko'rinadi.
+            /*
+             * Savatda AYNAN SHU RANG turibdimi.
+             *
+             * Bosh sahifadan qo'shilgan kiyimning rangi hali noma'lum —
+             * u mahsulotning birinchi rangi deb hisoblanadi (primerka ham
+             * shuni oladi). Boshqa rang tanlansa tugma yana «qo'shish»
+             * bo'ladi: bosilganda savatdagi yozuv shu rangga almashadi,
+             * ikkinchi nusxa qo'shilmaydi.
+             */
+            const inTray = lookItems.find((item) => matches(item, data.id));
+            const inLook =
+              inTray !== undefined &&
+              (inTray.variantId === variant.id ||
+                (inTray.variantId === null && variantIndex === 0));
+            // Primerkani headerdagi va pastdagi AI tugmasi ochadi — u yerda
+            // yig'ilgan kiyimlar birdaniga kiyib ko'riladi.
             return (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={inLook ? 'Lookga qo`shilgan' : "Lookga qo'shish"}
-                onPress={() => wear(data.slot, variant.id)}
-                style={styles.lookBtnWrap}
-                disabled={inLook}
-              >
-                <LinearGradient
-                  colors={
-                    inLook
-                      ? [colors.success, '#15803D']
-                      : [colors.accent, colors.primary]
+                accessibilityLabel={inLook ? t.tryon.removeFromLook : t.tryon.addToLook}
+                accessibilityState={{ selected: inLook }}
+                onPress={() => {
+                  // Bosh sahifadagi karta bilan bir xil: qayta bosilsa olib tashlaydi
+                  if (inLook) {
+                    removeLook(data.id);
+                    return;
                   }
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.lookBtn}
-                >
-                  <Icon
-                    name={inLook ? 'check' : 'tryon'}
-                    size={18}
-                    color={colors.text}
-                  />
-                  <Text style={styles.lookBtnText}>
-                    {inLook ? "Lookga qo'shildi" : "Lookga qo'shish"}
-                  </Text>
-                </LinearGradient>
+                  addLook({
+                    productId: data.id,
+                    variantId: variant.id,
+                    slot: data.slot,
+                    title: data.title,
+                    image: data.images[0] ?? null,
+                    price: data.price,
+                    currency: data.currency,
+                  });
+                }}
+                style={({ pressed }) => [
+                  styles.lookBtn,
+                  inLook && { backgroundColor: colors.success },
+                  pressed && !inLook && { backgroundColor: colors.primaryDim },
+                ]}
+              >
+                <Icon
+                  name={inLook ? 'check' : 'tryon'}
+                  size={18}
+                  color={colors.textOnPrimary}
+                />
+                <Text style={styles.lookBtnText}>
+                  {inLook ? t.tryon.addedToLook : t.tryon.addToLook}
+                </Text>
               </Pressable>
             );
           })() : null}
@@ -424,16 +463,60 @@ export default function Product(): JSX.Element {
             </Pressable>
           </View>
 
+          {/* Trust — Atelier: hairline ustida tipografik qator */}
+          <View style={styles.rule} />
           <View style={styles.trust}>
             {trust.map((item) => (
               <View key={item.label} style={styles.trustItem}>
-                <Icon name={item.icon} size={18} color={colors.accent} />
-                <Text style={styles.trustText}>{item.label}</Text>
+                <Icon name={item.icon} size={16} color={colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.trustText}>{item.label}</Text>
+                  <Text style={styles.trustHint}>{item.hint}</Text>
+                </View>
               </View>
             ))}
           </View>
         </View>
       </ScrollView>
+
+      {/*
+        Zoom modal — rasm ustiga bosilganda to'liq ekranga chiqadi.
+        iOS ScrollView'ning tabiiy pinch-to-zoom'i orqali (maximumZoomScale),
+        qo'shimcha kutubxonasiz. Fonda qora — rasm aniq ko'rinsin.
+      */}
+      <Modal
+        visible={zoomedImage !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setZoomedImage(null)}
+      >
+        <View style={styles.zoomBackdrop}>
+          <ScrollView
+            style={StyleSheet.absoluteFill}
+            contentContainerStyle={styles.zoomScroll}
+            maximumZoomScale={4}
+            minimumZoomScale={1}
+            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
+            bouncesZoom
+            centerContent
+          >
+            {zoomedImage ? (
+              <Image source={{ uri: zoomedImage }} style={styles.zoomImage} resizeMode="contain" />
+            ) : null}
+          </ScrollView>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Yopish"
+            onPress={() => setZoomedImage(null)}
+            style={[styles.zoomClose, { top: insets.top + spacing.sm }]}
+            hitSlop={12}
+          >
+            <Icon name="close" size={22} color="#FFFFFF" />
+          </Pressable>
+        </View>
+      </Modal>
     </Screen>
   );
 }
@@ -442,10 +525,10 @@ const styles = StyleSheet.create({
   content: { paddingBottom: spacing.xxl },
 
   hero: { position: 'relative' },
-  image: { width: SCREEN_WIDTH, height: IMAGE_HEIGHT, backgroundColor: colors.surface },
+  image: { width: SCREEN_WIDTH, height: IMAGE_HEIGHT, backgroundColor: colors.surface2 },
   imagePlaceholder: { borderBottomWidth: 1, borderColor: colors.border },
-  statusFade: { position: 'absolute', left: 0, right: 0, top: 0 },
-  topFade: { position: 'absolute', left: 0, right: 0, height: 150 },
+  topFade: { position: 'absolute', left: 0, right: 0, top: 0 },
+  bottomFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 60 },
 
   heroBar: {
     position: 'absolute',
@@ -456,67 +539,80 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   heroActions: { flexDirection: 'row', gap: spacing.sm },
+  // Atelier: oq doira, ingichka chegara, ink ikonka. Dark overlay yo'q.
   roundButton: {
     width: 44,
     height: 44,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(10,10,15,0.5)',
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
 
+  // Limited — Atelier: krem pill, anor matn
   premium: {
     position: 'absolute',
-    right: spacing.md,
-    // Kontent bloki rasmga 28 px ustma-ust chiqadi — belgi undan yuqorida turadi
-    bottom: 44,
+    left: spacing.md,
+    bottom: 56,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs + 2,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: colors.borderAccent,
-    backgroundColor: 'rgba(10,10,15,0.72)',
+    borderColor: colors.primary,
+    backgroundColor: 'rgba(247,242,234,0.94)',
   },
-  premiumText: { ...text.small, color: colors.text, fontWeight: '600' },
+  premiumText: {
+    ...text.eyebrow,
+    color: colors.primary,
+  },
 
+  // Nuqtalar — ingichka dashlar, faol anor
   dots: {
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 44,
+    bottom: 36,
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: spacing.xs + 2,
+    gap: 4,
   },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.35)' },
-  dotActive: { width: 22, backgroundColor: colors.primary },
+  dot: { width: 16, height: 2, backgroundColor: 'rgba(255,255,255,0.65)' },
+  dotActive: { width: 28, backgroundColor: colors.primary, height: 3 },
 
   /*
-   * ⚠️ MANFIY MARGIN — kontent rasmga ustma-ust chiqadi. Maketdagi
-   * yumaloq burchak aynan shu bilan hosil bo'ladi; usiz blok rasmdan
-   * keyin boshlanardi va chegara tekis chiziq bo'lib qolardi.
+   * ⚠️ MANFIY MARGIN — kontent rasmga biroz ustma-ust chiqadi.
+   * Atelier: xxl radius o'rniga lg — toza, karta hissi emas.
    */
   body: {
-    marginTop: -28,
-    borderTopLeftRadius: radius.xxl,
-    borderTopRightRadius: radius.xxl,
+    marginTop: -24,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
     backgroundColor: colors.bg,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.lg,
     gap: spacing.md,
   },
 
+  // Eyebrow qatori — brand + slot (moda jurnali rukni)
+  eyebrowRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs },
+  brand: { ...text.eyebrow, color: colors.primary },
+  slot: { ...text.eyebrow, color: colors.textMuted },
+
   headRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
-  headText: { flex: 1, gap: 2 },
-  brand: { ...text.tiny, color: colors.textDim, letterSpacing: 1.2 },
-  title: { ...text.h2, color: colors.text },
-  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm, marginTop: 2 },
-  price: { ...text.h2, color: colors.accent },
+  headText: { flex: 1, gap: spacing.sm },
+  // Sarlavha — Fraunces hero (katta serif). Title tokeni h2 edi, bu yerda hero
+  title: { ...text.h1, color: colors.text },
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm, marginTop: spacing.xs },
+  // Narx — serif display, anor. "Moda jurnali tilini" eng muhim faktga beradi.
+  price: { ...text.h2, color: colors.primary },
   oldPrice: { ...text.small, color: colors.textDim, textDecorationLine: 'line-through' },
 
+  // Do'kon kartasi — Atelier: oq quti, hair-thin chegara
   storeCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -524,28 +620,24 @@ const styles = StyleSheet.create({
     maxWidth: '46%',
     paddingHorizontal: spacing.sm + 2,
     paddingVertical: spacing.sm,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
   },
   storeText: { flexShrink: 1 },
   storeName: { ...text.small, color: colors.text, fontWeight: '600' },
-  storeState: { ...text.tiny, color: colors.accent },
+  storeState: { ...text.eyebrow, color: colors.primary },
 
-  description: { ...text.body, color: colors.textMuted },
+  // Soch-ingichka chiziq — Atelier bo'limlarni ajratadi
+  rule: { height: 1, backgroundColor: colors.border, marginVertical: spacing.xs },
+  description: { ...text.body, color: colors.textMuted, lineHeight: 24 },
 
-  panel: {
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  panelHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  panelLabel: { ...text.label, color: colors.accent },
-  panelHint: { ...text.small, color: colors.textDim },
+  // Panel o'rniga ochiq bo'lim — karta ko'rinishi emas. Atelier.
+  section: { gap: spacing.sm, marginTop: spacing.xs },
+  panelHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  sectionLabel: { ...text.eyebrow, color: colors.textMuted },
+  panelHint: { ...text.eyebrow, color: colors.primary },
 
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   colorDot: {
@@ -553,28 +645,28 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: radius.pill,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: colors.border,
   },
-  colorDotActive: { borderColor: colors.accent },
+  colorDotActive: { borderColor: colors.primary },
 
-  // Kvadrat tugmalar — maketdagidek, doira emas
+  // Size chip — Atelier: oq quti, hair-thin. Faol holat anor fill + cream matn.
   sizeChip: {
     minWidth: 58,
     height: 54,
     paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surface2,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sizeChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   sizeChipDisabled: { opacity: 0.4 },
-  sizeText: { ...text.bodyMed, color: colors.textMuted },
-  sizeTextActive: { color: colors.text },
+  sizeText: { ...text.bodyMed, color: colors.text },
+  sizeTextActive: { color: colors.textOnPrimary },
   sizeCount: { ...text.tiny, color: colors.textDim, marginTop: 1 },
-  sizeCountActive: { color: colors.text },
+  sizeCountActive: { color: colors.textOnPrimary, opacity: 0.85 },
   sizeCountOut: { color: colors.danger },
 
   cartError: { ...text.small, color: colors.danger },
@@ -583,7 +675,7 @@ const styles = StyleSheet.create({
   actionMain: { flex: 1 },
   askButton: {
     width: 60,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
@@ -597,17 +689,38 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.xs,
   },
-  trustItem: { flex: 1, alignItems: 'center', gap: spacing.xs },
-  trustText: { ...text.tiny, color: colors.textMuted, textAlign: 'center' },
+  trustItem: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
+  trustText: { ...text.eyebrow, color: colors.text },
+  trustHint: { ...text.tiny, color: colors.textMuted, marginTop: 2 },
 
-  // Lookga qo'shish tugmasi — binafsha gradient, nurli, savatdan oldin turadi
-  lookBtnWrap: {
-    borderRadius: radius.pill,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.45,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
+  // ── Zoom modal ──
+  zoomBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.96)',
   },
+  zoomScroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  zoomImage: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_WIDTH * 1.4,
+  },
+  zoomClose: {
+    position: 'absolute',
+    right: spacing.md,
+    width: 44,
+    height: 44,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+
+  // "Lookga qo'shish" — Atelier: solid anor pill, gradient yo'q, glow yo'q
   lookBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -615,7 +728,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
   },
-  lookBtnText: { ...text.bodyMed, color: colors.text, fontWeight: '700' },
+  lookBtnText: { ...text.bodyMed, color: colors.textOnPrimary },
 });

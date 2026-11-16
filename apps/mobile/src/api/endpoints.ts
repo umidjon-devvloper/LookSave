@@ -131,7 +131,13 @@ export interface NearbyStore {
 export const getNearbyStores = (
   lat: number,
   lng: number,
-  options: { radius?: number; onlyTryon?: boolean; openNow?: boolean } = {},
+  options: {
+    radius?: number;
+    onlyTryon?: boolean;
+    openNow?: boolean;
+    /** Market'dagi «Erkaklar»/«Ayollar» bo'limi — jins bo'yicha filtr. */
+    audience?: 'men' | 'women';
+  } = {},
 ): Promise<NearbyStore[]> => {
   const params = new URLSearchParams({
     lat: String(lat),
@@ -140,6 +146,7 @@ export const getNearbyStores = (
   });
   if (options.onlyTryon) params.set('onlyTryon', 'true');
   if (options.openNow) params.set('openNow', 'true');
+  if (options.audience) params.set('audience', options.audience);
   return api<NearbyStore[]>(`/stores/nearby?${params.toString()}`);
 };
 
@@ -806,6 +813,13 @@ export const requestBundleRender = (
     : api<RenderBatchResult>('/tryon/render/bundle', {
         method: 'POST',
         body: { variantIds, angle },
+        /*
+         * Komplekt chaqiruvi `loadSources`da har variant uchun ketma-ket
+         * body/garment URL'larini topadi — 4-5 variantli ko'p-do'kon
+         * komplektida 25s odatiy timeout yetmaydi. Backend natijani fonda
+         * yaratgani uchun pending qatorlar ichkarida tezda kiritiladi.
+         */
+        timeoutMs: 60_000,
       });
 
 /** Holatni so'raydi — ilova buni tayyor bo'lguncha takrorlaydi. */
@@ -843,6 +857,34 @@ export const getRenders = (
   if (baseRenderId) query.set('baseRenderId', baseRenderId);
   return api<TryonRender[]>(`/tryon/renders?${query.toString()}`);
 };
+
+/** Kiyintirish tarixidagi bitta natija — to'plami bilan. */
+export interface TryonHistoryItem {
+  /**
+   * Kuzatiladigan yozuv; holati doim `ready`.
+   *
+   * Komplektda — tartiblangan kiyimlarning BIRINCHISINIKI, ya'ni
+   * `startTryon` qaytaradigan yozuvning o'zi: qurilma eslab qolgan urinish
+   * va tarix bitta `id` ga tushadi.
+   */
+  render: TryonRender;
+  /** Natijadagi hamma kiyimlar, tartiblangan */
+  variantIds: string[];
+  completedAt: string;
+}
+
+/**
+ * Kiyintirish tarixi — mijoz kiyintirgan tayyor natijalar, eng yangisi boshida.
+ *
+ * `getRenders` dan farqi: unga kiyimlar ro'yxati kerak, bu esa hech narsa
+ * so'ramaydi — ilova qayta o'rnatilgan yoki boshqa telefon bo'lsa ham keladi.
+ *
+ * ⚠️ ESKI SERVERDA BU YO'L YO'Q (404). Chaqiruvchi xatoni «tarix yo'q» deb
+ * qabul qilishi kerak — qurilma eslab qolgan urinishlar baribir ko'rsatiladi
+ * (`components/ai/LookRoom.tsx`).
+ */
+export const getTryonHistory = (limit = 30): Promise<TryonHistoryItem[]> =>
+  api<TryonHistoryItem[]>(`/tryon/history?limit=${limit}`);
 
 /**
  * ⚠️ RO'YXAT ENDI `@looksave/validation` DA. Ilgari u shu yerda edi va
@@ -1062,6 +1104,8 @@ export interface StoreApplicationInput {
   country: 'UZ' | 'AE';
   location: { lat: number; lng: number };
   currency: 'UZS' | 'AED' | 'USD';
+  /** Do'kon jinsi — Market'da «Erkaklar»/«Ayollar» bo'limida filtrlanadi. */
+  audience: 'men' | 'women' | 'both';
   deliveryEnabled: boolean;
   pickupEnabled: boolean;
 }

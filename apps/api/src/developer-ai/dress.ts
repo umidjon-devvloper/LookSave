@@ -6,6 +6,8 @@ import { isOwnCdnUrl, presignRead } from '../integrations/r2';
 import { logger } from '../logger';
 import { makeCutout } from '../store/cutout';
 import { storeAvatarSheet } from '../tryon/avatar-sheet';
+import { faceNeedsAttention, faceReference, putCustomerFace, type Angle } from './face';
+import { warnFaceNotApplied } from './notify';
 
 /**
  * Operator kiyintirishi — `developer_ai` paneli.
@@ -139,17 +141,63 @@ export async function submitDress(
    */
   const pieces = (await storeAvatarSheet(resultUrl)) ?? { front: resultUrl };
 
-  for (const [angle, url] of Object.entries(pieces)) {
+  /*
+   * ⚠️ BU RASMGA HAM MIJOZNING YUZI QO'YILADI (2026-11-12).
+   *
+   * Ilgari bu yo'lda yuz almashtirish YO'Q edi. Kengaytma avatarni birinchi
+   * kiyim bilan yasaydi va o'sha rasmni shu yerga ham yuboradi — avatarning
+   * o'zi yuzi almashtirilib saqlanardi, shu yerga kelgan nusxasi esa AI
+   * chizgan yuz bilan qolardi. Mijoz avatar yasagandan keyin ko'radigan
+   * BIRINCHI rasm aynan shu edi.
+   *
+   * ⚠️ ALLAQACHON TAYYOR RASM QAYTA ISHLANMAYDI. Yangi kengaytma (0.9.11+)
+   * bu yerga server qaytargan — yuzi almashtirilgan — avatar manzilini
+   * yuboradi. U mijozning joriy avatari bilan bir xil bo'lsa, almashtirish
+   * ham, kesim ham tayyor: ikkinchi marta bir daqiqa sarflash shart emas.
+   */
+  const { rows: profileRows } = await pool.query<{
+    avatar_image_url: string | null;
+    avatar_cutout_url: string | null;
+  }>(`SELECT avatar_image_url, avatar_cutout_url FROM profiles WHERE user_id = $1`, [userId]);
+  const profile = profileRows[0];
+
+  let reference: string | null | undefined;
+
+  for (const [angle, incoming] of Object.entries(pieces)) {
+    let url = incoming;
+    let cutout: string | null = null;
+
+    if (incoming === profile?.avatar_image_url) {
+      cutout = profile.avatar_cutout_url;
+    } else {
+      reference ??= await faceReference(userId, { avatarFallback: true });
+      const stored = await putCustomerFace(incoming, reference, angle as Angle);
+
+      url = stored.url;
+      if (stored.transparent) cutout = stored.url;
+
+      if (faceNeedsAttention(stored.face)) {
+        const reason = stored.reason ?? stored.face;
+        logger.error(
+          { userId, variantId, angle, face: stored.face, reason },
+          'developer_ai: kiyim natijasiga mijozning yuzi QO`YILMADI',
+        );
+        void warnFaceNotApplied({ kind: 'render', id: variantId, reason });
+      }
+    }
+
     await pool.query(
       `INSERT INTO tryon_renders (user_id, variant_id, angle, source_hash, base_render_id,
-                                  status, provider, result_url, completed_at)
-       VALUES ($1, $2, $3, 'operator', NULL, 'ready', 'manual', $4, now())
+                                  status, provider, result_url, cutout_url, completed_at)
+       VALUES ($1, $2, $3, 'operator', NULL, 'ready', 'manual', $4, $5, now())
        ON CONFLICT (user_id, variant_id, angle, source_hash)
-         DO UPDATE SET result_url = EXCLUDED.result_url, cutout_url = NULL,
+         DO UPDATE SET result_url = EXCLUDED.result_url, cutout_url = EXCLUDED.cutout_url,
                        status = 'ready', error = NULL, completed_at = now()`,
-      [userId, variantId, angle, url],
+      [userId, variantId, angle, url, cutout],
     );
-    void attachCutout(userId, variantId, angle, url);
+
+    // Kesim allaqachon bor bo'lsa (shaffof natija) qayta yasalmaydi
+    if (!cutout) void attachCutout(userId, variantId, angle, url);
   }
 
   logger.info({ userId, variantId, angles: Object.keys(pieces) }, 'developer_ai: kiyim kiydirildi');

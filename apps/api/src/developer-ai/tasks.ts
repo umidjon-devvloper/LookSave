@@ -1,16 +1,20 @@
-import { randomUUID } from 'node:crypto';
-
 import type { PoolClient } from 'pg';
 
 import { env } from '../config/env';
 import { pool } from '../db/pool';
 import { ApiError } from '../http/api-error';
-import { isFacefusionEnabled, swapAndCutout } from '../integrations/facefusion';
-import { isOwnCdnUrl, presignRead, uploadObject } from '../integrations/r2';
+import { isOwnCdnUrl, presignRead } from '../integrations/r2';
 import { logger } from '../logger';
 import { makeCutout } from '../store/cutout';
 import { storeAvatarSheet } from '../tryon/avatar-sheet';
-import { announceTask, notifyCustomer, updateAnnouncement } from './notify';
+import {
+  faceNeedsAttention,
+  faceReference,
+  putCustomerFace,
+  type Angle,
+  type FaceState,
+} from './face';
+import { announceTask, notifyCustomer, updateAnnouncement, warnFaceNotApplied } from './notify';
 
 /**
  * Operator navbati — `developer_ai` paneli uchun.
@@ -498,9 +502,9 @@ async function applyResult(
     [row.ref_id, resultUrl, JSON.stringify(angles ?? {})],
   );
   const main = rows[0];
-  if (!main || !angles) return;
+  if (!main) return;
 
-  for (const [angle, url] of Object.entries(angles)) {
+  for (const [angle, url] of Object.entries(angles ?? {})) {
     if (angle === main.angle) continue;
     await client.query(
       `INSERT INTO tryon_renders (user_id, variant_id, angle, source_hash, base_render_id,
@@ -518,6 +522,17 @@ async function applyResult(
    * variant bir xil `source_hash` (bundleHash) bilan yaratiladi. Operator
    * bitta bo'lagini tugatsa — xuddi shu hash'dagi boshqa renderlarga ham
    * natija ko'chiriladi (har kiyim "tayyor" bo'lib ko'rinadi).
+   *
+   * ⚠️ YAKKA RASMDA HAM (2026-11-14). Ilgari yuqorida `!angles` bo'lsa
+   * funksiyadan chiqib ketilardi va bu yerga faqat uch panelli varaqda
+   * yetilardi. Kengaytma esa komplektni BITTA old rasm qilib yuboradi —
+   * natija faqat birinchi kiyimning yozuviga tushib, qolganlari `pending`
+   * da qolardi. Oqibati uchta edi:
+   *  • 30 daqiqadan keyin `sweepStaleRenders` ularni `failed` qilardi;
+   *  • tarixda komplekt ko'rinmasdi (`groupHistory` faqat hamma qatori
+   *    tayyor guruhni oladi);
+   *  • o'sha to'plam har so'ralganda operatorga QAYTADAN tushardi
+   *    (`requestBundleRender` keshi ham «hammasi ready» ni kutadi).
    */
   await client.query(
     `UPDATE tryon_renders
@@ -581,98 +596,112 @@ function sheetError(err: unknown): never {
   throw new ApiError('VALIDATION_ERROR', 'Rasmni 3 ga bo`lib bo`lmadi — qayta yuklab ko`ring');
 }
 
+interface OperatorFace {
+  url: string;
+  angles: Record<string, string> | null;
+  /** ASOSIY burchakdagi (mijoz ko'radigan) rasmning yuz holati */
+  face: FaceState;
+  reason?: string;
+  /** Shaffof PNG bo'lib qaytgan manzillar — ularga alohida kesim kerak emas */
+  transparent: string[];
+}
+
 /*
  * Operator yuklagan rasmga foydalanuvchining asl yuzini joylaydi.
  *
- * ⚠️ ASL RASM O'ZGARTIRILMAYDI. Yangi R2 kaliti bilan yoziladi — kesh va
- * audit zanjiri buzilmasligi uchun. Facefusion yoqilmagan, foydalanuvchida
- * yuz referensi yo'q, yoki yuklab bo'lmasa — asl manzil o'zgarmasdan
- * qaytadi va mijoz hech narsadan mahrum bo'lmaydi.
+ * Almashtirishning o'zi `face.ts` da (`putCustomerFace`) — u uchala
+ * kirish eshigi uchun umumiy. Bu yerda faqat ISH turiga xos qism: yuz
+ * manbai qayerdan olinadi va qaysi burchak asosiy.
  *
- * Varaq rejimida (`angles` 3 ta burchak) — har burchak uchun alohida
- * chaqiriladi; `facefusion.ts` ichida `FACEFUSION_FRONT_ONLY` yon/orqani
- * o'tkazib yuboradi, lekin biz baribir hammasiga chaqiramiz, modul o'zi
- * hal qiladi.
+ * ⚠️ FACE REFERENCE QAYERDAN:
+ * - `render` ishi: refId = tryon_renders.id → o'sha mijozning yuz surati
+ *   (yo'q bo'lsa avatar)
+ * - `avatar` ishi: refId = profiles.user_id → FAQAT yuz surati; avatar
+ *   aynan o'sha payt yasalayapti, eskisini manba qilish mantiqsiz.
  */
 async function applyFaceSwapForOperatorResult(
   kind: 'render' | 'avatar',
   refId: string,
   resultUrl: string,
   angles: Record<string, string> | null,
-): Promise<{ url: string; angles: Record<string, string> | null }> {
-  if (!isFacefusionEnabled()) {
-    logger.info({ refId, kind }, 'facefusion o\'chiq — face swap o\'tkazilmadi');
-    return { url: resultUrl, angles };
+): Promise<OperatorFace> {
+  let customerId = refId;
+  let mainAngle: Angle = 'front';
+
+  if (kind === 'render') {
+    const { rows } = await pool.query<{ user_id: string; angle: Angle | null }>(
+      `SELECT user_id, angle FROM tryon_renders WHERE id = $1`,
+      [refId],
+    );
+    const render = rows[0];
+    if (!render) return { url: resultUrl, angles, face: 'no-reference', transparent: [] };
+
+    customerId = render.user_id;
+    mainAngle = render.angle ?? 'front';
+  }
+
+  const reference = await faceReference(customerId, { avatarFallback: kind === 'render' });
+
+  if (!angles) {
+    const main = await putCustomerFace(resultUrl, reference, mainAngle);
+    return {
+      url: main.url,
+      angles: null,
+      face: main.face,
+      reason: main.reason,
+      transparent: main.transparent ? [main.url] : [],
+    };
   }
 
   /*
-   * ⚠️ FACE REFERENCE QAYERDAN:
-   * - `render` ishi: refId = tryon_renders.id → shu userning face_texture_url/avatar
-   * - `avatar` ishi: refId = profiles.user_id → to'g'ridan-to'g'ri face_texture_url
+   * Varaq rejimi (eski kengaytma yoki qo'lda yuklash): har burchak alohida.
    *
-   * ⚠️ `avatar_image_url` FALLBACK EMAS AVATAR ISHIDA — avatar aynan
-   * o'sha payt yasalayapti, eskisini ishlatish mantiqsiz. Faqat
-   * `face_texture_url` (foydalanuvchi selfie yuklagan) kerak.
+   * ⚠️ KETMA-KET, PARALLEL EMAS. Xizmat og'ir ishni bittalab bajaradi va
+   * bir vaqtda ikkitadan ortiq so'rovni qabul qilmaydi (fly.toml —
+   * `hard_limit = 2`); uchta burchak birdan ketsa uchinchisi rad etilardi.
    */
-  const faceQuery = kind === 'render'
-    ? {
-        sql: `SELECT COALESCE(p.face_texture_url, p.avatar_image_url) AS face_reference_url,
-                     r.angle
-                FROM tryon_renders r
-                JOIN profiles p ON p.user_id = r.user_id
-               WHERE r.id = $1`,
-        param: refId,
-      }
-    : {
-        sql: `SELECT face_texture_url AS face_reference_url, 'front'::text AS angle
-                FROM profiles WHERE user_id = $1`,
-        param: refId,
-      };
+  const next: Record<string, string> = {};
+  const transparent: string[] = [];
+  let face: FaceState = 'skipped';
+  let reason: string | undefined;
 
-  const { rows } = await pool.query<{
-    face_reference_url: string | null;
-    angle: string;
-  }>(faceQuery.sql, [faceQuery.param]);
-  const faceReferenceRaw = rows[0]?.face_reference_url;
-  const mainAngle = (rows[0]?.angle ?? 'front') as 'front' | 'side' | 'back';
-  if (!faceReferenceRaw) {
-    logger.info({ refId, kind }, 'face referens topilmadi — face swap o\'tkazilmadi');
-    return { url: resultUrl, angles };
+  for (const [angle, url] of Object.entries(angles)) {
+    const stored = await putCustomerFace(url, reference, angle as Angle);
+    next[angle] = stored.url;
+    if (stored.transparent) transparent.push(stored.url);
+    if (angle === mainAngle) {
+      face = stored.face;
+      reason = stored.reason;
+    }
   }
 
-  const faceReferenceUrl = (await presignRead(faceReferenceRaw)) ?? faceReferenceRaw;
+  return { url: next[mainAngle] ?? resultUrl, angles: next, face, reason, transparent };
+}
 
-  async function swapOne(url: string, angle: 'front' | 'side' | 'back'): Promise<string> {
-    const res = await fetch(url);
-    if (!res.ok) return url;
-    const target = Buffer.from(await res.arrayBuffer());
-    /*
-     * ⚠️ `swapAndCutout` (2026-11-09): fly.io'da bitta chaqiruv —
-     * face swap + background removal birgalikda. Natija SHAFFOF PNG
-     * bo'ladi, VPS'da qo'shimcha cutout kerak emas.
-     */
-    const swapped = await swapAndCutout({ target, sourceFaceUrl: faceReferenceUrl, angle });
-    if (swapped === target) return url;
-    return uploadObject({
-      key: `tryon/manual/${randomUUID()}.png`,
-      body: swapped,
-      contentType: 'image/png',
+/**
+ * Shaffof bo'lib qaytgan natijalarni «kesimi tayyor» deb belgilaydi.
+ *
+ * ⚠️ NEGA (2026-11-12). Yuz almashtirish xizmati allaqachon shaffof PNG
+ * qaytaradi, lekin shundan keyin o'sha rasm YANA fon olib tashlashga
+ * yuborilardi: xizmatga ikki barobar yuk (aynan shu yuk uning xotirasini
+ * to'ldirib, mashinani yiqitardi) va rasm ikkinchi marta qayta ishlanardi.
+ * Shaffof rasmning kesimi — uning o'zi.
+ *
+ * Komplektdagi qo'shni yozuvlar ham shu yerda yopiladi: ular xuddi shu
+ * `result_url` ni oladi (`applyResult`).
+ */
+async function adoptTransparentRenders(userId: string, urls: string[]): Promise<void> {
+  if (urls.length === 0) return;
+
+  await pool
+    .query(
+      `UPDATE tryon_renders SET cutout_url = result_url
+        WHERE user_id = $1 AND result_url = ANY($2::text[]) AND cutout_url IS NULL`,
+      [userId, urls],
+    )
+    .catch((err: unknown) => {
+      logger.warn({ err, userId }, 'developer_ai: tayyor kesimni belgilab bo`lmadi');
     });
-  }
-
-  if (angles) {
-    const entries = await Promise.all(
-      (Object.entries(angles) as Array<[string, string]>).map(async ([angle, url]) => {
-        const a = (angle as 'front' | 'side' | 'back') ?? 'front';
-        return [angle, await swapOne(url, a).catch(() => url)] as const;
-      }),
-    );
-    const nextAngles = Object.fromEntries(entries) as Record<string, string>;
-    return { url: nextAngles[mainAngle] ?? resultUrl, angles: nextAngles };
-  }
-
-  const nextUrl = await swapOne(resultUrl, mainAngle).catch(() => resultUrl);
-  return { url: nextUrl, angles: null };
 }
 
 export async function completeTask(
@@ -698,35 +727,46 @@ export async function completeTask(
    * Faqat avatar ishida: kiyintirish natijasi har doim bitta surat.
    */
   const pending = await findTask(taskId);
-  // Kiyintirish ham endi uch panelli varaq bo'lib kelishi mumkin (2026-09-25)
-  let angles = pending ? await storeAvatarSheet(resultUrl).catch(sheetError) : null;
-  let finalResultUrl = resultUrl;
 
   /*
-   * ⚠️ OPERATOR REJIMIDA HAM YUZ ALMASHTIRILADI (2026-11-09).
-   *
-   * Avval faqat auto-render (`tryon/render.ts`) Facefusion'ni chaqirardi;
-   * operator yuklagan rasm "o'zidek" borar edi — ya'ni rasmda GPT chizgan
-   * umumiy chehra ko'rinardi va foydalanuvchi "bu men emasku" deb
-   * hayron qolardi. Endi faqat kiyintirish ishlarida (`render`), yuz
-   * referensi va Facefusion yoqilgan bo'lsa, panel'dan kelgan rasmga
-   * foydalanuvchining asl yuzi joylashtiriladi — xuddi auto rejim kabi.
-   *
-   * Tranzaksiyadan OLDIN qilinadi — ish qulflanib turmasin. Avatar
-   * ishida yuz almashtirish o'rinsiz: aynan yuz skanining o'zi.
+   * ⚠️ OG'IR ISH FAQAT ISH HAQIQATAN SHU OPERATORDA BO'LSA (2026-11-12).
+   * Quyidagi yuz almashtirish bir daqiqagacha davom etadi. Tugma ikki marta
+   * bosilsa yoki ish allaqachon yopilgan bo'lsa, o'sha daqiqa behuda ketardi
+   * va xizmatga ikkinchi og'ir so'rov tushardi — rad javobi esa baribir
+   * pastdagi `finish` dan keladi.
    */
-  if (pending) {
+  const mine = pending?.status === 'claimed' && pending.claimed_by === operatorId ? pending : null;
+
+  // Kiyintirish ham endi uch panelli varaq bo'lib kelishi mumkin (2026-09-25)
+  let angles = mine ? await storeAvatarSheet(resultUrl).catch(sheetError) : null;
+  let finalResultUrl = resultUrl;
+  let operatorFace: OperatorFace | null = null;
+
+  /*
+   * ⚠️ OPERATOR REJIMIDA HAM YUZ ALMASHTIRILADI (2026-11-09) — avatar
+   * ishida ham, kiyintirishda ham. Aks holda rasmda GPT chizgan umumiy
+   * chehra ko'rinadi va foydalanuvchi "bu men emasku" deb hayron qoladi.
+   *
+   * Tranzaksiyadan OLDIN qilinadi — ish qulflanib turmasin.
+   */
+  if (mine) {
     try {
-      const swapped = await applyFaceSwapForOperatorResult(
-        pending.kind,
-        pending.ref_id,
+      operatorFace = await applyFaceSwapForOperatorResult(
+        mine.kind,
+        mine.ref_id,
         resultUrl,
         angles,
       );
-      finalResultUrl = swapped.url;
-      angles = swapped.angles;
+      finalResultUrl = operatorFace.url;
+      angles = operatorFace.angles;
     } catch (err) {
-      logger.warn({ err, taskId, kind: pending.kind }, 'operator face swap yiqildi — asl rasm qoladi');
+      operatorFace = {
+        url: resultUrl,
+        angles,
+        face: 'failed',
+        reason: err instanceof Error ? err.message : 'kutilmagan xato',
+        transparent: [],
+      };
     }
   }
 
@@ -756,9 +796,33 @@ export async function completeTask(
    * sahnaga toza tushardi, ikkinchisi och kulrang to'rtburchak bo'lib
    * ko'rinardi — va farq operatordan kelgan-kelmaganiga bog'liq edi.
    */
+  /*
+   * ⚠️ SHAFFOF BO'LIB QAYTGAN RASM QAYTA KESILMAYDI (2026-11-12) —
+   * `adoptTransparentRenders` izohiga qarang. Kesim faqat xizmat shaffof
+   * rasm bera olmaganda (o'chiq, yiqilgan) alohida yasaladi.
+   */
+  const transparent = new Set(operatorFace?.transparent ?? []);
+
   if (row.kind === 'avatar') {
-    void attachCutout(row.ref_id, angles?.['front'] ?? finalResultUrl);
+    const avatarUrl = angles?.['front'] ?? finalResultUrl;
+
+    if (transparent.has(avatarUrl)) {
+      // Shu orada avatar yana almashgan bo'lsa yozilmaydi (`attachCutout` dagi kabi)
+      await pool
+        .query(
+          `UPDATE profiles SET avatar_cutout_url = $2
+            WHERE user_id = $1 AND avatar_image_url = $2`,
+          [row.ref_id, avatarUrl],
+        )
+        .catch((err: unknown) => {
+          logger.warn({ err, userId: row.ref_id }, 'developer_ai: avatar kesimini belgilab bo`lmadi');
+        });
+    } else {
+      void attachCutout(row.ref_id, avatarUrl);
+    }
   } else {
+    await adoptTransparentRenders(row.user_id, [...transparent]);
+
     /*
      * ⚠️ HAR BURCHAKKA KESIM. Avval faqat asosiy burchak uchun chaqirardi
      * (`attachRenderCutout(row.ref_id, ...)`). Natijada yon/orqa rasmlar
@@ -768,12 +832,29 @@ export async function completeTask(
      * `cutout_url` joylanadi — ularni ref_id emas, (user_id, variant_id,
      * angle, source_hash) bo'yicha topamiz, chunki applyResult yon/orqa
      * uchun yangi id bilan INSERT qilgan.
+     *
+     * Yuqorida «tayyor» deb belgilanganlari bu yerda o'zi tushib qoladi:
+     * ikkala yo'l ham faqat `cutout_url IS NULL` yozuvlarga tegadi.
      */
     if (angles) {
       void attachRenderCutoutsForAllAngles(row.ref_id);
-    } else {
+    } else if (!transparent.has(finalResultUrl)) {
       void attachRenderCutout(row.ref_id, finalResultUrl);
     }
+  }
+
+  /*
+   * ⚠️ YUZ QO'YILMAGAN BO'LSA — BU XATO, VA U KO'RINISHI SHART.
+   * Natija baribir mijozga ketdi (rasmsiz qoldirgandan ko'ra), lekin unda
+   * AI chizgan yuz. Ilgari bu `warn` bo'lib logda yo'qolardi.
+   */
+  if (operatorFace && faceNeedsAttention(operatorFace.face)) {
+    const reason = operatorFace.reason ?? operatorFace.face;
+    logger.error(
+      { taskId, kind: row.kind, face: operatorFace.face, reason },
+      'developer_ai: natijaga mijozning yuzi QO`YILMADI',
+    );
+    void warnFaceNotApplied({ kind: row.kind, id: taskId, reason });
   }
 
   void updateAnnouncement(taskId, {

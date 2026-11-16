@@ -107,19 +107,20 @@ function BannerCard({ banner, onPress }: { banner: MarketplaceBanner; onPress: (
       style={({ pressed }) => [styles.banner, pressed && styles.bannerPressed]}
     >
       <Image source={{ uri: banner.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      {/* Atelier: pastki qismi krem — bannerTitle ink matn o'qiladi */}
       <LinearGradient
-        colors={['rgba(10,10,15,0.08)', 'rgba(10,10,15,0.88)']}
+        colors={['rgba(247,242,234,0.1)', 'rgba(247,242,234,0.94)']}
         locations={[0.25, 1]}
         style={StyleSheet.absoluteFill}
       />
       <View style={styles.bannerCopy}>
-        <Text style={styles.bannerLabel}>REKLAMA</Text>
+        <Text style={styles.bannerLabel}>Reklama</Text>
         <Text style={styles.bannerTitle} numberOfLines={2}>{banner.title}</Text>
         {banner.subtitle ? <Text style={styles.bannerSubtitle} numberOfLines={2}>{banner.subtitle}</Text> : null}
       </View>
       {banner.targetUrl ? (
         <View style={styles.bannerArrow}>
-          <Icon name="next" size={18} color={colors.text} />
+          <Icon name="next" size={18} color={colors.primary} />
         </View>
       ) : null}
     </Pressable>
@@ -381,8 +382,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   topTitleWrap: { flex: 1, alignItems: 'center' },
-  topTitle: { ...text.h3, color: colors.text, textTransform: 'uppercase' },
-  topSubtitle: { ...text.tiny, color: colors.textDim, letterSpacing: 2 },
+  // Atelier: Fraunces display, natural case
+  topTitle: { ...text.h2, color: colors.text },
+  topSubtitle: { ...text.eyebrow, color: colors.textMuted },
   roundButton: {
     width: 44,
     height: 44,
@@ -405,7 +407,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.primary,
   },
-  cartBadgeText: { ...text.tiny, color: colors.text, fontWeight: '700' },
+  cartBadgeText: { ...text.tiny, color: colors.textOnPrimary, fontWeight: '700' },
 
   list: { paddingHorizontal: spacing.md, paddingBottom: spacing.xl, gap: GAP },
   column: { flexDirection: 'row', gap: GAP },
@@ -428,16 +430,15 @@ const styles = StyleSheet.create({
    * Android'da soya rangsiz, shuning uchun chegara rangi ham o'zgaradi:
    * shundagina urg'u ikkala platformada ham ko'rinadi.
    */
+  // Atelier: urg'u faqat qalin anor chegara — glow yo'q
   imageWrapGlow: {
     borderColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.55,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 0 },
+    borderWidth: 2,
   },
   image: { width: '100%', aspectRatio: 3 / 4, backgroundColor: colors.surface },
   placeholder: { backgroundColor: colors.surface2 },
 
+  // Atelier: rasm ustidagi oq overlay
   heart: {
     position: 'absolute',
     top: 5,
@@ -447,7 +448,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(10,10,15,0.6)',
+    backgroundColor: 'rgba(255,255,255,0.94)',
   },
   limitedTag: {
     position: 'absolute',
@@ -458,7 +459,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(10,10,15,0.6)',
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    borderWidth: 1,
+    borderColor: colors.limited,
   },
 
   priceTag: {
@@ -469,9 +472,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs + 2,
     paddingVertical: 3,
     borderRadius: radius.sm,
-    backgroundColor: 'rgba(10,10,15,0.72)',
+    backgroundColor: 'rgba(255,255,255,0.92)',
   },
-  priceText: { ...text.tiny, color: colors.text, fontWeight: '700' },
+  // Narx — serif display, ink
+  priceText: { ...text.price, fontSize: 12, lineHeight: 15, color: colors.text },
 
   banner: {
     height: 132,
@@ -479,15 +483,17 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: colors.border,
     backgroundColor: colors.surface,
     justifyContent: 'flex-end',
   },
   bannerPressed: { opacity: 0.88 },
   bannerCopy: { padding: spacing.md, paddingRight: 58 },
-  bannerLabel: { ...text.tiny, color: colors.accent, fontWeight: '700', letterSpacing: 1 },
-  bannerTitle: { ...text.h3, color: colors.text, marginTop: 2 },
-  bannerSubtitle: { ...text.tiny, color: colors.textMuted, marginTop: 2 },
+  // "Reklama" — eyebrow italic Fraunces
+  bannerLabel: { ...text.eyebrow, color: colors.primary },
+  // Sarlavha Fraunces display
+  bannerTitle: { ...text.h2, color: colors.text, marginTop: 2 },
+  bannerSubtitle: { ...text.small, color: colors.textMuted, marginTop: 2 },
   bannerArrow: {
     position: 'absolute',
     right: spacing.md,
@@ -497,8 +503,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(10,10,15,0.72)',
+    backgroundColor: 'rgba(255,255,255,0.94)',
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: colors.border,
   },
 });

@@ -54,10 +54,10 @@ export function SignInRequired({ title, hint }: { title?: string; hint?: string 
       style={styles.bg}
       resizeMode="cover"
     >
-      {/* Pastdan qoraytirib chiquvchi gradient — matn o'qilishini ta'minlaydi */}
+      {/* Profil rasmi ustidan oq-lavanda qatlam: qora matn har doim o'qiladi. */}
       <LinearGradient
-        colors={['transparent', 'rgba(10,10,15,0.72)', colors.bg]}
-        locations={[0, 0.55, 1]}
+        colors={['rgba(251,250,255,0.80)', 'rgba(251,250,255,0.94)', colors.bg]}
+        locations={[0, 0.48, 1]}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
@@ -94,10 +94,10 @@ export function SignInRequired({ title, hint }: { title?: string; hint?: string 
               va uning foni to'liq to'ldirilgan edi — binafsha tugma ustida
               boshqa ohangdagi kvadrat bo'lib ko'rinardi. Vektorda fon yo'q.
             */}
-            <Icon name="login" size={24} color={colors.text} />
+            <Icon name="login" size={24} color={colors.textOnPrimary} />
             <Text style={styles.btnPrimaryText}>{t.auth.signIn}</Text>
             <View style={styles.btnChevron}>
-              <Icon name="next" size={16} color={colors.text} />
+              <Icon name="next" size={16} color={colors.textOnPrimary} />
             </View>
           </Pressable>
 
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     overflow: 'hidden',
   },
-  btnPrimaryText: { ...text.bodyMed, color: colors.text, flex: 1 },
+  btnPrimaryText: { ...text.bodyMed, color: colors.textOnPrimary, flex: 1 },
   btnGhost: {
     height: 58,
     borderRadius: radius.xxl,
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     borderWidth: 1,
     borderColor: colors.borderStrong,
-    backgroundColor: 'rgba(20,18,28,0.6)',
+    backgroundColor: 'rgba(255,255,255,0.78)',
   },
   btnGhostText: { ...text.bodyMed, color: colors.text, flex: 1 },
   btnChevron: { marginLeft: 'auto' },
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
 const card = StyleSheet.create({
   wrap: {
     flex: 1,
-    backgroundColor: 'rgba(20,18,28,0.72)',
+    backgroundColor: 'rgba(255,255,255,0.82)',
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.lg,
@@ -198,6 +198,11 @@ const card = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
     gap: 6,
+    shadowColor: '#6D28D9',
+    shadowOpacity: 0.10,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
   },
   iconWrap: {
     width: 42,

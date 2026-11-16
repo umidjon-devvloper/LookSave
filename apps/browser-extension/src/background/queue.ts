@@ -7,11 +7,8 @@ import {
   type RunStatus,
 } from '../shared/messages';
 import {
-  buildAvatarRequestPrompt,
   buildFrontTryonPrompt,
   buildFrontTryonBundlePrompt,
-  buildTryonSheetPrompt,
-  isSheetPrompt,
   garmentKindForSlot,
   type Measurements,
 } from '../shared/prompt';
@@ -306,31 +303,12 @@ function message(error: unknown): string {
 // ── `render` ishi: bitta kiyim ──
 
 /**
- * Natija haqiqatan uch panelli varaqmi (landshaft).
- *
- * ⚠️ NEGA SHART (#f8196c0d, 2026-09-25). ChatGPT rasm o'rniga matn bilan
- * javob bersa, kengaytma sahifadagi BIZ biriktirgan suratni (yuzni)
- * «natija» deb olib mijozga yuborgan edi. Varaq har doim landshaft, yuz
- * surati esa tik — shakl bo'yicha ajratiladi va noto'g'ri surat umuman
- * yuborilmaydi.
- */
-async function assertSheet(image: { mime: string; base64: string }): Promise<void> {
-  const bitmap = await createImageBitmap(fromBase64(image.base64, image.mime));
-  const { width, height } = bitmap;
-  bitmap.close();
-  if (width < height * 1.2) {
-    throw new Error(
-      `AI uch panelli rasm qaytarmadi (${width}×${height}) — natija yuborilmadi, ishni qayta boshlang`,
-    );
-  }
-}
-
-/**
  * Natija vertikal portretmi.
  *
  * ⚠️ NEGA (2026-11-09): kiyintirish endi uch panelli varaq emas, faqat
- * OLD ko'rinishli bitta portret (so'rovga ko'ra). Agar GPT noto'g'ri
- * bo'lak qaytarsa (landshaft yoki matn), bu tekshir uni to'xtatadi.
+ * OLD ko'rinishli bitta portret (so'rovga ko'ra); 2026-11-11 dan birinchi
+ * avatar ham. Agar GPT noto'g'ri bo'lak qaytarsa (landshaft yoki uch
+ * figurali varaq), bu tekshir uni to'xtatadi.
  */
 async function assertPortrait(image: { mime: string; base64: string }): Promise<void> {
   const bitmap = await createImageBitmap(fromBase64(image.base64, image.mime));
@@ -459,9 +437,6 @@ async function makeAvatar(task: Task, tabId: number, adapter: AdapterId): Promis
   const faceUrl = task.previews['faceUrl'];
   if (!faceUrl) throw new Error('Ishda yuz surati yo`q');
 
-  const bodyPrompt = typeof task.payload['prompt'] === 'string' ? task.payload['prompt'] : '';
-  if (!bodyPrompt) throw new Error('Ishda gavda tavsifi yo`q');
-
   /*
    * ⚠️ AVATAR DARHOL DO'KONNING BIRINCHI USTKI KIYIMIDA YASALADI.
    *
@@ -490,22 +465,30 @@ async function makeAvatar(task: Task, tabId: number, adapter: AdapterId): Promis
       : []),
   ];
 
-  const result = await generate(
-    tabId,
-    adapter,
-    buildAvatarRequestPrompt(bodyPrompt, first ? garmentKindForSlot(first.slot) : null),
-    images,
-  );
+  /*
+   * ⚠️ BIRINCHI AVATAR HAM FAQAT OLD KO'RINISH (2026-11-11, so'rovga
+   * ko'ra) — kiyintirish bilan bir xil qolip. Ishdagi `payload.prompt`
+   * ishlatilmaydi: yangilanmagan server unda uch panelli varaqni so'raydi.
+   */
+  const prompt = buildFrontTryonPrompt({
+    kind: first ? garmentKindForSlot(first.slot) : null,
+    measurements: measurementsOf(task.payload),
+    gender: genderOf(task.payload),
+  });
 
-  if (isSheetPrompt(bodyPrompt)) await assertSheet(result);
-  const resultUrl = await store(result);
-  await completeTask(task.id, resultUrl);
+  const result = await generate(tabId, adapter, prompt, images);
+  await assertPortrait(result);
+  const uploaded = await store(result);
+  const completed = await completeTask(task.id, uploaded);
 
   /*
-   * Kiyim natijasi sifatida BUTUN varaq yuboriladi — server uni o'zi
-   * old/yon/orqa renderlarga bo'ladi (`submitDress`, 2026-09-25).
+   * ⚠️ KIYIM NATIJASIGA SERVER QAYTARGAN MANZIL KETADI, biz yuklagani emas.
+   * Server ishni yopayotib suratga mijozning ASL yuzini joylaydi
+   * (`completeTask` → facefusion) va o'sha yangi manzilni qaytaradi. Xom
+   * manzil yuborilsa avatarda asl yuz, birinchi kiyimda esa AI chizgan yuz
+   * bo'lib qolardi.
    */
-  const dressUrl = resultUrl;
+  const dressUrl = completed.resultUrl ?? uploaded;
 
   /*
    * ⚠️ O'SHA SURAT KIYIM NATIJASI SIFATIDA HAM YOZILADI. U aynan shu
@@ -565,7 +548,7 @@ async function generate(
   adapter: AdapterId,
   prompt: string,
   images: { name: string; mime: string; base64: string }[],
-): Promise<{ mime: string; base64: string }> {
+): Promise<Picture> {
   await freshChat(tabId, adapter);
 
   const response = await ask(tabId, { type: 'DRESS', prompt, images, timeoutMs: DRESS_TIMEOUT_MS });
@@ -577,10 +560,74 @@ async function generate(
    * darhol keladi. CORS to'sgan bo'lsa faqat havola keladi va uni
    * worker oladi (`host_permissions`).
    */
-  if (response.type === 'IMAGE') return { mime: response.mime, base64: response.base64 };
-  if (response.type === 'IMAGE_URL') return fetchImage(response.url);
+  let result: Picture;
+  if (response.type === 'IMAGE') result = { mime: response.mime, base64: response.base64 };
+  else if (response.type === 'IMAGE_URL') result = await fetchImage(response.url);
+  else throw new Error('AI rasm qaytarmadi');
 
-  throw new Error('AI rasm qaytarmadi');
+  await assertNotAttachment(result, images);
+  return result;
+}
+
+type Picture = { mime: string; base64: string };
+
+const SIGNATURE_SIZE = 16;
+/**
+ * Izlar orasidagi o'rtacha farq (0–255) shundan past bo'lsa — bu o'sha surat.
+ *
+ * O'lchangan (2026-11-11): bitta surat 8 barobar kichraytirilib, JPEG q50
+ * bilan qayta kodlansa ham farq 5 dan oshmadi; turli suratlar orasida esa
+ * eng kami 32 chiqdi. 12 ikkalasidan ham uzoq.
+ */
+const SAME_PICTURE_BELOW = 12;
+
+/**
+ * Natija BIZ biriktirgan suratlardan biri emasligini tekshiradi.
+ *
+ * ⚠️ NEGA SHART (#f8196c0d, 2026-09-25). ChatGPT rasm o'rniga matn bilan
+ * javob bersa, kengaytma sahifadagi biz biriktirgan suratni (yuzni)
+ * «natija» deb olib mijozga yuborgan edi. Uch panelli varaq davrida buni
+ * SHAKL ajratardi: varaq landshaft, yuz surati tik. Yakka portretda natija
+ * ham tik, shuning uchun MAZMUN solishtiriladi — 16×16 gacha kichraytirilgan
+ * iz o'lchamga ham, qayta kodlashga ham bog'liq emas.
+ */
+async function assertNotAttachment(result: Picture, images: Picture[]): Promise<void> {
+  const mark = await signature(result);
+
+  for (const image of images) {
+    /* Biriktirma o'qilmasa o'tkazib yuboriladi: bu ikkinchi to'siq, ishni yiqitmasin. */
+    const own = await signature(image).catch(() => null);
+    if (own && difference(mark, own) < SAME_PICTURE_BELOW) {
+      throw new Error(
+        'AI rasm qaytarmadi — sahifadan biz biriktirgan surat olindi, natija yuborilmadi',
+      );
+    }
+  }
+}
+
+async function signature(image: Picture): Promise<Uint8ClampedArray> {
+  const bitmap = await createImageBitmap(fromBase64(image.base64, image.mime), {
+    resizeWidth: SIGNATURE_SIZE,
+    resizeHeight: SIGNATURE_SIZE,
+    resizeQuality: 'high',
+  });
+
+  const context = new OffscreenCanvas(SIGNATURE_SIZE, SIGNATURE_SIZE).getContext('2d');
+  if (!context) throw new Error('Canvas ochilmadi');
+
+  /* Oq ustiga: aks holda shaffof joy ostidagi ko'rinmas rang solishtirilardi. */
+  context.fillStyle = '#fff';
+  context.fillRect(0, 0, SIGNATURE_SIZE, SIGNATURE_SIZE);
+  context.drawImage(bitmap, 0, 0);
+  bitmap.close();
+
+  return context.getImageData(0, 0, SIGNATURE_SIZE, SIGNATURE_SIZE).data;
+}
+
+function difference(a: Uint8ClampedArray, b: Uint8ClampedArray): number {
+  let total = 0;
+  for (let i = 0; i < a.length; i += 1) total += Math.abs(a[i]! - b[i]!);
+  return total / a.length;
 }
 
 /**

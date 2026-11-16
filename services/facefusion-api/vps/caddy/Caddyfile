@@ -1,0 +1,48 @@
+# LookSave yuz xizmati — tashqi eshik (VPS).
+#
+# fly.io beradigan uch narsaning o'rnini bosadi:
+#   1. HTTPS — sertifikatni Caddy o'zi oladi va yangilaydi (Let's Encrypt);
+#   2. kim chaqira oladi — faqat `API_ALLOW_IPS` dagi manzillar (jonli API
+#      serveri). fly.io'da xizmat HAMMAGA ochiq edi;
+#   3. bir vaqtda nechta so'rov — `FACE_MAX_PARALLEL` (fly.toml dagi
+#      `hard_limit` o'rniga). Ortig'i darhol 503 oladi va API keyinroq qayta
+#      urinadi; aks holda so'rovlar navbatda API kutish vaqtidan (240 s)
+#      uzoq turib, baribir tashlab yuborilardi.
+#
+# ACME uchun e-mail ataylab ko'rsatilmagan — sertifikat usiz ham olinadi.
+
+{$FACE_DOMAIN} {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+
+	# Holat — hammaga ochiq (qaysi kod ishlayotganini tashqaridan ko'rish uchun).
+	@health {
+		method GET
+		path /health
+	}
+	handle @health {
+		reverse_proxy 127.0.0.1:8080
+	}
+
+	@allowed remote_ip {$API_ALLOW_IPS}
+	handle @allowed {
+		request_body {
+			max_size 40MB
+		}
+
+		# ⚠️ Bu yerga javob kutish vaqti (timeout) QO'YILMAYDI: bitta
+		# almashtirish 40–75 soniya, navbat bilan bir necha daqiqa.
+		reverse_proxy 127.0.0.1:8080 {
+			unhealthy_request_count {$FACE_MAX_PARALLEL}
+		}
+	}
+
+	handle {
+		respond "forbidden" 403
+	}
+
+	log
+}

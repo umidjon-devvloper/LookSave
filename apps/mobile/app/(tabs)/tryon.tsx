@@ -1,25 +1,18 @@
-import { FittingExperience } from '../../src/components/ai/FittingExperience';
+import { LookRoom } from '../../src/components/ai/LookRoom';
 
 /**
- * «Kiyib ko'rish» tabi.
+ * «Kiyib ko'rish» tabi — markaziy tugma.
  *
- * ⚠️ BU EKRAN 3D EDI — ENDI EMAS. Ilgari shu yerda `three.js` sahnasi
- * turardi: avatar modeli va unga kiydiriladigan GLB kiyimlar. U ishlardi,
- * lekin natija ko'rgazmali emas edi — protsedural avatar va oz sonli
- * kiyim modeli bilan tasvir «o'yinchoq» bo'lib chiqardi va foydalanuvchi
- * o'zini tanimasdi.
+ * ⚠️ BU EKRAN UCH MARTA ALMASHDI. Avval `three.js` sahnasi edi (3D avatar
+ * va GLB kiyimlar) — natija «o'yinchoq»dek chiqardi va har mahsulotga 3D
+ * model kerak bo'lardi. Keyin AI kiyintirish: do'kon katalogi, turkum
+ * tablari va filtrlar bilan birga (`FittingExperience`) — ishlardi, lekin
+ * ekran murakkablashib ketdi. Endi u sodda primerka: «Look» bilan yig'ilgan
+ * kiyimlar va bitta «Kiyintirish» tugmasi (`LookRoom`).
  *
- * Sotuvchi tomonidan ham qimmat edi: har mahsulot uchun 3D model kerak
- * bo'lardi. Endi sotuvchi oddiy surat va o'lchamlarni kiritadi, kiyintirish
- * esa AI orqali suratda bajariladi (`apps/api/src/integrations/openai.ts`).
- *
- * ⚠️ THREE.JS HAM KETDI. Svayp avval unga qurilgan edi, lekin GL ikki
- * joyda yiqildi: ba'zi qurilmalarda JIM chizmaydi (xato bermaydi) va
- * fon olib tashlangan SHAFFOF PNG ni Hermes'da ocha olmaydi. Endi svayp
- * React Native'ning o'z `perspective` transformida —
- * `src/components/ai/PhotoSwipe.tsx`. Ko'rinish o'sha, ishonchliligi
- * boshqa.
+ * Tepadagi AI tugmasi (`/ai/fitting`) aynan shu ekranni ochadi — ikki
+ * kirish, bitta ekran.
  */
 export default function TryOnTab(): JSX.Element {
-  return <FittingExperience />;
+  return <LookRoom />;
 }

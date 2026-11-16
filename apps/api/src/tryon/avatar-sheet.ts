@@ -7,7 +7,7 @@ import type { AvatarAngle } from './avatar-prompt';
 
 /**
  * Uch burchakli «turnaround» varaqni bo'laklarga ajratish
- * (`buildAvatarSheetPrompt` / `buildTryonSheetPrompt` → operator → shu yer).
+ * (`buildTryonSheetPrompt` → operator → shu yer).
  *
  * Rasm chapdan o'ngga OLD · YON · ORQA.
  *

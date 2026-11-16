@@ -125,6 +125,36 @@ export async function updateAnnouncement(taskId: string, stage: Stage): Promise<
   }
 }
 
+/**
+ * Natijaga mijozning yuzi QO'YILMADI — operatorlar guruhiga ogohlantirish.
+ *
+ * ⚠️ NEGA ALOHIDA XABAR (2026-11-12). Yuz almashtirish yiqilsa ham natija
+ * mijozga ketadi (rasmsiz qoldirgandan ko'ra). Ilgari bu faqat server
+ * logida `warn` bo'lib qolardi va hech kim bilmasdi: mijoz «bu men emasku»
+ * deb yozguncha. Endi guruh darhol ko'radi va rasmni qayta yasashi mumkin.
+ */
+export async function warnFaceNotApplied(ref: {
+  kind: TaskKind;
+  /** Ish yoki mijoz identifikatori — xabarda qisqartirib ko'rsatiladi */
+  id: string;
+  reason: string;
+}): Promise<void> {
+  const chatId = env().DEVELOPER_AI_TELEGRAM_CHAT_ID;
+  if (!chatId) return;
+
+  try {
+    const text = [
+      `⚠️ <b>Yuz qo'yilmadi</b> · ${KIND_LABEL[ref.kind]} #${shortId(ref.id)}`,
+      'Natija mijozga AI chizgan yuz bilan ketdi.',
+      `Sabab: ${escapeHtml(ref.reason)}`,
+    ].join('\n');
+
+    await sendMessage(chatId, text);
+  } catch (err) {
+    logger.warn({ err, id: ref.id }, 'developer_ai: yuz haqidagi ogohlantirish yuborilmadi');
+  }
+}
+
 /** Ish tugadi — mijozga xabar. */
 export async function notifyCustomer(
   userId: string,

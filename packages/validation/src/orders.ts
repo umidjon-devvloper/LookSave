@@ -197,6 +197,8 @@ export const updateStoreSchema = z
     city: z.string().trim().min(2).max(64).optional(),
     /** TZ 1-qism — tuman (`stores.district`, migratsiya 034). */
     district: z.string().trim().max(64).nullable().optional(),
+    /** Do'kon jinsi — Market filtri (`stores.audience`, migratsiya 036). */
+    audience: z.enum(['men', 'women', 'both']).optional(),
     location: z
       .object({
         lat: z.number().min(-90).max(90),
@@ -240,6 +242,15 @@ export const storeApplicationSchema = z.object({
     lng: z.number().min(-180).max(180),
   }),
   currency: z.enum(['UZS', 'AED', 'USD']),
+  /**
+   * Do'kon jinsi — Market'da «Erkaklar»/«Ayollar» bo'limida filtrlanadi
+   * (migratsiya 036). `both` = ikkisida ham ko'rinadi.
+   *
+   * ⚠️ `default('both')` — eski ilovalar (build ≤ 64) bu maydonni
+   * yubormaydi; ularda do'kon `both` bo'lib qolaveradi va ariza
+   * rad etilmaydi. Yangi forma doim aniq qiymat yuboradi.
+   */
+  audience: z.enum(['men', 'women', 'both']).default('both'),
   workingHours: workingHoursSchema.optional(),
   deliveryEnabled: z.boolean().default(true),
   pickupEnabled: z.boolean().default(true),

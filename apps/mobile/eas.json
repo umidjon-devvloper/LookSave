@@ -53,8 +53,8 @@
     "production": {
       "ios": {
         "ascAppId": "6813230137",
-        "ascApiKeyPath": "/Users/umidjon2/Downloads/AuthKey_URL96WDR58.p8",
-        "ascApiKeyId": "URL96WDR58",
+        "ascApiKeyPath": "/Users/umidjon2/.appstoreconnect/private_keys/AuthKey_Y4BK8G3895.p8",
+        "ascApiKeyId": "Y4BK8G3895",
         "ascApiKeyIssuerId": "1fe4411f-92e9-4881-8288-8aeae4f2ad86"
       }
     }

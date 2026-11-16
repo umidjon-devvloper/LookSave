@@ -250,12 +250,13 @@ const styles = StyleSheet.create({
   emptyInner: { alignItems: 'center', gap: spacing.sm },
   emptyText: { ...text.small, color: colors.textDim },
 
+  // Atelier: cream shaffof overlay (dark emas)
   busy: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: 'rgba(10, 10, 15, 0.72)',
+    backgroundColor: 'rgba(247,242,234,0.78)',
   },
   busyText: { ...text.small, color: colors.textMuted },
 

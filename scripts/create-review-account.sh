@@ -15,6 +15,16 @@
 #
 # ⚠️ AGAR «ALREADY_EXISTS» chiqsa — bu telefon raqami allaqachon band.
 # Skriptning ichidagi REVIEW_PHONE ni boshqasiga o'zgartiring.
+#
+# ⚠️ HOZIRGI DEMO AKKAUNT BU SKRIPT BILAN YARATILMAGAN (2026-11-13 dan):
+# `+998937844572`, «LookSave Review» — avatari va natijalari tayyor mavjud
+# hisob. Bu skript faqat YANGI hisob kerak bo'lganda ishlatiladi. Demo
+# akkaunt nimalarni talab qilishi — `docs/17-appstore-review-reply.md` §0.
+#
+# ⚠️ PAROL REPODA SAQLANMAYDI (repo ochiq). Ilgari shu yerda sukut paroli
+# turardi va u git tarixida qolgan — o'sha parolni hech qayerda ishlatmang.
+# Parolni muhit orqali bering:
+#   REVIEW_PASSWORD='…' bash scripts/create-review-account.sh
 
 set -euo pipefail
 
@@ -26,7 +36,7 @@ API_BASE="${API_BASE:-https://api.looksave.uz}"
 # admin panelda ajratib turadi va tasodifiy o'chirilmaydi.
 REVIEW_PHONE="${REVIEW_PHONE:-+998900007777}"
 REVIEW_NAME="${REVIEW_NAME:-Apple Review}"
-REVIEW_PASSWORD="${REVIEW_PASSWORD:-AppReview2026!}"
+REVIEW_PASSWORD="${REVIEW_PASSWORD:?REVIEW_PASSWORD ni bering — parol repoda saqlanmaydi}"
 
 echo "→ POST ${API_BASE}/v1/auth/register"
 echo "   phone:    ${REVIEW_PHONE}"

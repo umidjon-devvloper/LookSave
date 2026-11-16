@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  hintText: { ...text.tiny, color: colors.textMuted, textAlign: 'center' },
+  hintText: { ...text.tiny, color: '#FFFFFF', textAlign: 'center' },
   locate: {
     position: 'absolute',
     right: spacing.sm,

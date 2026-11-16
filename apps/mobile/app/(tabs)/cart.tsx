@@ -161,16 +161,17 @@ function StoreGroup({
         onPress={onCheckout}
       >
         <LinearGradient
-          colors={canSend ? [colors.accent, colors.primary] : [colors.surface2, colors.surface2]}
+          colors={canSend ? ['#B936F4', '#8B2CF5', '#6D28D9'] : [colors.surface2, colors.surface2]}
+          locations={canSend ? [0, 0.55, 1] : undefined}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.sendButton, canSend && styles.sendButtonReady]}
         >
-          <Icon name="bag" size={18} color={canSend ? colors.text : colors.textDim} />
-          <Text style={[styles.sendText, !canSend && { color: colors.textDim }]}>
+          <Icon name="bag" size={18} color={canSend ? '#FFFFFF' : colors.textDim} />
+          <Text style={[styles.sendText, { color: canSend ? '#FFFFFF' : colors.textDim }]}>
             {t.cart.placeOrder}
           </Text>
-          <Icon name="next" size={18} color={canSend ? colors.text : colors.textDim} />
+          <Icon name="next" size={18} color={canSend ? '#FFFFFF' : colors.textDim} />
         </LinearGradient>
       </Pressable>
 
@@ -339,7 +340,7 @@ export default function Cart(): JSX.Element {
             </View>
             <Pressable accessibilityRole="button" onPress={() => router.push('/catalog')}>
               <LinearGradient
-                colors={[colors.accent, colors.primary]}
+                colors={[colors.surface, colors.surface]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.startCta}
@@ -399,7 +400,7 @@ export default function Cart(): JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  emptyScroll: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.md },
+  emptyScroll: { padding: spacing.md, paddingBottom: 120, gap: spacing.md },
 
   emptyHero: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   emptyHeroText: { flex: 1, gap: spacing.xs },
@@ -468,6 +469,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + 2,
     borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#3D087F',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   startCtaText: { ...text.small, color: colors.text, fontWeight: '700' },
 
@@ -562,7 +570,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
 
-  list: { padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xxl },
+  list: { padding: spacing.md, gap: spacing.md, paddingBottom: 120 },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.xl,

@@ -350,13 +350,6 @@ export default function Catalog(): JSX.Element {
                 <View style={[styles.image, styles.placeholder]} />
               )}
 
-              {/* «AI» — shu mahsulotni o'zingda ko'rish mumkin */}
-              {item.canTryOn ? (
-                <View style={styles.badgeTryon}>
-                  <Text style={styles.badgeTryonText}>AI</Text>
-                </View>
-              ) : null}
-
               <View style={styles.heart}>
                 <Icon name="favorite" size={15} color={colors.text} />
               </View>
@@ -383,7 +376,7 @@ export default function Catalog(): JSX.Element {
                 {money(item.price, item.currency)}
               </Text>
               <View style={styles.cartButton}>
-                <Icon name="cart" size={16} color={colors.text} />
+                <Icon name="cart" size={16} color={colors.textOnPrimary} />
               </View>
             </View>
           </Pressable>
@@ -432,7 +425,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.primary,
   },
-  cartBadgeText: { ...text.tiny, color: colors.text, fontWeight: '700' },
+  // Anor to'ldirish ustida krem matn
+  cartBadgeText: { ...text.tiny, color: colors.textOnPrimary, fontWeight: '700' },
 
   header: { gap: spacing.sm, paddingBottom: spacing.sm },
   /*
@@ -465,7 +459,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.primary,
   },
-  filterBadgeText: { ...text.tiny, color: colors.text, fontWeight: '700' },
+  filterBadgeText: { ...text.tiny, color: colors.textOnPrimary, fontWeight: '700' },
 
   chips: { flexDirection: 'row', gap: spacing.sm },
   chip: {
@@ -527,13 +521,14 @@ const styles = StyleSheet.create({
    * rasm, sarlavha va narx bir fon va chegara ichida. Skeleton
    * (`SkeletonCard`) aynan shu o'lchamlarni takrorlaydi.
    */
+  // Atelier: kichikroq radius, hair-thin chegara
   card: {
     flex: 1,
     maxWidth: '48.5%',
     gap: 2,
     marginBottom: spacing.sm,
     padding: CARD_PADDING,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
@@ -548,16 +543,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface2,
   },
   placeholder: { borderWidth: 1, borderColor: colors.border },
+  // "AI" belgi — Atelier: krem pill, anor chegara + matn
   badgeTryon: {
     position: 'absolute',
     top: spacing.sm,
     left: spacing.sm,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: radius.sm,
-    backgroundColor: 'rgba(10,10,15,0.7)',
+    backgroundColor: 'rgba(247,242,234,0.94)',
+    borderWidth: 1,
+    borderColor: colors.primary,
   },
-  badgeTryonText: { ...text.tiny, color: colors.text },
+  badgeTryonText: { ...text.tiny, color: colors.primary, letterSpacing: 1.2 },
+  // Yurak — oq doira, ink ikonka
   heart: {
     position: 'absolute',
     top: spacing.sm,
@@ -567,8 +566,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(10,10,15,0.55)',
+    backgroundColor: 'rgba(255,255,255,0.94)',
   },
+  // Do'kon yorlig'i — krem overlay rasm ustida
   storeTag: {
     position: 'absolute',
     left: spacing.sm,
@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
     borderRadius: radius.sm,
-    backgroundColor: 'rgba(10,10,15,0.62)',
+    backgroundColor: 'rgba(255,255,255,0.88)',
   },
   storeTagText: { ...text.tiny, color: colors.text, flexShrink: 1 },
 
@@ -598,11 +598,12 @@ const styles = StyleSheet.create({
     marginTop: 2,
     paddingLeft: CARD_TEXT_INSET,
   },
-  price: { ...text.price, color: colors.accent, fontSize: 15, lineHeight: 20, flexShrink: 1 },
+  // Narx — Fraunces display anor
+  price: { ...text.price, color: colors.primary, fontSize: 16, lineHeight: 21, flexShrink: 1 },
   cartButton: {
     width: 36,
     height: 36,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primary,

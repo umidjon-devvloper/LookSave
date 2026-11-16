@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { getFullProfile, updateProfile } from '../../src/api/endpoints';
 import { Icon, type IconName } from '../../src/components/Icon';
@@ -9,6 +9,7 @@ import { SignInRequired } from '../../src/components/SignInRequired';
 import { Button, ErrorView, Loading } from '../../src/components/ui';
 import { useI18n, type Dictionary } from '../../src/i18n';
 import { useAuthStore } from '../../src/store/authStore';
+import { isFaceLocked, setFaceLocked } from '../../src/store/faceLock';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 import { goBack } from '../../src/navigation/back';
 
@@ -41,6 +42,16 @@ export default function FacePhoto(): JSX.Element {
   const queryClient = useQueryClient();
   const [done, setDone] = useState(false);
 
+  // Yuz qulfi — qurilma-lokal bayroq, Switch'da ko'rsatiladi
+  const [locked, setLocked] = useState(false);
+  useEffect(() => {
+    void isFaceLocked().then(setLocked);
+  }, []);
+  const toggleLock = (next: boolean): void => {
+    setLocked(next); // optimistik — ekran darhol javob bersin
+    void setFaceLocked(next);
+  };
+
   const profile = useQuery({
     queryKey: ['profile', 'full'],
     queryFn: getFullProfile,
@@ -58,6 +69,10 @@ export default function FacePhoto(): JSX.Element {
       await queryClient.invalidateQueries({ queryKey: ['profile'] });
       // Avatar konfiguratsiyasida ham yuz teksturasi bor — u eskirdi
       await queryClient.invalidateQueries({ queryKey: ['avatar'] });
+      // Qurilma-lokal qulf ham olib tashlanadi: surat o'chirilsa qulf
+      // ma'nosiz; qolsa, /ai/avatar da qayta skan yo'li yopilib qoladi.
+      await setFaceLocked(false);
+      setLocked(false);
       setDone(true);
     },
     onError: () => Alert.alert(t.facePhoto.deleteFailedTitle, t.facePhoto.deleteFailedBody),
@@ -98,6 +113,24 @@ export default function FacePhoto(): JSX.Element {
         <>
           <View style={styles.preview}>
             <Image source={{ uri: url }} style={styles.image} resizeMode="cover" />
+          </View>
+
+          {/*
+            Qulf — bir marta skanlangan yuzni tasodifan /ai/avatar oqimi
+            qayta yozib yubormasligi uchun. Faqat shu qurilma darajasi,
+            server bilmaydi.
+          */}
+          <View style={styles.lockRow}>
+            <View style={styles.lockText}>
+              <Text style={styles.lockTitle}>{t.facePhoto.lockTitle}</Text>
+              <Text style={styles.lockHint}>{t.facePhoto.lockHint}</Text>
+            </View>
+            <Switch
+              value={locked}
+              onValueChange={toggleLock}
+              trackColor={{ false: colors.borderStrong, true: colors.accent }}
+              thumbColor={colors.text}
+            />
           </View>
 
           <View style={styles.facts}>
@@ -147,6 +180,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderStrong,
   },
+
+  lockRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  lockText: { flex: 1, gap: 2 },
+  lockTitle: { ...text.body, color: colors.text, fontWeight: '600' },
+  lockHint: { ...text.tiny, color: colors.textMuted },
 
   facts: { gap: spacing.sm },
   factRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },

@@ -63,11 +63,15 @@ export default function MarketStores(): JSX.Element {
   const { coords } = useLocationStore();
   const params = useLocalSearchParams<{ gender?: string }>();
   const gender = params.gender === 'female' ? 'female' : 'male';
+  // Do'kon jinsi serverdagi `audience` bilan ('men'/'women'); `both` do'kon
+  // ikkala bo'limda ham chiqadi. Avval bu uzatilmasdi — shuning uchun ikkala
+  // bo'lim bir xil ro'yxatni ko'rsatardi.
+  const audience = gender === 'female' ? 'women' : 'men';
   const title = gender === 'female' ? 'Ayollar do`konlari' : 'Erkaklar do`konlari';
 
   const stores = useQuery({
-    queryKey: ['market', 'stores', coords.lat, coords.lng],
-    queryFn: () => getNearbyStores(coords.lat, coords.lng, { radius: 50_000 }),
+    queryKey: ['market', 'stores', audience, coords.lat, coords.lng],
+    queryFn: () => getNearbyStores(coords.lat, coords.lng, { radius: 50_000, audience }),
   });
 
   return (

@@ -8,6 +8,13 @@ import { useSplashLanding } from '../../src/store/splashTargetStore';
 import { images } from '../../src/theme/images';
 import { colors, spacing, text } from '../../src/theme/tokens';
 
+/**
+ * Xush kelibsiz — Atelier editorial ochilish.
+ *
+ * Yuqorida logotip, pastda ikki tugma. Oralig'i shartli tartibsiz — moda
+ * jurnali bo'sh sahifa kabi nafas oladi. Hech qanday gradient yoki glow:
+ * tipografikaning o'zi vazn beradi.
+ */
 export default function Welcome(): JSX.Element {
   const t = useI18n((state) => state.t);
   // Splash logotipi aynan shu logotip ustiga uchib qo'nadi
@@ -25,7 +32,11 @@ export default function Welcome(): JSX.Element {
         >
           <Image source={images.logoMark} style={styles.logo} resizeMode="contain" />
         </View>
-        <Text style={styles.wordmark}>LOOK SAVE</Text>
+        <Text style={styles.wordmark}>Look Save</Text>
+
+        {/* Eyebrow — moda jurnali bo'lim yorligi */}
+        <Text style={styles.eyebrow}>Atelye · Toshkent</Text>
+
         <Text style={styles.title}>{t.auth.heroTitle}</Text>
         <Text style={styles.subtitle}>{t.auth.heroSubtitle}</Text>
       </View>
@@ -50,14 +61,23 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     justifyContent: 'space-between',
   },
-  hero: { flex: 1, justifyContent: 'center', gap: spacing.md },
+  hero: { flex: 1, justifyContent: 'center', gap: spacing.sm },
   // Chekka bo'shliq o'ramda: splash logotipi shu o'ramning markaziga qo'nadi,
   // shuning uchun o'ram tasvirning aniq o'lchamida qolishi kerak.
-  logoWrap: { marginBottom: spacing.sm },
-  logo: { width: 150, height: 105 },
-  wordmark: { ...text.wordmark, color: colors.accent },
-  title: { ...text.h1, color: colors.text },
-  subtitle: { ...text.body, color: colors.textMuted },
+  logoWrap: { marginBottom: spacing.xs },
+  logo: { width: 140, height: 98 },
+  // Logotip ostidagi so'z — Fraunces display, anor rang. Katta harf emas.
+  wordmark: { ...text.wordmark, color: colors.primary },
+  eyebrow: { ...text.eyebrow, color: colors.textMuted, marginTop: spacing.sm },
+  // Sarlavha — Fraunces hero; bo'sh joy olish uchun maxWidth
+  title: { ...text.hero, color: colors.text, marginTop: spacing.md, maxWidth: '92%' },
+  subtitle: {
+    ...text.body,
+    color: colors.textMuted,
+    marginTop: spacing.sm,
+    maxWidth: '90%',
+    lineHeight: 24,
+  },
   actions: { gap: spacing.sm, paddingBottom: spacing.md },
   note: { ...text.small, color: colors.textDim, textAlign: 'center', marginTop: spacing.sm },
 });

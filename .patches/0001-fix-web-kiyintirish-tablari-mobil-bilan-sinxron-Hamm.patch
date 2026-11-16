@@ -1,0 +1,160 @@
+From 0f4ea3d50bbd4070cf212e11c6339664992572bc Mon Sep 17 00:00:00 2001
+From: umidjon <ogabekgafforov61@gmail.com>
+Date: Sat, 7 Nov 2026 12:25:14 +0500
+Subject: [PATCH] fix(web): kiyintirish tablari mobil bilan sinxron + "Hammasi"
+ tabi
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Ilgari web'da faqat 5 ta tab bor edi (Futbolka, Xudi, Kurtka, Ko'ylak,
+Shim) va «Hammasi» tabi umuman yo'q edi. Natija: do'konda kurtka turgan
+bo'lsa ham, boshlang'ich futbolka tabida «hozircha kiyim yo'q» chiqib,
+mijoz hech qayerda umumiy ro'yxatga chiqa olmasdi.
+
+Endi mobil ilovadagi ro'yxat bilan sinxron:
+- 'all' (Hammasi, boshlang'ich), tshirt, hoodie (Hoody), sweater, shirt,
+  jacket, coat, trousers, jeans, shorts, skirt
+
+'all' tabida:
+- Kategoriya filtri yuborilmaydi — barcha slotdan kiyim keladi
+- Avtomat kiyintirish o'chiriladi: 'all' qarash rejimi, turkum emas
+
+Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
+---
+ apps/web/src/components/tryon/useTryon.ts | 24 +++++++++++++++++++++--
+ apps/web/src/routes/try-on.state.tsx      | 15 +++++++++++---
+ apps/web/src/routes/try-on.tsx            | 19 +++++++++++++++---
+ 3 files changed, 50 insertions(+), 8 deletions(-)
+
+diff --git a/apps/web/src/components/tryon/useTryon.ts b/apps/web/src/components/tryon/useTryon.ts
+index 38e1bd0..ffd5b76 100644
+--- a/apps/web/src/components/tryon/useTryon.ts
++++ b/apps/web/src/components/tryon/useTryon.ts
+@@ -84,7 +84,14 @@ interface ActBody {
+ }
+ 
+ export function useTryon(locale: string) {
+-  const [tab, setTab] = useState('tshirt');
++  /*
++   * ⚠️ 'all' — boshlang'ich tab. Mobil ilova bilan bir xil
++   * (`FittingExperience.tsx`). Shunda do'konda qaysi kiyim bo'lsa ham
++   * birinchi ochilishda ko'rinadi — ilgari 'tshirt' bilan ochilsa-yu
++   * do'konda futbolka bo'lmasa, mijoz «hozircha kiyim yo'q» ni ko'rardi
++   * va hech qayerda umumiy ro'yxatga chiqa olmasdi.
++   */
++  const [tab, setTab] = useState('all');
+   const [angle, setAngle] = useState<AvatarAngle>('front');
+   const [outfit, setOutfit] = useState<OutfitLayer[]>([]);
+   const [store, setStoreState] = useState<ChosenStore | null>(null);
+@@ -138,7 +145,14 @@ export function useTryon(locale: string) {
+   const refresh = useCallback(async () => {
+     const seq = ++requestSeq.current;
+ 
+-    const params = new URLSearchParams({ category: tab, angle, fit: onlyMySize ? '1' : '0' });
++    /*
++     * ⚠️ 'all' TABIDA KATEGORIYA YUBORILMAYDI — mobil bilan bir xil
++     * (`FittingExperience.tsx`): backend filtri bo'sh bo'lsa barcha
++     * slotdan kiyim qaytaradi. Yuborilsa, backend 'all' degan turkumni
++     * qidirardi va bo'sh ro'yxat qaytarardi.
++     */
++    const params = new URLSearchParams({ angle, fit: onlyMySize ? '1' : '0' });
++    if (tab && tab !== 'all') params.set('category', tab);
+     if (store) params.set('storeId', store.id);
+     if (outfitParam) params.set('outfit', outfitParam);
+     if (styleFilter) params.set('style', styleFilter);
+@@ -368,6 +382,12 @@ export function useTryon(locale: string) {
+    */
+   useEffect(() => {
+     if (!state?.ready || items.length === 0) return;
++    /*
++     * ⚠️ 'all' AVTOMAT KIYINTIRMAYDI. 'all' turkum emas, qarash rejimi:
++     * tasmada har xil slotdagi kiyimlar aralash turadi, birinchisini
++     * avtomat kiyintirish kutilmagan — mijoz tasmani ko'rib, o'zi tanlasin.
++     */
++    if (tab === 'all') return;
+     if (dismissed.includes(tab)) return;
+     if (outfit.some((layer) => layer.category === tab)) return;
+ 
+diff --git a/apps/web/src/routes/try-on.state.tsx b/apps/web/src/routes/try-on.state.tsx
+index 1e4bef3..e63acd7 100644
+--- a/apps/web/src/routes/try-on.state.tsx
++++ b/apps/web/src/routes/try-on.state.tsx
+@@ -151,7 +151,16 @@ export async function loader({ params, request }: Route.LoaderArgs) {
+   if (!context.user) return Response.json(empty, { headers });
+ 
+   const url = new URL(request.url);
+-  const category = url.searchParams.get('category') ?? 'tshirt';
++  /*
++   * ⚠️ 'all' — JAMI RO'YXAT TABI (mobil bilan bir xil). Backend filtri
++   * bo'sh bo'lsa barcha slotdan kiyim qaytaradi. Boshlang'ich holat ham
++   * shu — ilgari 'tshirt' edi va yangi do'konda futbolka yo'q bo'lsa,
++   * ro'yxat bo'sh ochilardi.
++   */
++  const rawCategory = url.searchParams.get('category');
++  const category = rawCategory && rawCategory !== 'all' ? rawCategory : 'all';
++  /** Backend'ga uzatiladigan qiymat: 'all' bo'lsa filtr yo'q */
++  const categoryFilter = category === 'all' ? null : category;
+ 
+   /*
+    * ⚠️ DO'KON `id` SI TEKSHIRILADI. U brauzerning `localStorage` idan
+@@ -263,7 +272,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
+     const variantIds = outfit.map((layer) => layer.variantId);
+     const [initialGarments, outfitRenders, frontRenders] = await Promise.all([
+       getGarments(
+-        { category, storeId, size, style, gender: profile.gender, limit: 30 },
++        { category: categoryFilter, storeId, size, style, gender: profile.gender, limit: 30 },
+         context.options,
+       ),
+       getRenders({ variantIds, angle, scope: 'all' }, context.options),
+@@ -283,7 +292,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
+     const needFallback = Boolean(size) && initialGarments.length === 0;
+     const fallbackGarments = needFallback
+       ? await getGarments(
+-          { category, storeId, size: null, style, gender: profile.gender, limit: 30 },
++          { category: categoryFilter, storeId, size: null, style, gender: profile.gender, limit: 30 },
+           context.options,
+         )
+       : null;
+diff --git a/apps/web/src/routes/try-on.tsx b/apps/web/src/routes/try-on.tsx
+index 238a4ca..acd0aa9 100644
+--- a/apps/web/src/routes/try-on.tsx
++++ b/apps/web/src/routes/try-on.tsx
+@@ -52,18 +52,31 @@ export function loader({ params }: Route.LoaderArgs) {
+ }
+ 
+ /**
+- * Kategoriya tablari — mobil ilovadagi ro'yxat bilan aynan bir xil.
++ * Kategoriya tablari — mobil ilovadagi ro'yxat (`FittingExperience.tsx`) bilan
++ * AYNAN BIR XIL BO'LISHI SHART. Ilgari web'da faqat 5 tasi bor edi va
++ * «Hammasi» tabi umuman yo'q edi: do'konda kurtka turgan bo'lsa ham,
++ * futbolka tabida «hozircha kiyim yo'q» chiqib, mijoz butun katalogni
++ * ochib ham ko'rolmasdi.
++ *
++ * ⚠️ «HAMMASI» BIRINCHI — boshlang'ich holat shu. Shunda yangi
++ * foydalanuvchi do'konda nima borligini darhol ko'radi.
+  *
+  * ⚠️ TARTIB — KO'RISH TARTIBI, KIYINISH TARTIBI EMAS. Kiyinish tartibi
+  * `@looksave/validation` dagi `LAYER_ORDER` da: shimni kurtkadan keyin
+  * kiyib bo'lmaydi.
+  */
+ const TABS: Array<{ category: string; label: string; icon: IconName }> = [
++  { category: 'all', label: 'Hammasi', icon: 'tryon' },
+   { category: 'tshirt', label: 'Futbolka', icon: 'slotTop' },
+-  { category: 'hoodie', label: 'Xudi', icon: 'slotTop' },
+-  { category: 'jacket', label: 'Kurtka', icon: 'slotOuter' },
++  { category: 'hoodie', label: 'Hoody', icon: 'slotTop' },
++  { category: 'sweater', label: 'Sviter', icon: 'slotTop' },
+   { category: 'shirt', label: "Ko'ylak", icon: 'slotTop' },
++  { category: 'jacket', label: 'Kurtka', icon: 'slotOuter' },
++  { category: 'coat', label: 'Palto', icon: 'slotOuter' },
+   { category: 'trousers', label: 'Shim', icon: 'slotBottom' },
++  { category: 'jeans', label: 'Jinsi', icon: 'slotBottom' },
++  { category: 'shorts', label: 'Shorti', icon: 'slotBottom' },
++  { category: 'skirt', label: 'Yubka', icon: 'slotBottom' },
+ ];
+ 
+ const ANGLES: AvatarAngle[] = ['front', 'side', 'back'];
+-- 
+2.54.0 (Apple Git-157)
+

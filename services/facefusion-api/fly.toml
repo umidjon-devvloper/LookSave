@@ -31,6 +31,6 @@ primary_region = "fra"
     path = "/health"
 
 [[vm]]
-  memory = "8gb"
+  memory = "16gb"
   cpu_kind = "performance"
   cpus = 4

@@ -257,8 +257,8 @@ export default function TryOnPage({ loaderData }: Route.ComponentProps): JSX.Ele
   };
 
   return (
-    <div className="shell section-y">
-      <Header storeName={store?.name ?? null} onChangeStore={() => setStoreOpen(true)} />
+    <div className="tryon-page tryon-experience">
+      <Header stage storeName={store?.name ?? null} onChangeStore={() => setStoreOpen(true)} />
 
       {limitReached ? (
         <div className="mt-6 flex items-center gap-3 rounded-md border border-warning bg-warning/10 p-3">
@@ -269,10 +269,10 @@ export default function TryOnPage({ loaderData }: Route.ComponentProps): JSX.Ele
         </div>
       ) : null}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+      <div className="tryon-workspace">
         {/* ── Sahna ── */}
-        <div className="lg:sticky lg:top-28 lg:self-start">
-          <div className="relative aspect-[3/4] w-full overflow-hidden rounded-card border border-border bg-[#050509]">
+        <div className="tryon-stage-column">
+          <div className="tryon-stage">
             {/* Oyoq ostidagi binafsha nur — deckdagi «sahna» hissi */}
             <div
               aria-hidden="true"
@@ -336,7 +336,7 @@ export default function TryOnPage({ loaderData }: Route.ComponentProps): JSX.Ele
               pill sifatida. Foydalanuvchi tanlagan burchak sahnadagi
               kompozitsiyani darhol almashtiradi.
             */}
-            <div className="absolute start-3 top-1/2 -translate-y-1/2 flex flex-col gap-2">
+            <div className="tryon-stage-tools absolute start-3 top-1/2 -translate-y-1/2 flex flex-col gap-2">
               <button
                 type="button"
                 onClick={() => setRedoPhoto(true)}
@@ -358,7 +358,7 @@ export default function TryOnPage({ loaderData }: Route.ComponentProps): JSX.Ele
               <div
                 role="radiogroup"
                 aria-label="Burchak"
-                className="mt-1 flex flex-col gap-1 rounded-full border border-border bg-surface/80 p-1 backdrop-blur"
+                className="tryon-angle-picker mt-1 flex flex-col gap-1 rounded-full border border-border bg-surface/80 p-1 backdrop-blur"
               >
                 {ANGLES.map((item) => (
                   <button
@@ -437,6 +437,10 @@ export default function TryOnPage({ loaderData }: Route.ComponentProps): JSX.Ele
                 </div>
               </div>
             ) : null}
+
+            <div className="tryon-rotate-label" aria-hidden="true">
+              <span>↔</span><strong>360°</strong><span>↔</span>
+            </div>
           </div>
 
           {/* Yechish — sahna ostida, alohida qator (tab'ga tegmasin) */}
@@ -458,7 +462,7 @@ export default function TryOnPage({ loaderData }: Route.ComponentProps): JSX.Ele
         </div>
 
         {/* ── Tanlov ── */}
-        <div className="flex flex-col gap-5">
+        <div className="tryon-controls flex flex-col gap-5">
           {/* Turkum tablari */}
           <div className="flex gap-2 overflow-x-auto pb-1">
             {TABS.map((item) => {
@@ -822,6 +826,14 @@ export default function TryOnPage({ loaderData }: Route.ComponentProps): JSX.Ele
             </Card>
           ) : null}
         </div>
+
+        <nav className="tryon-bottom-nav" aria-label="Primerka navigatsiyasi">
+          <Link to={`/${locale}`}><Icon name="home" size={24} /><span>Home</span></Link>
+          <Link to={`/${locale}/catalog`}><Icon name="grid" size={24} /><span>Katalog</span></Link>
+          <Link to={`/${locale}/cart`} className="tryon-bottom-main"><Icon name="cart" size={29} /><span className="sr-only">Savat</span></Link>
+          <Link to={`/${locale}/profile`}><Icon name="favorite" size={24} /><span>Sevimlilar</span></Link>
+          <Link to={`/${locale}/profile`}><Icon name="profile" size={24} /><span>Profil</span></Link>
+        </nav>
       </div>
 
       {storeOpen ? (
@@ -838,17 +850,25 @@ export default function TryOnPage({ loaderData }: Route.ComponentProps): JSX.Ele
 
 /** Sarlavha va do'kon chipi — sozlash qadamlarida ham, kiyintirishda ham */
 function Header({
+  stage = false,
   storeName,
   onChangeStore,
 }: {
+  stage?: boolean;
   storeName?: string | null;
   onChangeStore?: () => void;
 } = {}): JSX.Element {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className={stage ? 'tryon-stage-header' : 'flex flex-wrap items-end justify-between gap-3'}>
       <div>
-        <p className="eyebrow">AI kiyintirish</p>
-        <h1 className="headline mt-2 text-h1">O‘zingizda kiyib ko‘ring</h1>
+        {stage ? (
+          <h1 className="tryon-stage-brand"><Icon name="hanger" size={38} /> Looksave</h1>
+        ) : (
+          <>
+            <p className="eyebrow">AI kiyintirish</p>
+            <h1 className="headline mt-2 text-h1">O‘zingizda kiyib ko‘ring</h1>
+          </>
+        )}
       </div>
 
       {onChangeStore ? (

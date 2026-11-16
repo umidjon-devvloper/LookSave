@@ -26,6 +26,7 @@ import { usePushRegistration } from '../src/hooks/usePush';
 import { useI18n } from '../src/i18n';
 import { useAiFlowStore } from '../src/store/aiFlowStore';
 import { useAuthStore } from '../src/store/authStore';
+import { useLookStore } from '../src/store/lookStore';
 import { useOnboardingStore } from '../src/store/onboardingStore';
 import { colors } from '../src/theme/tokens';
 
@@ -63,7 +64,7 @@ function AppShell(): JSX.Element {
   const status = useAuthStore((state) => state.status);
   const restore = useAuthStore((state) => state.restore);
   const restoreStore = useAiFlowStore((state) => state.restoreStore);
-  const restoreOutfit = useAiFlowStore((state) => state.restoreOutfit);
+  const restoreLook = useLookStore((state) => state.restore);
   const restoreOnboarding = useOnboardingStore((state) => state.restore);
   const onboardingSeen = useOnboardingStore((state) => state.seen);
   const t = useI18n((state) => state.t);
@@ -101,10 +102,13 @@ function AppShell(): JSX.Element {
      * foydalanuvchini sehrgarga yuborib yuborardi.
      */
     void restoreStore();
-    // Mijoz "Look" bosib yig'gan komplekt ham qurilmada saqlangan — tiklaymiz,
-    // shunda primerka ekrani darhol yig'ilgan kiyimlar bilan ochiladi.
-    void restoreOutfit();
-  }, [restore, restoreStore, restoreOutfit, restoreOnboarding]);
+    /*
+     * «Look» savati va kiyib ko'rish urinishlari ham qurilmada saqlangan.
+     * Tiklanadi — shunda nishon darhol to'g'ri sonni ko'rsatadi, primerka
+     * esa navbatda qolgan (yoki tayyor bo'lgan) natijani topadi.
+     */
+    void restoreLook();
+  }, [restore, restoreStore, restoreLook, restoreOnboarding]);
 
   // Splash animatsiyasi tugagunicha qatlam ekranda turadi. `appReady` — sahnaga
   // "endi chiqishing mumkin" degan signal; sahna o'z animatsiyasini yarim yo'lda
@@ -161,6 +165,12 @@ function AppShell(): JSX.Element {
             hamda ikkita orqaga tugmasi ko'rinadi.
           */}
           <Stack.Screen name="seller" options={{ headerShown: false }} />
+          {/*
+            Do'kon ochish arizasi — seller Tabs ichida yashirin ekran edi
+            va iOS'da TextInput fokusi klaviatura ochmasdi. Root Stack'ga
+            olib chiqildi (2026-11-10) — Tabs rendering intercepti yo'q.
+          */}
+          <Stack.Screen name="become-seller" options={{ headerShown: false }} />
           {/* Rasm status bar ostiga chiqadi — sahifa o'z tugmalarini chizadi */}
           <Stack.Screen name="product/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="store/[id]" options={{ headerShown: false }} />

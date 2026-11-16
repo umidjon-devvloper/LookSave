@@ -1,0 +1,36 @@
+From bfc3c55723261af7aeed9f626233681b97c6b636 Mon Sep 17 00:00:00 2001
+From: umidjon <ogabekgafforov61@gmail.com>
+Date: Fri, 6 Nov 2026 18:44:24 +0500
+Subject: [PATCH 1/2] feat(web): Decart Anywear widget script'ini ulash
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+looksave.uz saytiga virtual try-on vidjetini qo'shdik —
+foydalanuvchi sayt bo'ylab har qaysi sahifada "kiyinib ko'rish"
+tugmasini ishlata oladi. Skript async yuklanadi, boshlang'ich
+render'ga ta'sir qilmaydi.
+
+Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
+---
+ apps/web/src/root.tsx | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/apps/web/src/root.tsx b/apps/web/src/root.tsx
+index 84755b0..9b4ec6b 100644
+--- a/apps/web/src/root.tsx
++++ b/apps/web/src/root.tsx
+@@ -40,6 +40,10 @@ export function Layout({ children }: { children: React.ReactNode }): JSX.Element
+         <meta name="theme-color" content="#0A0A0F" />
+         <Meta />
+         <Links />
++        <script
++          src="https://anywear.decart.ai/widget/latest/anywear.js?domain=looksave.uz"
++          async
++        />
+       </head>
+       <body>
+         {children}
+-- 
+2.54.0 (Apple Git-157)
+
