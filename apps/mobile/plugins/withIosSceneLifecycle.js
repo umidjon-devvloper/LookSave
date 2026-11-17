@@ -39,11 +39,86 @@
  * `enableSceneSupport` bor) yoki SDK 58+ da (sukut bo'yicha yoqilgan).
  * O'shanda bu plugin shablonni tanimaydi va prebuild'ni «plugin'ni olib
  * tashlang» degan xato bilan to'xtatadi — jimgina yarim qo'llanib qolmaydi.
+ *
+ * ⚠️ `LOOKSAVE_IOS_SCENE=0` — PLUGIN'NI O'CHIRADI (EAS `production`, 2026-11-17).
+ *
+ * EAS `production` profili Xcode 26.6 (iOS 26 SDK) da yig'adi. iOS 26 SDK
+ * bilan qurilgan ilovaga iOS 27 sahnani majburlamaydi, shuning uchun u yerda
+ * bu plugin kerak emas — va u yerda eski (sahnasiz) hayot sikli Apple'ning
+ * o'z qurilmalarida sinalgan yagona sozlama (App Store Connect'dagi SDK qaydi):
+ *
+ *   iOS 26 SDK (EAS, Xcode 26.6): 22, 24, 26, 47  → ko'rib chiquvchida OCHILGAN
+ *   iOS 27 SDK (lokal Xcode 27.0), sahnasiz: 61   → ko'rib chiquvchida QULAGAN
+ *   iOS 27 SDK + shu plugin: 62–69                → Apple hali KO'RMAGAN
+ *
+ * Plugin'ning o'zi tekshirilgan (2026-11-17, 69-build, iOS 27.0 simulyatori):
+ * manifestni olib tashlasa ilova Apple logidagi aynan o'sha stek bilan
+ * qulaydi, manifest bilan ochiladi; UIKit'ning mezoni
+ * (`-[UIApplication _appAdoptsUISceneLifecycle]`) faqat Info.plist'dagi
+ * `UISceneConfigurations` ga qaraydi, ya'ni qurilmaga bog'liq emas. Lekin
+ * haqiqiy iOS 27 qurilmasida sinab ko'rilmagan — EAS build'i shu bitta
+ * noma'lumni ham olib tashlaydi.
+ *
+ * ⚠️ BU BAYROQNI XCODE 27 BILAN ISHLATMANG: sahnasiz iOS 27 SDK build'i
+ * iOS 27 da ishga tushmaydi (aynan 61-build). EAS'da buni plugin o'zi
+ * tekshiradi va build'ni to'xtatadi; lokal `xcodebuild` da tekshiruv yo'q.
  */
+
+const { execFileSync } = require('child_process');
 
 const { withAppDelegate, withInfoPlist } = require('expo/config-plugins');
 
 const TAG = 'withIosSceneLifecycle';
+
+/** `LOOKSAVE_IOS_SCENE=0` bo'lsa plugin hech narsa qilmaydi (yuqoridagi izoh). */
+const DISABLE_ENV = 'LOOKSAVE_IOS_SCENE';
+
+/** UIScene majburiy bo'lgan birinchi Xcode (iOS 27 SDK). */
+const FIRST_XCODE_REQUIRING_SCENES = 27;
+
+/**
+ * @param {Record<string, string | undefined>} env
+ * @returns {boolean}
+ */
+function isSceneLifecycleDisabled(env) {
+  return env[DISABLE_ENV] === '0';
+}
+
+/** @returns {number | null} `null` — aniqlab bo'lmadi (Xcode yo'q, noma'lum chiqish) */
+function readXcodeMajorVersion() {
+  try {
+    const output = execFileSync('xcodebuild', ['-version'], { encoding: 'utf8', timeout: 20_000 });
+    const match = /Xcode (\d+)/.exec(output);
+    return match ? Number(match[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Sahnasiz build faqat iOS 26 SDK bilan xavfsiz — EAS'da shuni tekshiradi.
+ *
+ * ⚠️ FAQAT EAS BUILD MASHINASIDA (`EAS_BUILD=true`). `eas build` konfiguratsiyani
+ * shu Mac'da ham o'qiydi (`production` profilining `env` i bilan), bu yerda esa
+ * Xcode 27 turibdi — lokal tekshiruv to'g'ri sozlangan build'ni ham
+ * boshlanmasidan to'xtatib qo'yardi. Xcode'ni aniqlab bo'lmasa to'smaydi.
+ *
+ * @param {Record<string, string | undefined>} env
+ * @param {() => number | null} [readXcodeMajor]
+ */
+function assertLegacyLifecycleIsSafe(env, readXcodeMajor = readXcodeMajorVersion) {
+  if (env.EAS_BUILD !== 'true') return;
+
+  const xcode = readXcodeMajor();
+  if (xcode !== null && xcode >= FIRST_XCODE_REQUIRING_SCENES) {
+    throw new Error(
+      `[${TAG}] ${DISABLE_ENV}=0 (UIScene o\`chirilgan), lekin build Xcode ${xcode} da ketyapti. ` +
+        'iOS 27 SDK bilan qurilgan sahnasiz ilova iOS 27 da ishga tushmaydi (App Store 1.0 (61) ' +
+        'shu sabab rad etilgan). eas.json dagi `ios.image` ni Xcode 26.x ga qaytaring yoki ' +
+        `${DISABLE_ENV} ni olib tashlang.`,
+    );
+  }
+}
 
 const SCENE_MANIFEST = {
   UIApplicationSupportsMultipleScenes: false,
@@ -302,6 +377,12 @@ function addSceneLifecycleToAppDelegate(source) {
  * @returns {import('expo/config').ExpoConfig}
  */
 function withIosSceneLifecycle(config) {
+  // Do'kon build'i (iOS 26 SDK): shablonning o'z AppDelegate'i qoladi, manifest yozilmaydi
+  if (isSceneLifecycleDisabled(process.env)) {
+    assertLegacyLifecycleIsSafe(process.env);
+    return config;
+  }
+
   config = withInfoPlist(config, (mod) => {
     mod.modResults.UIApplicationSceneManifest ??= SCENE_MANIFEST;
     return mod;
@@ -335,4 +416,6 @@ function withIosSceneLifecycle(config) {
 
 module.exports = withIosSceneLifecycle;
 module.exports.addSceneLifecycleToAppDelegate = addSceneLifecycleToAppDelegate;
+module.exports.assertLegacyLifecycleIsSafe = assertLegacyLifecycleIsSafe;
+module.exports.isSceneLifecycleDisabled = isSceneLifecycleDisabled;
 module.exports.SCENE_MANIFEST = SCENE_MANIFEST;

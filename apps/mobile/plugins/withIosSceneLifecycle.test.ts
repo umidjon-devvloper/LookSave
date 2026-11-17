@@ -1,8 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import plugin from './withIosSceneLifecycle.js';
 
-const { addSceneLifecycleToAppDelegate, SCENE_MANIFEST } = plugin;
+const {
+  addSceneLifecycleToAppDelegate,
+  assertLegacyLifecycleIsSafe,
+  isSceneLifecycleDisabled,
+  SCENE_MANIFEST,
+} = plugin;
 
 /**
  * Expo SDK 54 shabloni (`expo prebuild`) yozadigan `AppDelegate.swift`.
@@ -99,6 +104,61 @@ describe('addSceneLifecycleToAppDelegate', () => {
 
     expect(result.status).toBe('unsupported');
     expect(result.contents).toBe(sdk58);
+  });
+});
+
+/*
+ * Do'kon build'i (`eas.json` → `production`) sahnasiz yig'iladi — nega,
+ * plugin boshidagi izohda. Bayroq noto'g'ri joyda ishlab ketsa oqibati og'ir:
+ * sahnasiz iOS 27 SDK build'i iOS 27 da ochilmaydi (App Store 1.0 (61)).
+ */
+describe('LOOKSAVE_IOS_SCENE=0', () => {
+  const CONFIG = { name: 'LookSave', slug: 'looksave' };
+
+  afterEach(() => {
+    delete process.env['LOOKSAVE_IOS_SCENE'];
+    delete process.env['EAS_BUILD'];
+  });
+
+  it('faqat aniq "0" qiymati o`chiradi', () => {
+    expect(isSceneLifecycleDisabled({ LOOKSAVE_IOS_SCENE: '0' })).toBe(true);
+    expect(isSceneLifecycleDisabled({ LOOKSAVE_IOS_SCENE: '1' })).toBe(false);
+    expect(isSceneLifecycleDisabled({ LOOKSAVE_IOS_SCENE: '' })).toBe(false);
+    expect(isSceneLifecycleDisabled({})).toBe(false);
+  });
+
+  it('o`chirilganda konfiguratsiyaga tegmaydi — manifest ham, AppDelegate ham yozilmaydi', () => {
+    process.env['LOOKSAVE_IOS_SCENE'] = '0';
+
+    const result = plugin({ ...CONFIG }) as { mods?: unknown };
+
+    expect(result).toEqual(CONFIG);
+    expect(result.mods).toBeUndefined();
+  });
+
+  it('bayroqsiz ikkala mod ham ro`yxatga olinadi', () => {
+    const result = plugin({ ...CONFIG }) as { mods?: { ios?: Record<string, unknown> } };
+
+    expect(result.mods?.ios?.['infoPlist']).toBeTypeOf('function');
+    expect(result.mods?.ios?.['appDelegate']).toBeTypeOf('function');
+  });
+
+  it('EAS`da Xcode 27 bilan sahnasiz build`ni to`xtatadi', () => {
+    expect(() => assertLegacyLifecycleIsSafe({ EAS_BUILD: 'true' }, () => 27)).toThrow(/Xcode 27/);
+    expect(() => assertLegacyLifecycleIsSafe({ EAS_BUILD: 'true' }, () => 28)).toThrow();
+  });
+
+  it('Xcode 26 da va Xcode aniqlanmaganda to`smaydi', () => {
+    expect(() => assertLegacyLifecycleIsSafe({ EAS_BUILD: 'true' }, () => 26)).not.toThrow();
+    expect(() => assertLegacyLifecycleIsSafe({ EAS_BUILD: 'true' }, () => null)).not.toThrow();
+  });
+
+  /*
+   * `eas build` konfiguratsiyani shu Mac'da ham o'qiydi, bu yerda esa Xcode 27.
+   * Lokal tekshiruv to'g'ri sozlangan EAS build'ini boshlanmasidan to'xtatardi.
+   */
+  it('EAS`dan tashqarida Xcode`ni tekshirmaydi', () => {
+    expect(() => assertLegacyLifecycleIsSafe({}, () => 27)).not.toThrow();
   });
 });
 
