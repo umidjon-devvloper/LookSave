@@ -3,6 +3,9 @@ import { create } from 'zustand';
 
 import { ApiError, clearTokens, getRefreshToken } from '../api/client';
 import { getProfile, login as apiLogin, register as apiRegister } from '../api/endpoints';
+import { queryClient } from '../api/queryClient';
+import { setFaceLocked } from './faceLock';
+import { useLookStore } from './lookStore';
 
 type Status = 'loading' | 'signedIn' | 'signedOut';
 
@@ -91,8 +94,35 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ status: 'signedIn', user });
   },
 
+  /**
+   * ⚠️ TOKENNI O'CHIRISH YETARLI EMAS (2026-11-16). Avval shu yerda faqat
+   * `clearTokens()` turardi va chiqib, boshqa akkauntga kirgan foydalanuvchi
+   * ESKI AKKAUNTNING ma'lumotini ko'rardi: primerkada ko'rilgan natijalar,
+   * «Look» savati, profil va avatar. Ikki joyda qolib ketardi:
+   *
+   *  1. React Query keshi — xotirada, ilova yopilmaguncha yashaydi.
+   *  2. `look.tray` / `look.tries` — SecureStore'da, ilova ochilganda
+   *     `restore()` ularni qaytaradi. `tries` ichida boshqa akkauntning
+   *     `renderId` si bo'lib, primerka ekrani o'sha natijani so'rardi.
+   *
+   * Yuz qulfi ham chiqadi: u shu akkauntning yuz suratini qo'riqlaydi,
+   * yangi egasiga esa yuzini kiritishga to'sqinlik qilardi.
+   *
+   * ⚠️ TOZALASH XATO BERSA HAM CHIQARAMIZ. «Chiqish» tugmasi har qanday
+   * holatda ishlashi kerak — SecureStore nosoz qurilmada ham
+   * foydalanuvchi akkauntda qamalib qolmasin.
+   */
   signOut: async () => {
     await clearTokens();
+
+    try {
+      queryClient.clear();
+      await useLookStore.getState().clearAccount();
+      await setFaceLocked(false);
+    } catch (err) {
+      console.warn('[auth] chiqishda kesh tozalanmadi', err);
+    }
+
     set({ status: 'signedOut', user: null });
   },
 

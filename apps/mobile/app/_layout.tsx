@@ -10,7 +10,7 @@ import {
   Inter_700Bold,
   useFonts,
 } from '@expo-google-fonts/inter';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { requireOptionalNativeModule } from 'expo';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -20,6 +20,7 @@ import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { queryClient } from '../src/api/queryClient';
 import { AnimatedSplash } from '../src/components/AnimatedSplash';
 import type { VideoSplash as VideoSplashComponent } from '../src/components/VideoSplash';
 import { usePushRegistration } from '../src/hooks/usePush';
@@ -47,17 +48,6 @@ const VideoSplash = requireOptionalNativeModule('ExpoVideo')
 // yashiramiz, aks holda ikkisi orasida bo'sh kadr ko'rinib qoladi.
 void SplashScreen.preventAutoHideAsync().catch(() => {
   // Modul ikki marta yuklansa xato beradi — sahnaga ta'siri yo'q
-});
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 30_000,
-      retry: 1,
-      // Mobil tarmoq beqaror — oyna fokusida qayta so'rash trafikni yeydi
-      refetchOnWindowFocus: false,
-    },
-  },
 });
 
 function AppShell(): JSX.Element {

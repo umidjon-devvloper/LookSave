@@ -88,6 +88,14 @@ interface LookState {
 
   /** Ilova ochilganda saqlangan savatni tiklaydi */
   restore: () => Promise<void>;
+
+  /**
+   * Akkauntdan chiqishda hammasini o'chiradi — xotiradan ham, qurilmadan ham.
+   *
+   * ⚠️ IKKISI HAM SHART. Faqat `set` qilsak yozuvlar diskda qolib,
+   * keyingi ochilishda `restore` ularni qaytarardi.
+   */
+  clearAccount: () => Promise<void>;
 }
 
 export const useLookStore = create<LookState>((set) => {
@@ -158,6 +166,23 @@ export const useLookStore = create<LookState>((set) => {
       } catch (err) {
         console.warn('[look] saqlangan savat o`qilmadi', err);
       }
+    },
+
+    clearAccount: async () => {
+      set({ items: [], tries: [] });
+      /*
+       * `trayOnDisk` ham tozalanadi: aks holda yangi akkaunt savatga
+       * aynan shu kiyimlarni qo'shsa, `saveTray` "matn o'zgarmagan" deb
+       * yozishni o'tkazib yuborardi va savat diskda bo'sh qolardi.
+       */
+      trayOnDisk = null;
+      await Promise.all([
+        write(TRAY_KEY, '', true),
+        write(TRIES_KEY, '', true),
+        // Eski kalitlar — ko'chirilmagan bo'lsa ular ham chiqib ketsin
+        write(OLD_OUTFIT_KEY, '', true),
+        write(OLD_FILTER_KEY, '', true),
+      ]);
     },
   };
 });
