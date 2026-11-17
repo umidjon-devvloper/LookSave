@@ -28,6 +28,7 @@ interface StoreRow {
   address: string;
   landmark: string | null;
   city: string;
+  district: string | null;
   country: 'UZ' | 'AE';
   phone: string;
   lat: number;
@@ -38,6 +39,7 @@ interface StoreRow {
   delivery_radius_m: number;
   delivery_fee: string;
   free_delivery_from: string | null;
+  nationwide: boolean;
   currency: string;
   status: string;
   reject_reason: string | null;
@@ -52,7 +54,7 @@ async function loadStore(storeId: string): Promise<StoreRow> {
     `SELECT s.id, s.name, s.slug, s.description, s.logo_url, s.cover_url, s.address,
             s.landmark, s.city, s.district, s.country, s.phone, s.working_hours, s.delivery_enabled,
             s.pickup_enabled, s.delivery_radius_m, s.delivery_fee, s.free_delivery_from,
-            s.currency, s.status, s.reject_reason, s.rating, s.review_count,
+            s.nationwide, s.currency, s.status, s.reject_reason, s.rating, s.review_count,
             s.owner_id, u.username AS owner_username,
             ST_Y(s.location::geometry) AS lat,
             ST_X(s.location::geometry) AS lng
@@ -119,6 +121,8 @@ export async function getStoreProfile(storeId: string) {
       freeFrom: store.free_delivery_from,
     },
     pickupEnabled: store.pickup_enabled,
+    /** «Respublika bo'ylab» — do'kon GPS radiusdan tashqarida ham ko'rinadi (037). */
+    nationwide: store.nationwide,
     currency: store.currency,
     status: store.status,
     rejectReason: store.reject_reason,
@@ -168,6 +172,7 @@ export async function updateStoreProfile(storeId: string, input: UpdateStoreInpu
   if (input.deliveryRadiusM !== undefined) push('delivery_radius_m', input.deliveryRadiusM);
   if (input.deliveryFee !== undefined) push('delivery_fee', input.deliveryFee);
   if (input.freeDeliveryFrom !== undefined) push('free_delivery_from', input.freeDeliveryFrom);
+  if (input.nationwide !== undefined) push('nationwide', input.nationwide);
 
   if (input.location !== undefined) {
     params.push(input.location.lng, input.location.lat);

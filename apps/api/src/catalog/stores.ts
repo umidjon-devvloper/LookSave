@@ -16,6 +16,7 @@ interface NearbyRow {
   lng: number;
   delivery_enabled: boolean;
   pickup_enabled: boolean;
+  nationwide: boolean;
   working_hours: unknown;
   country: 'UZ' | 'AE';
   product_count: string;
@@ -34,7 +35,10 @@ interface NearbyRow {
 export async function findNearbyStores(query: NearbyQuery): Promise<NearbyRow[]> {
   const conditions: string[] = [
     `s.status = 'active'`,
-    `ST_DWithin(s.location, ST_MakePoint($1, $2)::geography, $3)`,
+    // `nationwide` do'kon GPS radiusdan tashqarida bo'lsa ham ro'yxatga
+    // tushadi (migratsiya 037) — ko'pchilik do'kon lokal qoladi, bu esa
+    // pochta/kuryer orqali butun mamlakatga yuboradiganlari uchun.
+    `(ST_DWithin(s.location, ST_MakePoint($1, $2)::geography, $3) OR s.nationwide)`,
   ];
   /*
    * ⚠️ SLOT RO'YXATI TO'RTINCHI O'RINDA VA DOIM QO'SHILADI. U quyidagi
@@ -74,7 +78,7 @@ export async function findNearbyStores(query: NearbyQuery): Promise<NearbyRow[]>
 
   const { rows } = await pool.query<NearbyRow>(
     `SELECT s.id, s.name, s.logo_url, s.cover_url, s.address, s.rating, s.currency,
-            s.delivery_enabled, s.pickup_enabled, s.working_hours, s.country,
+            s.delivery_enabled, s.pickup_enabled, s.nationwide, s.working_hours, s.country,
             ST_Distance(s.location, ST_MakePoint($1, $2)::geography)::int AS distance_m,
             ST_Y(s.location::geometry) AS lat,
             ST_X(s.location::geometry) AS lng,
@@ -122,6 +126,8 @@ export interface NearbyStoreDto {
   location: { lat: number; lng: number };
   deliveryEnabled: boolean;
   pickupEnabled: boolean;
+  /** TRUE bo'lsa do'kon radiusdan tashqarida bo'lgan mijozlarga ham chiqadi (037). */
+  nationwide: boolean;
 }
 
 export function toNearbyDto(row: NearbyRow): NearbyStoreDto {
@@ -144,6 +150,7 @@ export function toNearbyDto(row: NearbyRow): NearbyStoreDto {
     location: { lat: row.lat, lng: row.lng },
     deliveryEnabled: row.delivery_enabled,
     pickupEnabled: row.pickup_enabled,
+    nationwide: row.nationwide,
   };
 }
 

@@ -211,6 +211,12 @@ export const updateStoreSchema = z
     deliveryRadiusM: z.number().int().min(500).max(50_000).optional(),
     deliveryFee: moneyAmountSchema.optional(),
     freeDeliveryFrom: moneyAmountSchema.nullable().optional(),
+    /**
+     * «Respublika bo'ylab» (migratsiya 037). TRUE bo'lsa do'kon mijozning
+     * GPS radiusidan tashqarida bo'lsa ham qidiruv ro'yxatida ko'rinadi.
+     * Lokal `deliveryRadiusM` ga ta'sir qilmaydi — faqat ro'yxatga kirish.
+     */
+    nationwide: z.boolean().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, { message: 'O`zgartirish uchun maydon yo`q' })
   .refine((value) => value.deliveryEnabled !== false || value.pickupEnabled !== false, {

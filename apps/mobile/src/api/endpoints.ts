@@ -126,6 +126,8 @@ export interface NearbyStore {
   tryonCount: number;
   currency: string;
   location: { lat: number; lng: number };
+  /** «Respublika bo'ylab» — radiusdan qat'iy nazar ro'yxatda chiqadi (037). */
+  nationwide?: boolean;
 }
 
 export const getNearbyStores = (
@@ -1340,6 +1342,8 @@ export interface StoreProfile {
   workingHours: WorkingHour[];
   delivery: { enabled: boolean; radiusM: number; fee: string; freeFrom: string | null };
   pickupEnabled: boolean;
+  /** «Respublika bo'ylab» — do'kon GPS radiusdan tashqarida ham ko'rinadi (migratsiya 037). */
+  nationwide: boolean;
   isOpen: boolean;
   closesAt: string | null;
   opensAt: string | null;
@@ -1365,6 +1369,8 @@ export interface UpdateStoreBody {
   deliveryRadiusM?: number;
   deliveryFee?: string;
   freeDeliveryFrom?: string | null;
+  /** «Respublika bo'ylab» (037) — radiusdan tashqarida ham ro'yxatga tushsin. */
+  nationwide?: boolean;
 }
 
 export const getStoreProfile = (): Promise<StoreProfile> => api<StoreProfile>('/store/profile');

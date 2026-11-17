@@ -114,6 +114,7 @@ export default function StoreSettings(): JSX.Element {
     radiusKm: '15',
     fee: '0',
     freeFrom: '' as string,
+    nationwide: false,
   });
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -138,6 +139,7 @@ export default function StoreSettings(): JSX.Element {
       radiusKm: (profile.data.delivery.radiusM / 1000).toString(),
       fee: profile.data.delivery.fee,
       freeFrom: profile.data.delivery.freeFrom ?? '',
+      nationwide: profile.data.nationwide,
     });
   }, [profile.data]);
 
@@ -199,6 +201,7 @@ export default function StoreSettings(): JSX.Element {
         deliveryRadiusM: radiusM,
         deliveryFee: feeAmount,
         freeDeliveryFrom: freeFromAmount,
+        nationwide: delivery.nationwide,
       });
     },
     onSuccess: async () => {
@@ -568,6 +571,23 @@ export default function StoreSettings(): JSX.Element {
                 {delivery.pickup ? <Text style={styles.checkboxMark}>✓</Text> : null}
               </View>
               <Text style={styles.toggleLabel}>{t.seller.pickupOn}</Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: delivery.nationwide }}
+              onPress={() => setDeliveryField('nationwide', !delivery.nationwide)}
+              style={styles.toggleRow}
+            >
+              <View style={[styles.checkbox, delivery.nationwide && styles.checkboxOn]}>
+                {delivery.nationwide ? <Text style={styles.checkboxMark}>✓</Text> : null}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.toggleLabel}>Respublika bo‘ylab yuboraman</Text>
+                <Text style={[styles.toggleLabel, { opacity: 0.6, fontSize: 12 }]}>
+                  Pochta/kuryer orqali. Do‘konim barcha viloyat mijozlariga ko‘rinadi.
+                </Text>
+              </View>
             </Pressable>
 
             {delivery.enabled ? (
