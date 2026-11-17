@@ -37,6 +37,12 @@ olib boradi).
       o'chirilgan. Tekshirish: `https://api.looksave.uz/v1/products?limit=50`
       va `/v1/stores/nearby?lat=41.311&lng=69.279` — tasodifiy harfli nomlar,
       0 mahsulotli do'konlar, begona Instagram skrinshotlari qolmagan.
+      **2026-11-17 dagi holat (jonli API): hali BAJARILMAGAN.** Toshkent
+      atrofida 13 do'kondan 10 tasi bo'sh («Ndjxjx», «Fufu», «umidjon»,
+      «Jackets», «Bulls», «Harmony», uchta «Chilonzor»…); mahsuloti bor uchtasi —
+      «luxury» (71), «Sergeli» (5), «Diorpro» (5). «Jsjcjc» mahsuloti
+      («Chilomzor» do'koni) hamon katalogda. Bo'sh do'konlar ilovada avatar
+      sehrgarining «do'kon tanlash» qadamida ro'yxat bo'lib chiqadi.
 - [ ] **Brend logotiplari.** Hamkor bo'lmagan brendlar (Nike, Adidas, Zara,
       Puma, New Balance) `/v1/brands` dan va bosh sahifadan olib tashlangan.
 - [ ] **Demo akkaunt** — 2026-11-13 dan `+998937844572` («LookSave Review»);
@@ -53,6 +59,18 @@ olib boradi).
         mahsulot — «Jsjcjc» (katalogda ham ko'rinadi). Do'kon nomi va
         mahsulotini haqiqiysiga almashtiring yoki akkauntni oddiy xaridorga
         aylantiring (pastdagi «Kontent» bandi bilan birga).
+        ⚠️ Do'kon egasi bo'lgani uchun KIRGACH ILOVA SOTUVCHI PANELIGA olib
+        boradi (`app/(auth)/sign-in.tsx`) — ko'rib chiquvchining birinchi
+        ekrani shu. Review Notes 1-qadamiga shu yozildi (2026-11-17); akkaunt
+        xaridorga aylantirilsa o'sha jumlani olib tashlang. Panel shu kuni
+        inglizcha qurilmada SINOV ma'lumoti bilan ko'rib chiqildi (matnlar,
+        tugmalar) — haqiqiy akkaunt bilan emas.
+        **2026-11-17 kechqurun jonli API'dagi holat:** do'konda 14 mahsulot —
+        «Shoes» ×5, «T-shirt» ×2, «Shim» ×2, «Krasovka» ×2, «Qizil krasovka»
+        (15 000 so'm), «Ko’ulak» (12 000 so'm), «Jsjcjc»; mo'ljal —
+        «Nznxndjdj», tavsif — «Nsndnxnnxnznzmakskxnxn»; ba'zi suratlarda Nike
+        belgisi bor. Ko'rib chiquvchi kirgach aynan shu do'konning panelini
+        ko'radi.
   - [ ] **Parol.** App Store Connect'dagi «Sign-In Information» ga kiritilgan
         va REPODA YO'Q (repo ochiq). Review Notes'dagi `[parol]` qo'lda
         almashtiriladi.
@@ -82,26 +100,40 @@ olib boradi).
       server OpenAI'ni chaqiradi, operator esa ChatGPT va Gemini'da ishlaydi.
       Matnlarda «OpenAI or Google» qoladi (tavsif, Review Notes, ilovadagi
       rozilik, maxfiylik sahifasi).
-- [ ] **Maxfiylik sahifasi jonli saytda yangilangan.** Yangi matn (to'rt
-      tilda, «OpenAI or Google») va `/privacy`, `/terms` yo'naltirishi
-      `216b2cb` commitida bor, lekin 2026-11-13 da jonli saytda hali eski
-      sahifa turardi: `looksave.uz/en/privacy` o'zbekcha va «FASHN» bilan,
-      `/privacy` esa 404. Saytni chiqargach shu ikki manzilni ochib ko'ring.
+- [x] **Maxfiylik sahifasi jonli saytda yangilangan (tekshirildi
+      2026-11-17).** `looksave.uz/en/privacy` inglizcha, «OpenAI» va «Google»
+      bor, «FASHN» yo'q; `/privacy` va `/terms` `/en/…` ga yo'naltiradi;
+      `{uz,ru,en,ar}/{privacy,terms,support}` — hammasi 200.
 - [x] **Ilova ichidagi matnlar tuzatilgan (2026-11-12), build 63 da bor.**
       Rozilik ekrani («OpenAI or Google»), «Look» tugmasi va mahsulot sahifasi
       to'rt tilda; «10 seconds» va «front, side, and back» da'volari yo'q.
-- [ ] **Onboarding.** Hozirgi ekran sotuvchi uchun va faqat o'zbekcha; bayroqni
-      o'qishdagi xato tufayli u umuman chiqmaydi. Qaysi onboarding bo'lishini
-      hal qiling (Review Notes «skip the onboarding» deydi — chiqmasa zarari yo'q).
-- [ ] **Ilovadagi havolalar ochiladi.** Profil → «Maxfiylik siyosati» va
-      «Foydalanish shartlari» `looksave.uz/privacy` va `/terms` ni ochadi —
-      2026-11-12 da ikkalasi ham jonli saytda 404 berardi (til bo'lagisiz
-      manzil yo'q). Saytda yo'naltirish qo'yilgan yoki ilovadagi havola
-      `/en/privacy` kabi to'liq manzilga almashtirilgan bo'lsin.
-- [ ] **Joylashuv matni.** Ruxsat so'rovidagi matn faqat «yaqin do'konlar»
-      deydi, ilova esa joylashuvni yetkazish nuqtasini xaritada oldindan
-      qo'yish uchun ham ishlatadi — matnga shuni qo'shing (`app.json` dagi
-      `expo-location` va `ios/LookSave/Info.plist`).
+- [x] **Onboarding (2026-11-17, kodda — keyingi build'da).** Ilk ochilishda
+      xaridor uchun uch qadamli kirish chiqadi, to'rt tilda; «Skip» yuqori o'ng
+      burchakda (Review Notes shunga tayanadi). Simulyatorda toza o'rnatishda
+      ko'rilgan.
+      ⚠️ Shu tekshiruvda jiddiy nuqson topildi va tuzatildi (2026-11-18):
+      iOS 27 da toza o'rnatilgan ilovada «Next» / «Get started» tugmasi
+      ko'rinardi, lekin BOSILMASDI (faqat «Skip» ishlardi) — kirish marshruti
+      sarlavha bilan ochilib almashgani uchun ekranning pastki 116 nuqtasi
+      ramkadan tashqarida qolardi (`app/_layout.tsx`, `index` endi
+      sarlavhasiz). Yangi build'da ilovani O'CHIRIB QAYTA O'RNATIB, uch
+      slayddan «Next» bilan o'tib ko'ring.
+- [x] **Ilovadagi havolalar ochiladi (2026-11-17, kodda — keyingi build'da).**
+      Profil → «Privacy policy» / «Terms of use» va kirishdagi «Forgot
+      password?» `looksave.uz/<qurilma tili>/…` ni ochadi; manzillar 200.
+- [x] **Joylashuv matni (2026-11-17, keyingi build'da).** Ruxsat matniga
+      yetkazish manzili uchun boshlang'ich nuqta ham yozildi (`app.json` ning
+      ikki joyi va lokal `ios/LookSave/Info.plist`).
+- [ ] **Ilova tili (2026-11-17, kodda — keyingi build'da).** Inglizcha
+      qurilmada o'zbekcha chiqadigan joylar tuzatildi: avatar sehrgari,
+      komplektlarim, o'lchamlar, checkout, buyurtmalar, sotuvchi paneli,
+      xato xabarlari. Yangi build'da inglizcha telefonda bir marta aylanib
+      chiqing — shundan keyin belgilang.
+- [ ] **Bosilmaydigan tugmalar (2026-11-17, kodda — keyingi build'da).**
+      «Forgot password?», kartalardagi yurakcha, sotuvchi panelidagi
+      qo'ng'iroq (uch ekranda) ishlaydigan qilindi; bosilmaydigan «Barchasi»
+      yozuvlari olib tashlandi. 2-raddagi «tugmalar bosilmaydi» e'tirozi
+      takrorlanmasligi uchun yangi build'da qo'lda bosib ko'ring.
 - [ ] **TestFlight:** tashqi sinovchilar bo'lgan bo'lsa — soni va sanalari
       xatga yoziladi; bo'lmagan bo'lsa o'sha jumla o'chiriladi.
 

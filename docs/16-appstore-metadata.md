@@ -271,8 +271,18 @@ LookSave ليس تطبيق دفع. طلبك هو طلب يُرسَل إلى مت
 > ning paroli shu faylning git tarixida ochiq qolgan — u yopilishi kerak
 > (`docs/17` §0).
 
-> Matn 2026-11-13 da build 1.0 (64) uchun yangilandi; uzunligi 3592 belgi
-> (maydon chegarasi 4000).
+> Matn 2026-11-13 da build 1.0 (64) uchun yangilangan, 2026-11-17 da keyingi
+> build uchun to'ldirildi; uzunligi 3962 belgi (maydon chegarasi 4000 —
+> parol va `[60]` almashtirilgach qayta sanang).
+>
+> ⚠️ **2026-11-17 dagi ikki eslatma:**
+> - Demo akkaunt do'kon egasi, shuning uchun kirgach ilova bosh sahifaga emas,
+>   SOTUVCHI PANELIGA olib boradi. 1-qadamga shu yozildi. Akkaunt oddiy
+>   xaridorga aylantirilsa o'sha jumlani o'chiring.
+> - «Test stores and placeholder listings were removed…» jumlasi shu kuni hali
+>   ROST EMAS edi: ilovada «Ndjxjx», «Fufu», «umidjon» do'konlari va demo
+>   do'kondagi «Jsjcjc» mahsuloti ko'rinib turardi. Katalog tozalanmaguncha
+>   bu jumlani yubormang.
 
 ```
 ABOUT THE APP
@@ -284,6 +294,8 @@ WHAT WE FIXED SINCE BUILD 1.0 (61)
 • Tapping a push notification while the app was closed did not open the related screen. Fixed.
 • The first-launch introduction was never shown because of a storage error. Fixed.
 • Permission prompts (camera, photos, location) are now in English and state exactly what the data is used for. The photo-library purpose string that caused the crash in build 22 is in place.
+• Every screen now follows the device language (avatar setup, checkout and the seller panel were partly Uzbek-only).
+• Fixed controls that did not respond: "Forgot password?", hearts on product cards, the bell in the seller panel.
 
 WHAT WE REDESIGNED
 • Home, Marketplace and Try-on screens have a new design.
@@ -297,7 +309,7 @@ Password: [parol]
 The account already has an avatar, body measurements and saved try-on results, so you do not need to scan your own face.
 
 HOW TO SEE THE CORE FEATURE (about 2 minutes)
-1. Open the app and skip the introduction (link in the top-right corner). Open the Profile tab and sign in with the demo account.
+1. Open the app and skip the introduction (link in the top-right corner). Open the Profile tab and sign in with the demo account. The account also owns a test store, so the seller panel opens first — tap the back arrow (top left) to return to the shop, then open Home.
 2. On the Home screen, tap the "Look" chip on two or three product cards — for example a jacket, trousers and sneakers. The round button in the middle of the tab bar shows how many items are collected.
 3. Tap that middle button to open "Try-on". The collected items are listed at the bottom. Tap "Try on · N items".
 4. The result appears on the avatar in about [60] seconds. Tap an item in the list to take it off or put it back on and try again.
