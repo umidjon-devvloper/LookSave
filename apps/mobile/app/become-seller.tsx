@@ -159,7 +159,7 @@ export default function StoreApply(): JSX.Element {
         showsVerticalScrollIndicator={false}
       >
           <LinearGradient
-            colors={['#0C0920', '#1B1239', '#28134C']}
+            colors={['#FFFFFF', '#FBF8FF', '#F1E8FF']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={[styles.hero, { paddingTop: insets.top + 10 }]}
@@ -170,11 +170,11 @@ export default function StoreApply(): JSX.Element {
             <View style={styles.heroBar}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Orqaga"
+                accessibilityLabel={t.common.back}
                 onPress={() => goBack('/profile')}
                 style={styles.backButton}
               >
-                <Icon name="back" size={28} color="#D86BFF" />
+                <Icon name="back" size={28} color={colors.primary} />
               </Pressable>
               <Text style={styles.wordmark}>
                 LOOK<Text style={styles.wordmarkAccent}>SAVE</Text> · SELLER
@@ -183,10 +183,8 @@ export default function StoreApply(): JSX.Element {
             </View>
 
             <View style={styles.heroCopy}>
-              <Text style={styles.heroTitle}>
-                Do‘kon <Text style={styles.heroTitleAccent}>oching</Text>
-              </Text>
-              <Text style={styles.heroSubtitle}>Sotuvchi bo‘lish arizasi</Text>
+              <Text style={styles.heroTitle}>{t.seller.applyTitle}</Text>
+              <Text style={styles.heroSubtitle}>{t.seller.applySubtitle}</Text>
             </View>
           </LinearGradient>
 
@@ -196,10 +194,8 @@ export default function StoreApply(): JSX.Element {
                 <Icon name="shop" size={26} color="#FFFFFF" />
               </LinearGradient>
               <View style={styles.howText}>
-                <Text style={styles.howTitle}>Qanday ishlaydi?</Text>
-                <Text style={styles.howDescription}>
-                  Ariza → panelga kirish → mahsulotlarni tayyorlash → tasdiq → katalogda chiqish.
-                </Text>
+                <Text style={styles.howTitle}>{t.ai.howTitle}</Text>
+                <Text style={styles.howDescription}>{t.seller.applyLead}</Text>
               </View>
               <Icon name="next" size={24} color={colors.primary} />
             </View>
@@ -392,7 +388,7 @@ const styles = StyleSheet.create({
     height: 330,
     borderRadius: 165,
     borderWidth: 1,
-    borderColor: 'rgba(175,77,255,0.28)',
+    borderColor: 'rgba(139,44,245,0.16)',
   },
   heroArt: { position: 'absolute', width: 230, height: 190, right: -18, bottom: -4 },
   heroBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -401,18 +397,17 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.78)',
-    backgroundColor: 'rgba(20,15,42,0.58)',
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  wordmark: { ...text.wordmark, fontSize: 12, letterSpacing: 3.2, color: '#FFFFFF' },
-  wordmarkAccent: { color: '#D762FF' },
+  wordmark: { ...text.wordmark, fontSize: 12, letterSpacing: 3.2, color: colors.text },
+  wordmarkAccent: { color: colors.accent },
   heroSpacer: { width: 48 },
   heroCopy: { marginTop: 34, width: '64%' },
-  heroTitle: { ...text.h1, fontSize: 38, lineHeight: 44, color: '#FFFFFF' },
-  heroTitleAccent: { color: '#D35BFF' },
-  heroSubtitle: { ...text.body, fontSize: 17, color: '#D8D0E8', marginTop: 4 },
+  heroTitle: { ...text.h1, fontSize: 38, lineHeight: 44, color: colors.text },
+  heroSubtitle: { ...text.body, fontSize: 17, color: colors.textMuted, marginTop: 4 },
   sheet: {
     marginTop: -18,
     paddingHorizontal: spacing.md,

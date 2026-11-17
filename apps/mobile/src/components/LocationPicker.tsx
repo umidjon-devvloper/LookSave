@@ -4,6 +4,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, type MapPressEvent, type Region } from 'react-native-maps';
 
 import { Icon } from './Icon';
+import { useI18n } from '../i18n';
 import { colors, radius, spacing, text } from '../theme/tokens';
 
 /**
@@ -27,16 +28,6 @@ function mapProvider(): typeof PROVIDER_GOOGLE | undefined {
 
 const PROVIDER = mapProvider();
 
-const DARK_STYLE = [
-  { elementType: 'geometry', stylers: [{ color: '#14141c' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#9ca3af' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#0a0a0f' }] },
-  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1e1e2a' }] },
-  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#6b7280' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0a0a0f' }] },
-];
 
 interface Props {
   coords: { lat: number; lng: number };
@@ -46,6 +37,7 @@ interface Props {
 }
 
 export function LocationPicker({ coords, onChange, height = 200 }: Props): JSX.Element {
+  const t = useI18n((state) => state.t);
   const mapRef = useRef<MapView | null>(null);
   // Birinchi region faqat MOUNT'da hisoblanadi: aks holda pin har safar
   // koordinata o'zgarganda markazga qaytib ketardi va foydalanuvchi
@@ -84,8 +76,7 @@ export function LocationPicker({ coords, onChange, height = 200 }: Props): JSX.E
         provider={PROVIDER}
         style={StyleSheet.absoluteFill}
         initialRegion={initialRegion}
-        customMapStyle={PROVIDER === PROVIDER_GOOGLE ? DARK_STYLE : undefined}
-        userInterfaceStyle="dark"
+        userInterfaceStyle="light"
         showsUserLocation
         showsMyLocationButton={false}
         showsPointsOfInterest={false}
@@ -108,12 +99,12 @@ export function LocationPicker({ coords, onChange, height = 200 }: Props): JSX.E
       </MapView>
 
       <View style={styles.hintBar} pointerEvents="none">
-        <Text style={styles.hintText}>Pin'ni bosib yoki sudrab aniq joyni belgilang</Text>
+        <Text style={styles.hintText}>{t.checkout.mapHint}</Text>
       </View>
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Pinga qaytish"
+        accessibilityLabel={t.checkout.mapRecenter}
         style={styles.locate}
         onPress={centerOnPin}
       >

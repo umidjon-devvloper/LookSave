@@ -104,16 +104,25 @@ export default function SellerAnalytics(): JSX.Element {
           LOOK<Text style={styles.wordmarkAccent}>SAVE</Text>
           <Text style={styles.wordmarkSeller}> · SELLER</Text>
         </Text>
-        <Pressable style={styles.roundButton}>
+        {/*
+          Qo'ng'iroq yangi buyurtmalarga olib boradi. Ilgari bu tugmada amal
+          yo'q edi va ustida DOIM nuqta yonib turardi — bosilsa hech narsa
+          bo'lmasdi (App Review 2.1 aynan shunday tugmalar uchun qaytaradi).
+        */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t.sellerDashboard.viewOrders}
+          style={styles.roundButton}
+          onPress={() => router.push('/seller/orders')}
+        >
           <Icon name="bell" size={24} color={colors.text} />
-          <View style={styles.notificationDot} />
         </Pressable>
       </View>
 
       <View style={styles.hero}>
         <View style={styles.heroCopy}>
           <Text style={styles.title}>{t.sellerAnalytics.title}</Text>
-          <Text style={styles.subtitle}>Do‘kon faoliyati bo‘yicha tahlil</Text>
+          <Text style={styles.subtitle}>{t.sellerAnalytics.subtitle}</Text>
         </View>
         <Image source={GROWTH_ART} style={styles.growthArt} resizeMode="contain" />
       </View>
@@ -187,9 +196,9 @@ export default function SellerAnalytics(): JSX.Element {
       <View style={styles.sectionHead}>
         <View style={styles.sectionTitleRow}>
           <Icon name="limited" size={24} color={colors.accent} />
-          <Text style={styles.section}>{t.sellerAnalytics.topProducts} mahsulotlar</Text>
+          <Text style={styles.section}>{t.sellerAnalytics.topProductsTitle}</Text>
         </View>
-        <Text style={styles.viewAll}>Barchasi ›</Text>
+        {/* «Barchasi ›» olib tashlandi: u bosilmasdi — havolaga o'xshagan o'lik yozuv edi */}
       </View>
       {data.topProducts.length === 0 ? (
         <Text style={styles.emptyText}>{t.sellerAnalytics.topEmpty}</Text>
@@ -294,17 +303,6 @@ const styles = StyleSheet.create({
   },
   wordmarkAccent: { color: colors.accent },
   wordmarkSeller: { color: colors.textMuted, fontWeight: '600' },
-  notificationDot: {
-    position: 'absolute',
-    right: 3,
-    top: 2,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.primary,
-    borderWidth: 2,
-    borderColor: colors.surface,
-  },
   hero: { height: 158, justifyContent: 'center', overflow: 'visible' },
   heroCopy: { zIndex: 2, maxWidth: '65%' },
   title: { ...text.h1, color: colors.text, fontSize: 34, lineHeight: 40 },
@@ -429,7 +427,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 18,
   },
-  viewAll: { ...text.small, color: colors.textMuted, fontWeight: '600' },
 
   row: {
     flexDirection: 'row',

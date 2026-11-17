@@ -16,6 +16,7 @@ import {
 
 import { explainError } from '../src/api/explainError';
 import { createOrder, getCart, type CreateOrderInput } from '../src/api/endpoints';
+import { SignInRequired } from '../src/components/SignInRequired';
 import { ErrorView, Field, Loading, Screen } from '../src/components/ui';
 import { Icon, type IconName } from '../src/components/Icon';
 import { LocationPicker } from '../src/components/LocationPicker';
@@ -26,10 +27,14 @@ import { money } from '../src/theme/format';
 import { colors, fonts, radius, spacing, text } from '../src/theme/tokens';
 import { goBack } from '../src/navigation/back';
 
-/** «Tanlangan kun» uchun kunlar — ertadan keyingi kundan 12 kun. */
-const UZ_MONTHS = ['yan', 'fev', 'mar', 'apr', 'may', 'iyn', 'iyl', 'avg', 'sen', 'okt', 'noy', 'dek'];
-const UZ_WEEKDAYS = ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'];
-
+/*
+ * «Tanlangan kun» uchun kunlar — ertadan keyingi kundan 12 kun.
+ *
+ * Bu yerda faqat SON saqlanadi; oy va hafta kuni nomi ekranda lug'atdan
+ * olinadi (`checkout.monthsShort`, `checkout.weekdaysShort`). Ilgari ular
+ * shu faylda o'zbekcha qattiq yozilgan edi va inglizcha qurilmada ham
+ * «Chor · 19 noy» chiqardi.
+ */
 const SCHEDULE_DAYS = Array.from({ length: 12 }, (_, i) => {
   const d = new Date();
   d.setDate(d.getDate() + i + 2); // bugun/ertaga alohida — 2-kundan boshlaymiz
@@ -38,8 +43,9 @@ const SCHEDULE_DAYS = Array.from({ length: 12 }, (_, i) => {
   const day = String(d.getDate()).padStart(2, '0');
   return {
     date: `${y}-${m}-${day}`,
-    day: `${d.getDate()} ${UZ_MONTHS[d.getMonth()]}`,
-    wd: UZ_WEEKDAYS[d.getDay()] ?? '',
+    dayOfMonth: d.getDate(),
+    month: d.getMonth(),
+    weekday: d.getDay(),
   };
 });
 
@@ -48,6 +54,7 @@ export default function Checkout(): JSX.Element {
   const router = useRouter();
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
+  const signedIn = useAuthStore((state) => state.status === 'signedIn');
   const t = useI18n((state) => state.t);
   const { coords, isFallback } = useLocationStore();
   const insets = useSafeAreaInsets();
@@ -77,7 +84,7 @@ export default function Checkout(): JSX.Element {
     [],
   );
 
-  const cart = useQuery({ queryKey: ['cart'], queryFn: getCart });
+  const cart = useQuery({ queryKey: ['cart'], queryFn: getCart, enabled: signedIn });
   const group = cart.data?.stores.find((item) => item.store.id === storeId);
 
   const addressValid =
@@ -134,6 +141,9 @@ export default function Checkout(): JSX.Element {
     },
     onError: (err) => setError(explainError(err, t)),
   });
+
+  // Savat akkauntga bog'liq — kirmagan odamga «yuklab bo'lmadi» emas, kirish taklifi
+  if (!signedIn) return <SignInRequired />;
 
   if (cart.isLoading) {
     return (
@@ -249,7 +259,7 @@ export default function Checkout(): JSX.Element {
                 taxminiy bo'lsa ham, pin kuryerni to'g'ri eshikka olib
                 keladi. GPS'dan boshlaydi, keyin sudrab/bosib ko'chadi.
               */}
-              <Text style={styles.label}>Xaritada joy</Text>
+              <Text style={styles.label}>{t.checkout.mapPoint}</Text>
               <LocationPicker coords={pickedCoords} onChange={setPickedCoords} />
 
               <Field
@@ -298,6 +308,8 @@ export default function Checkout(): JSX.Element {
                 >
                   {SCHEDULE_DAYS.map((d) => {
                     const active = deliveryDate === d.date;
+                    const month = t.checkout.monthsShort.split(',')[d.month] ?? '';
+                    const weekday = t.checkout.weekdaysShort.split(',')[d.weekday] ?? '';
                     return (
                       <Pressable
                         key={d.date}
@@ -306,8 +318,18 @@ export default function Checkout(): JSX.Element {
                         onPress={() => setDeliveryDate(d.date)}
                         style={[styles.dayChip, active && styles.dayChipActive]}
                       >
-                        <Text style={[styles.dayNum, active && styles.dayTextActive]}>{d.day}</Text>
-                        <Text style={[styles.dayWd, active && styles.dayTextActive]}>{d.wd}</Text>
+                        <Text
+                          numberOfLines={1}
+                          style={[styles.dayNum, active && styles.dayTextActive]}
+                        >
+                          {d.dayOfMonth} {month}
+                        </Text>
+                        <Text
+                          numberOfLines={1}
+                          style={[styles.dayWd, active && styles.dayTextActive]}
+                        >
+                          {weekday}
+                        </Text>
                       </Pressable>
                     );
                   })}
@@ -471,7 +493,9 @@ const styles = StyleSheet.create({
   slotChipTextActive: { color: colors.text, fontFamily: fonts.medium },
   dayRow: { gap: spacing.sm, paddingVertical: spacing.xs, paddingRight: spacing.md },
   dayChip: {
-    width: 64,
+    // Kenglik qotirilmagan: boshqa tillarda oy va hafta kuni nomi uzunroq
+    minWidth: 64,
+    paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
     borderRadius: radius.md,
     borderWidth: 1,

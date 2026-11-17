@@ -46,6 +46,7 @@ import { isFaceLocked, setFaceLocked } from '../../src/store/faceLock';
 import { SignInRequired } from '../../src/components/SignInRequired';
 import { useAiFlowStore } from '../../src/store/aiFlowStore';
 import { useLocationStore } from '../../src/store/locationStore';
+import { distance } from '../../src/theme/format';
 import { colors, fonts, radius, spacing, text } from '../../src/theme/tokens';
 import { goBack as leaveWizard } from '../../src/navigation/back';
 
@@ -371,7 +372,7 @@ export default function AvatarFlow(): JSX.Element {
   });
 
   if (authStatus !== 'signedIn') {
-    return <SignInRequired title="AI Designer" hint={t.avatar.signInHint} />;
+    return <SignInRequired title={t.avatar.title} hint={t.avatar.signInHint} />;
   }
 
   if (profile.isLoading) return <Loading />;
@@ -438,9 +439,7 @@ export default function AvatarFlow(): JSX.Element {
 
     const unpicked = requiredPicks.filter((item) => !item.ok).map((item) => item.label);
     if (unpicked.length > 0) {
-      setError(
-        `${unpicked.join(', ')} tanlanishi shart — do'kondan sizga mos kiyim shu bilan topiladi`,
-      );
+      setError(t.avatar.pickRequiredError.replace('{fields}', unpicked.join(', ')));
       return false;
     }
 
@@ -502,7 +501,7 @@ export default function AvatarFlow(): JSX.Element {
       <View style={[styles.header, { paddingTop: insets.top + spacing.xs }]}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Orqaga"
+          accessibilityLabel={t.common.back}
           onPress={goBack}
           hitSlop={10}
           style={styles.backButton}
@@ -549,8 +548,8 @@ export default function AvatarFlow(): JSX.Element {
 
         {step === 'body' ? (
           <MeasureStep
-            title="Bo'y, vazn va oyoq o'lchami"
-            hint="Shu uch ma'lumot avatar gavdasi va oyoq kiyim razmerini belgilaydi. Boshqa tana o'lchamlari so'ralmaydi."
+            title={t.avatar.bodyShoeTitle}
+            hint={t.avatar.bodyShoeHint}
             keys={['height', 'weight']}
             values={values}
             busy={busy}
@@ -559,17 +558,17 @@ export default function AvatarFlow(): JSX.Element {
               const ok = await submitMeasurements(
                 ['height', 'weight'],
                 shoeSize !== null ? { shoeSize } : {},
-                [{ ok: shoeSize !== null, label: 'Oyoq kiyim razmeri' }],
+                [{ ok: shoeSize !== null, label: t.avatar.shoeTitle }],
               );
               if (ok) goNext();
             }}
           >
-            <Text style={styles.chipsLabel}>Oyoq kiyim razmeri (EU)</Text>
+            <Text style={styles.chipsLabel}>{t.avatar.shoeLabel}</Text>
             <SizeChips
               options={SHOE_SIZES}
               value={shoeSize as (typeof SHOE_SIZES)[number] | null}
               onChange={setShoeSize}
-              accessibilityLabel="Oyoq kiyim razmeri"
+              accessibilityLabel={t.avatar.shoeTitle}
             />
           </MeasureStep>
         ) : null}
@@ -1027,7 +1026,7 @@ function MeasureStep({
 
       {children ? <View style={styles.chips}>{children}</View> : null}
 
-      <Button title="Davom etish" onPress={onNext} loading={busy} />
+      <Button title={t.avatar.continue} onPress={onNext} loading={busy} />
     </View>
   );
 }
@@ -1057,9 +1056,11 @@ function StoreRow({
         <Text style={styles.storeName} numberOfLines={1}>
           {name}
         </Text>
-        <Text style={styles.storeMeta} numberOfLines={1}>
-          {meta}
-        </Text>
+        {meta ? (
+          <Text style={styles.storeMeta} numberOfLines={1}>
+            {meta}
+          </Text>
+        ) : null}
       </View>
       {selected ? <Icon name="authentic" size={18} color={colors.success} /> : null}
     </Pressable>
@@ -1111,6 +1112,21 @@ function StoreStep({
   const nearbyList = nearby.data ?? [];
   const loading = nearby.isLoading || all.isLoading;
 
+  /*
+   * ⚠️ «YAQIN ATROFDA» RO'YXATIGA UZOQ DO'KON HAM TUSHADI: «respublika
+   * bo'ylab» belgili do'kon radiusdan qat'i nazar qaytadi. Chet eldagi
+   * qurilmada bu «Nearby — 11215.5 km» bo'lib chiqardi. Endi haqiqatan yaqin
+   * do'kon bo'lmasa sarlavha ham, masofa ham shunga mos: sarlavha «respublika
+   * bo'ylab yetkazadi», masofa esa yozilmaydi (`distance` qoidasi — 300 km).
+   */
+  const nearMeta = (store: { distanceM: number; tryonCount: number }): string =>
+    distance(Math.round(store.distanceM))
+      ? t.avatar.storeMetaAi
+          .replace('{km}', (store.distanceM / 1000).toFixed(1))
+          .replace('{n}', String(store.tryonCount))
+      : t.avatar.storeMetaCount.replace('{n}', String(store.tryonCount));
+  const anyTrulyNear = nearbyList.some((store) => distance(Math.round(store.distanceM)) !== '');
+
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>{t.avatar.storeTitle}</Text>
@@ -1132,14 +1148,14 @@ function StoreStep({
 
       {nearbyList.length > 0 ? (
         <>
-          <Text style={styles.sectionLabel}>{t.avatar.nearby}</Text>
+          <Text style={styles.sectionLabel}>
+            {anyTrulyNear ? t.avatar.nearby : t.avatar.nationwideStores}
+          </Text>
           {nearbyList.map((store) => (
             <StoreRow
               key={store.id}
               name={store.name}
-              meta={t.avatar.storeMetaAi
-                .replace('{km}', (store.distanceM / 1000).toFixed(1))
-                .replace('{n}', String(store.tryonCount))}
+              meta={nearMeta(store)}
               selected={selectedId === store.id}
               onPress={() => onSelect(store.id, store.name)}
             />
@@ -1156,7 +1172,8 @@ function StoreStep({
             <StoreRow
               key={store.id}
               name={store.name}
-              meta={`${(store.distanceM / 1000).toFixed(0)} km`}
+              // Juda uzoq masofa yozilmaydi (`distance`): chet eldagi qurilmada «11170 km» chiqardi
+              meta={distance(Math.round(store.distanceM))}
               selected={selectedId === store.id}
               onPress={() => onSelect(store.id, store.name)}
             />

@@ -12,7 +12,7 @@ import {
 } from '@expo-google-fonts/inter';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { requireOptionalNativeModule } from 'expo';
-import { Stack } from 'expo-router';
+import { Stack, type ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
@@ -23,6 +23,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { queryClient } from '../src/api/queryClient';
 import { AnimatedSplash } from '../src/components/AnimatedSplash';
 import type { VideoSplash as VideoSplashComponent } from '../src/components/VideoSplash';
+import { withScreenErrorBoundary } from '../src/components/ScreenErrorBoundary';
+import { ErrorView } from '../src/components/ui';
 import { usePushRegistration } from '../src/hooks/usePush';
 import { useI18n } from '../src/i18n';
 import { useAiFlowStore } from '../src/store/aiFlowStore';
@@ -134,6 +136,8 @@ function AppShell(): JSX.Element {
       <StatusBar style="dark" />
       {appReady ? (
         <Stack
+          // Har ekran o'z xato chegarasida: chizishdagi xato ilovani yopmaydi (`ScreenErrorBoundary`)
+          screenLayout={withScreenErrorBoundary}
           screenOptions={{
             headerStyle: { backgroundColor: colors.bg },
             headerTintColor: colors.text,
@@ -143,6 +147,16 @@ function AppShell(): JSX.Element {
             contentStyle: { backgroundColor: colors.bg },
           }}
         >
+          {/*
+            ⚠️ KIRISH MARSHRUTI HAM SARLAVHASIZ. `app/index.tsx` faqat
+            yo'naltiradi, lekin bu yerda e'lon qilinmagani uchun standart
+            sarlavha bilan ochilib, darhol sarlavhasiz ekranga (onboarding yoki
+            tablar) almashardi. iOS 27 da shu almashuvdan keyin yangi ekranning
+            native ramkasi sarlavha balandligicha (116 pt) kalta qolardi:
+            onboarding'dagi «Next» tugmasi ko'rinardi, lekin BOSILMASDI
+            (ramkadan tashqarida). Sarlavha umuman chiqmasa, almashuv ham yo'q.
+          */}
+          <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           {/* Ilk ochilish onboarding'i — to'liq ekran, o'z tugmalari bilan */}
           <Stack.Screen name="onboarding" options={{ headerShown: false }} />
@@ -169,8 +183,8 @@ function AppShell(): JSX.Element {
           <Stack.Screen name="order/[id]" options={{ title: t.order.title }} />
           {/* Buyurtmalarda o'z sarlavhasi bor */}
           <Stack.Screen name="orders" options={{ headerShown: false }} />
-          <Stack.Screen name="favorites" options={{ title: 'Sevimlilar' }} />
-          <Stack.Screen name="looks" options={{ title: 'Komplektlarim' }} />
+          <Stack.Screen name="favorites" options={{ title: t.profile.myFavorites }} />
+          <Stack.Screen name="looks" options={{ title: t.profile.myLooks }} />
           {/* Katalog va kolleksiyada o'z sarlavhasi bor (orqaga, nom, savat) */}
           <Stack.Screen name="catalog" options={{ headerShown: false }} />
           <Stack.Screen name="collection" options={{ headerShown: false }} />
@@ -181,10 +195,14 @@ function AppShell(): JSX.Element {
           {/* O'lchamlar ekranida o'z sarlavhasi bor */}
           <Stack.Screen name="settings/measurements" options={{ headerShown: false }} />
           <Stack.Screen name="settings/profile" options={{ title: t.profile.editProfile }} />
+          {/* Bu qator bo'lmasa sarlavhada marshrut nomi chiqadi: «settings/face-photo» */}
+          <Stack.Screen name="settings/face-photo" options={{ title: t.profile.facePhoto }} />
           <Stack.Screen
             name="settings/delete-account"
             options={{ title: t.profile.deleteAccount }}
           />
+          {/* Mavjud bo'lmagan havola — expo-router'ning qora standart sahifasi o'rniga */}
+          <Stack.Screen name="+not-found" options={{ headerShown: false }} />
         </Stack>
       ) : null}
       {splashDone ? null : VideoSplash ? (
@@ -196,6 +214,48 @@ function AppShell(): JSX.Element {
           onFinish={handleSplashFinish}
         />
       )}
+    </View>
+  );
+}
+
+/**
+ * Ekranni CHIZISH paytidagi kutilmagan xato — ilova yopilib ketmasin.
+ *
+ * ⚠️ NEGA KERAK. Release build'da chizish xatosi (masalan, serverdan
+ * kutilmagan shakldagi javob kelib, `undefined.map` chaqirilsa) hech kim
+ * ushlamasa butun ilovani yopadi — foydalanuvchi uchun bu «qulash», App
+ * Review uchun esa 2.1(a). Ilovada shu paytgacha bironta ham xato chegarasi
+ * yo'q edi. expo-router shu nomli eksportni o'zi topib, ildiz tartibni u
+ * bilan o'raydi (`useScreens` → `Try`): xato chiqsa quyidagi ekran
+ * ko'rsatiladi, «Qayta urinish» esa ilovani boshidan chizadi.
+ *
+ * ⚠️ BU YERDA ILDIZ TARTIBNING O'ZI YO'Q. Chegara ishlaganda `RootLayout`
+ * (provayderlari bilan) chizilmaydi, shuning uchun bu ekran faqat hech
+ * narsaga bog'liq bo'lmagan qismlardan yig'ilgan: matn lug'atdan
+ * (`zustand` — provayder kerak emas), `ErrorView` esa so'rov keshiga tegmaydi.
+ * Native splash hali yopilmagan bo'lishi mumkin — u ham shu yerda yopiladi,
+ * aks holda bu ekran splash ostida ko'rinmay qolardi.
+ *
+ * ⚠️ BU — OXIRGI TO'SIQ. Odatda xato bu yergacha yetib kelmaydi: har
+ * ekranning o'z chegarasi bor (`ScreenErrorBoundary`, navigatorlarning
+ * `screenLayout` i) va u navigatsiyani saqlab qoladi. Bu yer navigator yoki
+ * tartibning o'zi yiqilgan holat uchun.
+ *
+ * Bu faqat CHIZISH xatolarini ushlaydi; tugma bosilgandagi yoki tarmoq
+ * so'rovidagi xatolar o'z joyida (`onError`, `explainError`) hal qilinadi.
+ */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps): JSX.Element {
+  useEffect(() => {
+    console.warn('[app] chizishda xato ushlandi', error);
+    void SplashScreen.hideAsync().catch(() => {
+      // Allaqachon yopilgan bo'lishi mumkin — bu xato emas
+    });
+  }, [error]);
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <StatusBar style="dark" />
+      <ErrorView onRetry={() => void retry()} />
     </View>
   );
 }

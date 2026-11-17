@@ -19,6 +19,7 @@ import { Icon } from '../../src/components/Icon';
 import { Hero, HERO_HEIGHT } from '../../src/components/home/Hero';
 import { SectionHeader, StoreRow } from '../../src/components/home/Sections';
 import { Empty, ErrorView, Screen } from '../../src/components/ui';
+import { useFavoriteToggle } from '../../src/hooks/useFavoriteToggle';
 import { rtlStyles, useI18n } from '../../src/i18n';
 import { useLocationStore } from '../../src/store/locationStore';
 import { useLookStore } from '../../src/store/lookStore';
@@ -33,17 +34,29 @@ import { colors, radius, spacing, text } from '../../src/theme/tokens';
  * tugmasi, pastda nom va narx. Do'kon nomi va masofa kartadan olib tashlandi —
  * deckda ular yo'q, va ikki ustunli gridda matn juda siqilib qolardi.
  */
+/*
+ * «Live try-on» (kamera belgisi) saytdagi sahifani WebView'da ochadi. U hali
+ * chala: matni faqat o'zbekcha, mahsulotlarda «Try-on mavjud emas» chiqadi.
+ * Tayyor bo'lguncha kirish tugmasi yashirilgan — ekranning o'zi
+ * (`app/anywear.tsx`) joyida, yoqish uchun shu bayroqni `true` qiling.
+ */
+const LIVE_TRYON_ENABLED = false;
+
 function TrendingCard({
   product,
   onPress,
   onLookPress,
   inLook,
+  favorite,
+  onFavoritePress,
   isRTL,
 }: {
   product: ProductCard;
   onPress: () => void;
   onLookPress: () => void;
   inLook: boolean;
+  favorite: boolean;
+  onFavoritePress: () => void;
   isRTL: boolean;
 }): JSX.Element {
   const t = useI18n((state) => state.t);
@@ -63,9 +76,24 @@ function TrendingCard({
           <View style={[styles.image, styles.imagePlaceholder]} />
         )}
 
-        <View style={[styles.heart, isRTL ? { left: spacing.sm, right: undefined } : null]}>
-          <Icon name="favorite" size={16} color={colors.text} />
-        </View>
+        {/* Yurakcha — haqiqiy tugma (`useFavoriteToggle`); ilgari bezak edi */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t.profile.myFavorites}
+          accessibilityState={{ selected: favorite }}
+          onPress={(e) => {
+            e.stopPropagation();
+            onFavoritePress();
+          }}
+          hitSlop={8}
+          style={[styles.heart, isRTL ? { left: spacing.sm, right: undefined } : null]}
+        >
+          <Icon
+            name={favorite ? 'favoriteOn' : 'favorite'}
+            size={16}
+            color={favorite ? colors.primary : colors.text}
+          />
+        </Pressable>
 
         {/*
           ⚠️ «3D» EMAS, «AI». Ilgari bu belgi 3D modeli bor mahsulotni
@@ -148,6 +176,7 @@ export default function Home(): JSX.Element {
   const insets = useSafeAreaInsets();
   // Splash logotipi aynan shu logotip ustiga uchib qo'nadi
   const splashLanding = useSplashLanding();
+  const favorites = useFavoriteToggle();
 
   /*
    * Scroll holati — ikki effektni boshqaradi: hero fonining rezinkadek
@@ -240,6 +269,7 @@ export default function Home(): JSX.Element {
               headerInset={headerHeight}
               isRTL={isRTL}
               scrollY={scrollY}
+              eyebrow={t.home.eyebrow}
               title={t.home.heroLine1}
               titleAccent={t.home.heroLine2}
               titleEnd={t.home.heroLine3}
@@ -276,6 +306,8 @@ export default function Home(): JSX.Element {
           <TrendingCard
             product={item}
             isRTL={isRTL}
+            favorite={favorites.isFavorite(item.id)}
+            onFavoritePress={() => favorites.toggle(item.id)}
             onPress={() => router.push(`/product/${item.id}`)}
             onLookPress={() => {
               if (!item.canTryOn) {
@@ -389,14 +421,16 @@ export default function Home(): JSX.Element {
             <Pressable onPress={() => router.push('/catalog')} hitSlop={8}>
               <Icon name="search" size={22} color="#FFFFFF" />
             </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Real-time kiyim ko'rish"
-              onPress={() => router.push('/anywear')}
-              hitSlop={8}
-            >
-              <Icon name="camera" size={22} color="#FFFFFF" />
-            </Pressable>
+            {LIVE_TRYON_ENABLED ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t.home.liveTryOn}
+                onPress={() => router.push('/anywear')}
+                hitSlop={8}
+              >
+                <Icon name="camera" size={22} color="#FFFFFF" />
+              </Pressable>
+            ) : null}
             <Pressable onPress={() => router.push('/orders')} hitSlop={8}>
               <Icon name="bell" size={22} color="#FFFFFF" />
             </Pressable>

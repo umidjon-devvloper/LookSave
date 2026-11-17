@@ -12,11 +12,11 @@ import { images } from '../../theme/images';
  * ⚠️ RASM TO'LIQ KO'RSATILADI — ichida kartalar va kiyim plitkalari ham bor,
  * shuning uchun ekranda ular alohida chizilmaydi.
  *
- * ⚠️ RASM FONI QORA VA SHAFFOF EMAS (`hasAlpha: no`). Shuning uchun ekran
- * foni ham sof qora qilingan — aks holda rasm atrofida to'rtburchak chekka
- * ko'rinib qoladi (brend foni `#0A0A0F`, rasmniki `#000000`). Rasmni
- * boshqa fon ustiga qo'yish kerak bo'lsa, PNG ni shaffof qilib qayta
- * eksport qilish kerak bo'ladi.
+ * ⚠️ RASM FONI QORA VA SHAFFOF EMAS (`hasAlpha: no`). Ekran esa yorug',
+ * shuning uchun rasm sof qora (`#000000`) yumaloq ramka ichida turadi
+ * (`app/ai/index.tsx` → `stage`) — ramka boshqa rangda bo'lsa rasm atrofida
+ * to'rtburchak chekka ko'rinib qoladi. Ramkasiz, to'g'ridan-to'g'ri yorug'
+ * fonga qo'yish kerak bo'lsa, PNG ni shaffof qilib qayta eksport qilish kerak.
  */
 export function HologramFigure(): JSX.Element {
   return <Image source={images.aiHologram} style={styles.image} resizeMode="contain" />;

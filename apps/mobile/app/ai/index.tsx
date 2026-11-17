@@ -5,53 +5,65 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HologramFigure } from '../../src/components/ai/HologramFigure';
 import { Icon, type IconName } from '../../src/components/Icon';
 import { useI18n } from '../../src/i18n';
+import { aiOptionLabel } from '../../src/i18n/aiOptions';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
-import { MOODS, OCCASIONS, STYLES, useAiFlowStore } from '../../src/store/aiFlowStore';
+import {
+  MOODS,
+  OCCASIONS,
+  STYLES,
+  useAiFlowStore,
+  type Mood,
+  type Occasion,
+  type StyleName,
+} from '../../src/store/aiFlowStore';
 import { goBack } from '../../src/navigation/back';
 
 /**
  * AI Designer — oqimning kirish ekrani.
  *
- * ⚠️ BU EKRAN DARK ATELIER. Qolgan ilova krem; AI oqimi esa moda
- * studiyasining "chiroqlar o'chdi, oyna nurlanmoqda" momenti. Hologramma
- * PNG'i qora fonda, uning atrofida ham qora kerak — brend foni emas.
+ * ⚠️ EKRAN YORUG' (2026-11-17). Ilgari u ataylab qora edi («dark atelier»),
+ * qolgan ilova esa oq — ikkita mavzu yonma-yon turib, ilova chala
+ * ko'rinardi. Endi fon ham, kartalar ham umumiy tokenlardan.
  *
- * Tanlov endi bu yerda — bosilgan sari keyingi qiymatga o'tadi.
+ * Yagona qora joy — gologramma «sahnasi»: rasmning o'z foni sof qora va
+ * shaffof emas (`HologramFigure`), shuning uchun u yumaloq qora ramka ichida
+ * turadi. Bosh sahifadagi qorong'i banner bilan bir xil usul: yorug' sahifa,
+ * ichida ramkaga olingan qorong'i tasvir.
+ *
+ * Tanlov shu yerda — bosilgan sari keyingi qiymatga o'tadi.
  */
 
 const HOW_ICONS: IconName[] = ['looks', 'tryon', 'favorite'];
 
-// AI sub-oqimidagi iliq qora palette — brend foni (#0A0A0F) va PNG (#000000)
-// o'rtasida. Qora-qoraga aralashadi, lekin cream matn ustida iliqroq.
-const INK = '#000000';
-const INK_WARM = '#0A0906';
-const INK_LINE = 'rgba(247,242,234,0.12)';
-const INK_SOFT = 'rgba(247,242,234,0.06)';
+/** Gologramma PNG'ining foni — ramka aynan shu rangda bo'lmasa chekkasi ko'rinadi */
+const STAGE = '#000000';
 
-function Choice<T extends string>({
+function Choice<T extends Occasion | StyleName | Mood>({
   label,
   value,
   options,
+  display,
   onPick,
 }: {
   label: string;
   value: T;
   options: readonly T[];
+  display: (value: T) => string;
   onPick: (value: T) => void;
 }): JSX.Element {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${label}: ${value}`}
+      accessibilityLabel={`${label}: ${display(value)}`}
       onPress={() => {
         const next = options[(options.indexOf(value) + 1) % options.length];
         if (next) onPick(next);
       }}
-      style={styles.choice}
+      style={({ pressed }) => [styles.choice, pressed && styles.choicePressed]}
     >
       <Text style={styles.choiceLabel}>{label}</Text>
       <Text style={styles.choiceValue} numberOfLines={1}>
-        {value}
+        {display(value)}
       </Text>
     </Pressable>
   );
@@ -75,6 +87,8 @@ export default function AiDesigner(): JSX.Element {
   const setStyle = useAiFlowStore((state) => state.setStyle);
   const setMood = useAiFlowStore((state) => state.setMood);
 
+  const display = (value: Occasion | StyleName | Mood): string => aiOptionLabel(t, value);
+
   return (
     <View style={styles.root}>
       <View
@@ -85,27 +99,23 @@ export default function AiDesigner(): JSX.Element {
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Orqaga"
+          accessibilityLabel={t.fitting.back}
           onPress={() => goBack('/(tabs)')}
           hitSlop={10}
-          style={styles.close}
+          style={({ pressed }) => [styles.close, pressed && styles.choicePressed]}
         >
-          <Icon name="close" size={18} color={colors.textOnPrimary} />
+          <Icon name="close" size={18} color={colors.text} />
         </Pressable>
 
-        {/* Eyebrow (italic serif) + sarlavha (Fraunces hero). "AI DESIGNER"
-            ALL CAPS o'rniga — editorial moda jurnali boshi. */}
-        <Text style={styles.eyebrow}>Atelye · AI Mirror</Text>
-        <Text style={styles.title}>Kiyinish kechasi</Text>
-        <Text style={styles.subtitle}>{t.ai.subtitle}</Text>
-
+        <Text style={styles.title}>{t.ai.title}</Text>
         <Text style={styles.lead}>{t.ai.lead}</Text>
 
-        <View style={styles.figure}>
+        {/* Qora rasm — yumaloq ramkada; atrofi yorug' qoladi */}
+        <View style={styles.stage}>
           <HologramFigure />
         </View>
 
-        {/* Qanday ishlaydi — ingichka chiziqli uch qadam */}
+        {/* Qanday ishlaydi — uch qadam */}
         <View style={styles.howCard}>
           <Text style={styles.howTitle}>{t.ai.howTitle}</Text>
           <View style={styles.howRow}>
@@ -123,19 +133,33 @@ export default function AiDesigner(): JSX.Element {
         </View>
 
         <View style={styles.choices}>
-          <Choice label={t.ai.occasionLabel} value={occasion} options={OCCASIONS} onPick={setOccasion} />
-          <Choice label={t.ai.styleLabel} value={style} options={STYLES} onPick={setStyle} />
-          <Choice label={t.ai.moodLabel} value={mood} options={MOODS} onPick={setMood} />
+          <Choice
+            label={t.ai.occasionLabel}
+            value={occasion}
+            options={OCCASIONS}
+            display={display}
+            onPick={setOccasion}
+          />
+          <Choice
+            label={t.ai.styleLabel}
+            value={style}
+            options={STYLES}
+            display={display}
+            onPick={setStyle}
+          />
+          <Choice
+            label={t.ai.moodLabel}
+            value={mood}
+            options={MOODS}
+            display={display}
+            onPick={setMood}
+          />
         </View>
 
-        {/* Solid anor pill — AI oqimi uchun ham bir xil CTA uslubi */}
         <Pressable
           accessibilityRole="button"
           onPress={() => router.push('/ai/look')}
-          style={({ pressed }) => [
-            styles.cta,
-            pressed && { backgroundColor: colors.primaryDim },
-          ]}
+          style={({ pressed }) => [styles.cta, pressed && { backgroundColor: colors.primaryDim }]}
         >
           <Text style={styles.ctaText}>{t.ai.makeOutfit}</Text>
           <View style={styles.ctaArrow}>
@@ -148,8 +172,7 @@ export default function AiDesigner(): JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  // Qora — hologramma PNG'ining aynan foniga mos
-  root: { flex: 1, backgroundColor: INK },
+  root: { flex: 1, backgroundColor: colors.bg },
   content: { flex: 1, paddingHorizontal: spacing.md, gap: spacing.xs },
   close: {
     alignSelf: 'flex-start',
@@ -157,59 +180,47 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: INK_LINE,
-    backgroundColor: INK_SOFT,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xs,
   },
 
-  eyebrow: {
-    ...text.eyebrow,
-    color: colors.primary,
-    textAlign: 'center',
-    marginTop: spacing.xs,
-  },
-  // Sarlavha — Fraunces hero, cream ustida qora (chunki fon qora)
   title: {
-    ...text.hero,
-    color: colors.textOnPrimary,
-    textAlign: 'center',
-    marginTop: 2,
-  },
-  subtitle: {
-    ...text.body,
-    color: 'rgba(247,242,234,0.65)',
+    ...text.h1,
+    color: colors.text,
     textAlign: 'center',
     marginTop: spacing.xs,
   },
   lead: {
-    ...text.small,
-    color: 'rgba(247,242,234,0.45)',
+    ...text.body,
+    color: colors.textMuted,
     textAlign: 'center',
     marginTop: spacing.xs,
     paddingHorizontal: spacing.md,
   },
 
-  figure: {
+  // Rasm qolgan bo'sh joyni egallaydi; ramka uni ekran chetidan ajratib turadi
+  stage: {
     flex: 1,
-    alignItems: 'center',
-    marginTop: spacing.sm,
-    marginHorizontal: -spacing.md,
+    marginTop: spacing.md,
+    borderRadius: radius.xxl,
+    backgroundColor: STAGE,
+    overflow: 'hidden',
   },
 
-  // Dark Atelier karta — hair-thin cream chegara, shaffof ichki fon
   howCard: {
-    backgroundColor: INK_SOFT,
-    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: INK_LINE,
+    borderColor: colors.border,
     padding: spacing.md,
     marginTop: spacing.md,
   },
   howTitle: {
-    ...text.eyebrow,
-    color: colors.primary,
+    ...text.h3,
+    color: colors.text,
     textAlign: 'center',
     marginBottom: spacing.sm,
   },
@@ -219,22 +230,19 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.pill,
-    backgroundColor: INK_WARM,
-    borderWidth: 1,
-    borderColor: INK_LINE,
+    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   howText: {
     ...text.tiny,
-    color: 'rgba(247,242,234,0.7)',
+    color: colors.textMuted,
     textAlign: 'center',
   },
 
   choices: {
     flexDirection: 'row',
     gap: spacing.sm,
-    paddingHorizontal: 0,
     marginTop: spacing.md,
   },
   choice: {
@@ -244,14 +252,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: INK_LINE,
-    backgroundColor: INK_SOFT,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
+  choicePressed: { backgroundColor: colors.surface2 },
   choiceLabel: {
-    ...text.eyebrow,
-    color: 'rgba(247,242,234,0.5)',
+    ...text.small,
+    color: colors.textDim,
   },
-  choiceValue: { ...text.bodyMed, color: colors.textOnPrimary },
+  choiceValue: { ...text.bodyMed, color: colors.text },
 
   cta: {
     height: 56,

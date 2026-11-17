@@ -70,7 +70,7 @@ export default function Favorites(): JSX.Element {
             icon="favorite"
             action={
               <Button
-                title={t.home.marketplace}
+                title={t.marketplace.title}
                 onPress={() => router.push('/(tabs)/marketplace')}
               />
             }
@@ -103,7 +103,8 @@ export default function Favorites(): JSX.Element {
             </View>
 
             <Pressable
-              accessibilityLabel="Sevimlilardan olib tashlash"
+              accessibilityRole="button"
+              accessibilityLabel={t.fitting.favRemove}
               hitSlop={12}
               disabled={remove.isPending}
               onPress={() => remove.mutate(item.id)}

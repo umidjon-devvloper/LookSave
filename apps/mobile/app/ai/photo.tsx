@@ -131,7 +131,7 @@ export default function BodyPhotoScreen(): JSX.Element {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Orqaga"
+          accessibilityLabel={t.common.back}
           hitSlop={10}
           onPress={() => goBack('/ai')}
           style={styles.back}

@@ -1,4 +1,6 @@
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { useRouter } from 'expo-router';
+import { useContext } from 'react';
 import { Image, ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,6 +24,14 @@ import { colors, radius, spacing, text } from '../theme/tokens';
  * yomon: u nima uchun tashlanganini tushunmaydi va orqaga qaytish
  * chalkashadi. Shuning uchun sabab aytiladi va tanlov qoldiriladi.
  */
+
+/**
+ * Suzuvchi tab qatori egallaydigan balandlik (`app/(tabs)/_layout.tsx`:
+ * qator 72 + ustki bo'shliq 6). Qator ekran ustida `absolute` turadi va
+ * kontentni o'zi surmaydi — bu bo'shliq qo'yilmasa, tab ichida ochilgan
+ * ekranda pastki kartalar qator ostida qolib, yozuvi kesilardi.
+ */
+const TAB_DOCK_HEIGHT = 78;
 
 function ShortcutCard({
   icon,
@@ -47,6 +57,11 @@ export function SignInRequired({ title, hint }: { title?: string; hint?: string 
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const t = useI18n((state) => state.t);
+  // Tab navigatoridan tashqarida kontekst yo'q (`undefined`) — bo'shliq kerak emas
+  const insideTabs = useContext(BottomTabBarHeightContext) !== undefined;
+  const bottomSpace = insideTabs
+    ? Math.max(insets.bottom, 8) + TAB_DOCK_HEIGHT + spacing.md
+    : insets.bottom + spacing.lg;
 
   return (
     <ImageBackground
@@ -65,7 +80,7 @@ export function SignInRequired({ title, hint }: { title?: string; hint?: string 
       <View
         style={[
           styles.inner,
-          { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + spacing.lg },
+          { paddingTop: insets.top + spacing.lg, paddingBottom: bottomSpace },
         ]}
       >
         {/* Avatar — maxsus rasm (glow doira + badge o'z ichida) */}
@@ -122,9 +137,13 @@ export function SignInRequired({ title, hint }: { title?: string; hint?: string 
 
         {/* Pastki uch karta */}
         <View style={styles.cards}>
-          <ShortcutCard icon="orders" label="Buyurtmalar" sub="Tarixingiz saqlanadi" />
-          <ShortcutCard icon="favorite" label="Sevimlilar" sub="Sevimli mahsulotlar" />
-          <ShortcutCard icon="settings" label="Sozlamalar" sub="Barchasi bir joyda" />
+          <ShortcutCard icon="orders" label={t.auth.cardOrders} sub={t.auth.cardOrdersHint} />
+          <ShortcutCard
+            icon="favorite"
+            label={t.auth.cardFavorites}
+            sub={t.auth.cardFavoritesHint}
+          />
+          <ShortcutCard icon="settings" label={t.auth.cardSettings} sub={t.auth.cardSettingsHint} />
         </View>
       </View>
     </ImageBackground>

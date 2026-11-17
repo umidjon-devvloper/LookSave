@@ -8,6 +8,7 @@ import { getStore } from '../../src/api/endpoints';
 import { Icon, type IconName } from '../../src/components/Icon';
 import { SkeletonList } from '../../src/components/Skeleton';
 import { Empty, ErrorView, Screen } from '../../src/components/ui';
+import { useI18n } from '../../src/i18n';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 import { goBack } from '../../src/navigation/back';
 
@@ -51,7 +52,8 @@ export default function MarketStore(): JSX.Element {
   const params = useLocalSearchParams<{ storeId?: string; gender?: string; name?: string }>();
   const storeId = params.storeId ?? '';
   const gender = params.gender === 'female' ? 'female' : 'male';
-  const storeName = params.name ?? 'Do`kon';
+  const t = useI18n((state) => state.t);
+  const storeName = params.name ?? t.stores.storeFallback;
 
   const store = useQuery({
     queryKey: ['store', 'detail', storeId],
@@ -66,7 +68,7 @@ export default function MarketStore(): JSX.Element {
       <View style={[styles.topBar, { paddingTop: insets.top + spacing.sm }]}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Orqaga"
+          accessibilityLabel={t.common.back}
           hitSlop={10}
           onPress={() => goBack('/market/stores')}
           style={styles.roundButton}
@@ -77,7 +79,7 @@ export default function MarketStore(): JSX.Element {
           <Text style={styles.title} numberOfLines={1}>
             {store.data?.name ?? storeName}
           </Text>
-          <Text style={styles.subtitle}>KATEGORIYANI TANLANG</Text>
+          <Text style={styles.subtitle}>{t.stores.pickCategory}</Text>
         </View>
         <View style={styles.roundButton} />
       </View>
@@ -89,7 +91,11 @@ export default function MarketStore(): JSX.Element {
       ) : store.isError ? (
         <ErrorView error={store.error} onRetry={() => void store.refetch()} />
       ) : categories.length === 0 ? (
-        <Empty icon="orders" title="Kategoriya yo`q" hint="Bu do`konda hozircha mahsulot yo`q." />
+        <Empty
+          icon="orders"
+          title={t.stores.noCategoriesTitle}
+          hint={t.stores.noCategoriesHint}
+        />
       ) : (
         <FlatList
           data={categories}
@@ -121,7 +127,9 @@ export default function MarketStore(): JSX.Element {
               <Text style={styles.catName} numberOfLines={1}>
                 {item.name}
               </Text>
-              <Text style={styles.catCount}>{item.count} ta mahsulot</Text>
+              <Text style={styles.catCount}>
+                {item.count} {t.home.products}
+              </Text>
             </Pressable>
           )}
         />
@@ -148,7 +156,7 @@ const styles = StyleSheet.create({
   },
   titleWrap: { flex: 1, alignItems: 'center' },
   title: { ...text.h3, color: colors.text },
-  subtitle: { ...text.tiny, color: colors.accent, letterSpacing: 2, marginTop: 1 },
+  subtitle: { ...text.tiny, color: colors.textMuted, marginTop: 1 },
 
   list: { padding: spacing.md, gap: spacing.md },
   row: { gap: spacing.md },

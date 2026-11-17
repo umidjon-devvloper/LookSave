@@ -11,6 +11,7 @@ import { addFavorite, addToCart, removeFavorite, supportsAiTryon } from '../../s
 import { Icon, type IconName } from '../../src/components/Icon';
 import { Button, ErrorView, Loading, Screen } from '../../src/components/ui';
 import { useI18n } from '../../src/i18n';
+import { useAuthStore } from '../../src/store/authStore';
 import { useLookStore } from '../../src/store/lookStore';
 import { money } from '../../src/theme/format';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
@@ -94,6 +95,7 @@ function RoundButton({
 export default function Product(): JSX.Element {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const signedIn = useAuthStore((state) => state.status === 'signedIn');
   const queryClient = useQueryClient();
   const t = useI18n((state) => state.t);
   const insets = useSafeAreaInsets();
@@ -192,7 +194,7 @@ export default function Product(): JSX.Element {
                 <Pressable
                   key={url}
                   accessibilityRole="button"
-                  accessibilityLabel="Rasmni kattalashtirish"
+                  accessibilityLabel={t.product.zoomImage}
                   onPress={() => setZoomedImage(url)}
                 >
                   <Image source={{ uri: url }} style={styles.image} resizeMode="cover" />
@@ -233,7 +235,18 @@ export default function Product(): JSX.Element {
                 icon={isFavorite ? 'favoriteOn' : 'favorite'}
                 label={t.profile.myFavorites}
                 color={isFavorite ? colors.primary : colors.text}
-                onPress={() => toggleFavorite.mutate(!isFavorite)}
+                onPress={() => {
+                  /*
+                   * Kirmagan odamda so'rov 401 qaytaradi va yurakcha jimgina
+                   * eski holatiga qaytardi — tugma «ishlamayotgandek» ko'rinardi.
+                   * Sabab ko'rinsin: kirish ekrani ochiladi.
+                   */
+                  if (!signedIn) {
+                    router.push('/(auth)/sign-in');
+                    return;
+                  }
+                  toggleFavorite.mutate(!isFavorite);
+                }}
               />
             </View>
           </View>
@@ -508,7 +521,7 @@ export default function Product(): JSX.Element {
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Yopish"
+            accessibilityLabel={t.common.close}
             onPress={() => setZoomedImage(null)}
             style={[styles.zoomClose, { top: insets.top + spacing.sm }]}
             hitSlop={12}

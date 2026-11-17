@@ -35,7 +35,7 @@ export default function Welcome(): JSX.Element {
         <Text style={styles.wordmark}>Look Save</Text>
 
         {/* Eyebrow — moda jurnali bo'lim yorligi */}
-        <Text style={styles.eyebrow}>Atelye · Toshkent</Text>
+        <Text style={styles.eyebrow}>{t.home.eyebrow}</Text>
 
         <Text style={styles.title}>{t.auth.heroTitle}</Text>
         <Text style={styles.subtitle}>{t.auth.heroSubtitle}</Text>

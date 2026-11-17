@@ -210,7 +210,7 @@ export default function MeasurementsScreen(): JSX.Element {
         <View style={[styles.topBar, { paddingTop: insets.top + spacing.sm }]}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="O'lchamlarim"
+            accessibilityLabel={t.common.back}
             onPress={() => goBack('/profile')}
             style={styles.roundButton}
           >
@@ -280,13 +280,13 @@ export default function MeasurementsScreen(): JSX.Element {
               <ChestIcon size={26} color={colors.accent} />
             </View>
             <View style={styles.fieldBody}>
-              <Text style={styles.fieldLabel}>USTKI KIYIM RAZMERI</Text>
-              <Text style={styles.sizeHint}>Futbolka, ko'ylak, xudi, kurtka</Text>
+              <Text style={styles.fieldLabel}>{t.measurements.topSizeLabel}</Text>
+              <Text style={styles.sizeHint}>{t.measurements.topSizeHint}</Text>
               <SizeChips
                 options={CLOTHING_SIZES}
                 value={sizes.topSize}
                 onChange={(next) => pickSize('topSize', next)}
-                accessibilityLabel="Ustki kiyim razmeri"
+                accessibilityLabel={t.measurements.topSizeLabel}
               />
             </View>
           </View>
@@ -296,13 +296,13 @@ export default function MeasurementsScreen(): JSX.Element {
               <WaistIcon size={26} color={colors.accent} />
             </View>
             <View style={styles.fieldBody}>
-              <Text style={styles.fieldLabel}>SHIM RAZMERI</Text>
-              <Text style={styles.sizeHint}>Shim, jinsi, shorti</Text>
+              <Text style={styles.fieldLabel}>{t.measurements.bottomSizeLabel}</Text>
+              <Text style={styles.sizeHint}>{t.measurements.bottomSizeHint}</Text>
               <SizeChips
                 options={CLOTHING_SIZES}
                 value={sizes.bottomSize}
                 onChange={(next) => pickSize('bottomSize', next)}
-                accessibilityLabel="Shim razmeri"
+                accessibilityLabel={t.measurements.bottomSizeLabel}
               />
             </View>
           </View>
@@ -312,13 +312,13 @@ export default function MeasurementsScreen(): JSX.Element {
               <ShoeIcon size={26} color={colors.accent} />
             </View>
             <View style={styles.fieldBody}>
-              <Text style={styles.fieldLabel}>OYOQ KIYIM (EU)</Text>
-              <Text style={styles.sizeHint}>Krossovka, tufli, botinka</Text>
+              <Text style={styles.fieldLabel}>{t.measurements.shoeSizeLabel}</Text>
+              <Text style={styles.sizeHint}>{t.measurements.shoeSizeHint}</Text>
               <SizeChips
                 options={SHOE_SIZES}
                 value={sizes.shoeSize as (typeof SHOE_SIZES)[number] | null}
                 onChange={(next) => pickSize('shoeSize', next)}
-                accessibilityLabel="Oyoq kiyim razmeri"
+                accessibilityLabel={t.measurements.shoeSizeLabel}
               />
             </View>
           </View>

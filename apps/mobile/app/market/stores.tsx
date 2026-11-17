@@ -9,7 +9,9 @@ import { Icon } from '../../src/components/Icon';
 import { SkeletonList } from '../../src/components/Skeleton';
 import { StoreLogo } from '../../src/components/StoreLogo';
 import { Empty, ErrorView, Screen } from '../../src/components/ui';
+import { useI18n } from '../../src/i18n';
 import { useLocationStore } from '../../src/store/locationStore';
+import { distance } from '../../src/theme/format';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 import { goBack } from '../../src/navigation/back';
 
@@ -23,7 +25,9 @@ import { goBack } from '../../src/navigation/back';
  */
 
 function StoreCard({ store, onPress }: { store: NearbyStore; onPress: () => void }): JSX.Element {
-  const km = store.distanceM >= 0 ? (store.distanceM / 1000).toFixed(1) : null;
+  const t = useI18n((state) => state.t);
+  // Juda uzoq masofa yozilmaydi (`distance`): chet eldagi qurilmada «11170.2 km» chiqardi
+  const far = store.distanceM >= 0 ? distance(Math.round(store.distanceM)) : '';
   return (
     <Pressable
       accessibilityRole="button"
@@ -44,9 +48,9 @@ function StoreCard({ store, onPress }: { store: NearbyStore; onPress: () => void
           {store.name}
         </Text>
         <Text style={styles.storeMeta} numberOfLines={1}>
-          {store.productCount} ta mahsulot
-          {km ? ` · ${km} km` : ''}
-          {store.isOpen ? '' : ' · yopiq'}
+          {store.productCount} {t.home.products}
+          {far ? ` · ${far}` : ''}
+          {store.isOpen ? '' : ` · ${t.stores.closed}`}
         </Text>
       </View>
 
@@ -60,6 +64,7 @@ function StoreCard({ store, onPress }: { store: NearbyStore; onPress: () => void
 export default function MarketStores(): JSX.Element {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const t = useI18n((state) => state.t);
   const { coords } = useLocationStore();
   const params = useLocalSearchParams<{ gender?: string }>();
   /*
@@ -75,10 +80,10 @@ export default function MarketStores(): JSX.Element {
   const audience = gender === 'female' ? 'women' : gender === 'male' ? 'men' : undefined;
   const title =
     gender === 'female'
-      ? 'Ayollar do`konlari'
+      ? t.stores.womenStores
       : gender === 'male'
-        ? 'Erkaklar do`konlari'
-        : 'Barcha do`konlar';
+        ? t.stores.menStores
+        : t.stores.allStores;
 
   const stores = useQuery({
     queryKey: ['market', 'stores', audience ?? 'all', coords.lat, coords.lng],
@@ -94,7 +99,7 @@ export default function MarketStores(): JSX.Element {
       <View style={[styles.topBar, { paddingTop: insets.top + spacing.sm }]}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Orqaga"
+          accessibilityLabel={t.common.back}
           hitSlop={10}
           onPress={() => goBack('/marketplace')}
           style={styles.roundButton}
@@ -105,7 +110,7 @@ export default function MarketStores(): JSX.Element {
           <Text style={styles.title} numberOfLines={1}>
             {title}
           </Text>
-          <Text style={styles.subtitle}>DO`KONNI TANLANG</Text>
+          <Text style={styles.subtitle}>{t.stores.pickStore}</Text>
         </View>
         <View style={styles.roundButton} />
       </View>
@@ -119,8 +124,8 @@ export default function MarketStores(): JSX.Element {
       ) : (stores.data ?? []).length === 0 ? (
         <Empty
           icon="stores"
-          title="Do`kon topilmadi"
-          hint="Yaqin atrofda hozircha do`kon yo`q."
+          title={t.stores.noStoresTitle}
+          hint={t.stores.noStoresHint}
         />
       ) : (
         <FlatList
@@ -164,7 +169,7 @@ const styles = StyleSheet.create({
   },
   titleWrap: { flex: 1, alignItems: 'center' },
   title: { ...text.h3, color: colors.text },
-  subtitle: { ...text.tiny, color: colors.accent, letterSpacing: 2, marginTop: 1 },
+  subtitle: { ...text.tiny, color: colors.textMuted, marginTop: 1 },
 
   list: { padding: spacing.md, gap: spacing.md },
   card: {

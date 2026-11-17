@@ -12,6 +12,7 @@ import { ErrorView, Loading } from '../../src/components/ui';
 import { useI18n } from '../../src/i18n';
 import { useAuthStore } from '../../src/store/authStore';
 import { money } from '../../src/theme/format';
+import { SELLER_TAB_BAR_SPACE } from '../../src/theme/sellerTabBar';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 
 const REVENUE_BAG = require('../../assets/seller-dashboard-bag-v2.png');
@@ -151,7 +152,14 @@ export default function SellerDashboard(): JSX.Element {
 
       <ScrollView
         style={styles.flex}
-        contentContainerStyle={[styles.content, { paddingBottom: spacing.xl * 2 }]}
+        /*
+          Oxirgi amal tab bardan yuqoriga chiqa olsin. Ilgari 64 edi, bar esa
+          100 joy oladi — «Do'kon sozlamalari» yarmi bilan bar ostida qolardi.
+        */
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: SELLER_TAB_BAR_SPACE + spacing.lg },
+        ]}
         showsVerticalScrollIndicator={false}
       >
       {/* Oylik tushum — asosiy karta */}
@@ -210,7 +218,7 @@ export default function SellerDashboard(): JSX.Element {
           <Icon name="limited" size={22} color={colors.primary} />
           <Text style={styles.section}>{t.sellerDashboard.quickActions}</Text>
         </View>
-        <Text style={styles.sectionAction}>Barchasi</Text>
+        {/* «Barchasi» olib tashlandi: u bosilmasdi — havolaga o'xshagan o'lik yozuv edi */}
       </View>
       <QuickAction
         icon="camera"
@@ -434,7 +442,6 @@ const styles = StyleSheet.create({
   },
   sectionTitleWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   section: { ...text.h2, color: colors.text },
-  sectionAction: { ...text.small, color: colors.textMuted },
 
   action: {
     flexDirection: 'row',

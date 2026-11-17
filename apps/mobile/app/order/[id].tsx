@@ -5,6 +5,8 @@ import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { cancelOrder, getOrder, type OrderDetail } from '../../src/api/endpoints';
 import { Button, ErrorView, Loading, Screen } from '../../src/components/ui';
 import { useI18n } from '../../src/i18n';
+import { deliveryWhenText } from '../../src/i18n/deliveryWhen';
+import { rejectReasonText } from '../../src/i18n/rejectReason';
 import { SignInRequired } from '../../src/components/SignInRequired';
 import { useAuthStore } from '../../src/store/authStore';
 import { money, phone as formatPhone } from '../../src/theme/format';
@@ -65,7 +67,7 @@ function StatusBanner({ order }: { order: OrderDetail }): JSX.Element {
       ) : null}
 
       {order.status === 'rejected' && order.rejectReason ? (
-        <Text style={styles.bannerHint}>{order.rejectReason}</Text>
+        <Text style={styles.bannerHint}>{rejectReasonText(t, order.rejectReason)}</Text>
       ) : null}
 
       {order.status === 'expired' ? (
@@ -77,6 +79,7 @@ function StatusBanner({ order }: { order: OrderDetail }): JSX.Element {
 
 export default function Order(): JSX.Element {
   const t = useI18n((state) => state.t);
+  const locale = useI18n((state) => state.locale);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -200,7 +203,9 @@ export default function Order(): JSX.Element {
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>{t.checkout.address}</Text>
             {data.deliveryWhen ? (
-              <Text style={styles.itemMeta}>🕒 {data.deliveryWhen}</Text>
+              <Text style={styles.itemMeta}>
+                🕒 {deliveryWhenText(t, locale, data.deliveryWhen)}
+              </Text>
             ) : null}
             <Text style={styles.itemMeta}>{data.address.text}</Text>
             {data.address.landmark ? (

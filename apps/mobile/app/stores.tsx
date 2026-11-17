@@ -39,7 +39,9 @@ function StoreRow({ store, onPress }: { store: NearbyStore; onPress: () => void 
         </Text>
         <Text style={styles.count}>
           {store.productCount} {t.home.products}
-          {store.tryonCount > 0 ? ` · ${store.tryonCount} ta AI` : ''}
+          {store.tryonCount > 0
+            ? ` · ${t.stores.withTryOn.replace('{n}', String(store.tryonCount))}`
+            : ''}
         </Text>
       </View>
     </Pressable>

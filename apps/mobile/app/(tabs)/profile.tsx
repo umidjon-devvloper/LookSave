@@ -342,16 +342,16 @@ export default function Profile(): JSX.Element {
         <View style={styles.group}>
           <Row
             icon="check"
-            label="Maxfiylik siyosati"
-            hint="Ma'lumotlaringiz qanday saqlanadi"
-            onPress={() => void Linking.openURL('https://looksave.uz/privacy')}
+            label={t.profile.privacyPolicy}
+            hint={t.profile.privacyHint}
+            onPress={() => void Linking.openURL(`https://looksave.uz/${locale}/privacy`)}
             isRTL={isRTL}
           />
           <Row
             icon="check"
-            label="Foydalanish shartlari"
-            hint="Ilovadan foydalanish qoidalari"
-            onPress={() => void Linking.openURL('https://looksave.uz/terms')}
+            label={t.profile.terms}
+            hint={t.profile.termsHint}
+            onPress={() => void Linking.openURL(`https://looksave.uz/${locale}/terms`)}
             isRTL={isRTL}
           />
         </View>

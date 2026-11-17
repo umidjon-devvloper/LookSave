@@ -140,8 +140,10 @@ export default function Orders(): JSX.Element {
                     {item.store.name}
                   </Text>
                   <Text style={styles.preview} numberOfLines={1}>
-                    {item.preview.title ?? 'Mahsulot'}
-                    {item.itemCount > 1 ? ` va yana ${item.itemCount - 1} ta` : ''}
+                    {item.preview.title ?? t.order.product}
+                    {item.itemCount > 1
+                      ? ` ${t.order.andMore.replace('{n}', String(item.itemCount - 1))}`
+                      : ''}
                   </Text>
 
                   <View style={styles.cardFoot}>

@@ -67,6 +67,9 @@ describe('tarjimalar', () => {
     'auth.username', // "Username" — uz/ru/en da ham shu texnik atama
     'product.tryOn', // "Look" — ilovaning atamasi, har tilda bir xil
     'onboarding.step1', // "Avatar" — uz/en bir xil (ru "Аватар" tarjima qilingan)
+    'ai.optSport', // "Sport" — xalqaro moda atamasi
+    'ai.optStreetwear', // "Streetwear" — xalqaro moda atamasi
+    'ai.optMinimal', // "Minimal" — xalqaro moda atamasi
   ]);
 
   it('ruscha va inglizcha matnlar o`zbekchadan farq qiladi', () => {

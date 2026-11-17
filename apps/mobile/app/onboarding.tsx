@@ -16,44 +16,48 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Icon } from '../src/components/Icon';
+import { useI18n, type Dictionary } from '../src/i18n';
 import { useOnboardingStore } from '../src/store/onboardingStore';
 import { colors, radius, spacing, text } from '../src/theme/tokens';
 
-const STORE_ART = require('../assets/seller-onboarding-store-v1.png');
-const PRODUCTS_ART = require('../assets/seller-onboarding-products-v1.png');
-const ANALYTICS_ART = require('../assets/seller-onboarding-analytics-v1.png');
+const AVATAR_ART = require('../assets/profile-avatar-icon.png');
+const FITTING_ART = require('../assets/tryon-boutique-male-v1.png');
+const ORDER_ART = require('../assets/seller-orders-empty-v2.png');
+
+/*
+ * ⚠️ UCH SLAYD — ILOVA NIMA QILISHI: avatar → AI kiyintirish → buyurtma.
+ * 2026-11-17 gacha bu yerda sotuvchi uchun slaydlar turardi («do'kon oching,
+ * mahsulot boshqaring, sotuvni kuzating») va ular HAR BIR yangi
+ * foydalanuvchiga, shu jumladan xaridorga ham ko'rsatilardi — ilovaning
+ * asosiy ishi (o'zingda kiyib ko'rish) haqida esa bir og'iz gap yo'q edi.
+ * App Store 4.3(b) aynan «konsepsiya» ni so'raydi; birinchi ekran shunga
+ * javob berishi kerak. Sotuvchi yo'li profilda («Do'kon ochish»).
+ *
+ * Matnlar lug'atdan (`t.onboarding.*`) — to'rt tilda. Ilgari ular shu yerda
+ * o'zbekcha qattiq yozilgan edi: inglizcha telefonda ilova ochilishi bilan
+ * birinchi ekran o'zbekcha, qolgani inglizcha chiqardi.
+ */
+type OnboardingKey = keyof Dictionary['onboarding'];
 
 interface Slide {
   id: string;
   image: ImageSourcePropType;
-  title: string;
-  body: string;
+  /** `framed` — rasmning o'z foni bor, yumaloq ramkada; `small` — kichik manba, kattalashtirilmaydi */
+  shape: 'art' | 'small' | 'framed';
+  title: OnboardingKey;
+  body: OnboardingKey;
 }
 
 const SLIDES: Slide[] = [
-  {
-    id: 'store',
-    image: STORE_ART,
-    title: 'O‘z do‘koningizni\nyarating',
-    body: 'Bir necha daqiqada do‘kon oching\nva mahsulotlaringizni katalogga\nqo‘shing.',
-  },
-  {
-    id: 'products',
-    image: PRODUCTS_ART,
-    title: 'Mahsulotlaringizni\nboshqaring',
-    body: 'Rasmlar, narx, kategoriya, o‘lcham\nva zaxirani qulay tarzda\ntasdiqlang.',
-  },
-  {
-    id: 'analytics',
-    image: ANALYTICS_ART,
-    title: 'Sotuvlarni kuzating\nva rivojlantiring',
-    body: 'Buyurtmalar, ko‘rishlar va statistika\norqali do‘koningiz samaradorligini\noshiring.',
-  },
+  { id: 'avatar', image: AVATAR_ART, shape: 'small', title: 'slide1Title', body: 'slide1Body' },
+  { id: 'tryon', image: FITTING_ART, shape: 'framed', title: 'slide2Title', body: 'slide2Body' },
+  { id: 'order', image: ORDER_ART, shape: 'art', title: 'slide3Title', body: 'slide3Body' },
 ];
 
 export default function Onboarding(): JSX.Element {
   const router = useRouter();
   const complete = useOnboardingStore((state) => state.complete);
+  const t = useI18n((state) => state.t);
   const { width } = useWindowDimensions();
   const listRef = useRef<FlatList<Slide>>(null);
   const [index, setIndex] = useState(0);
@@ -85,10 +89,9 @@ export default function Onboarding(): JSX.Element {
       <View style={styles.topbar}>
         <Text style={styles.wordmark}>
           LOOK<Text style={styles.wordmarkAccent}>SAVE</Text>
-          <Text style={styles.wordmarkSeller}> · SELLER</Text>
         </Text>
         <Pressable accessibilityRole="button" hitSlop={12} onPress={finish}>
-          <Text style={styles.skip}>O‘tkazib yuborish</Text>
+          <Text style={styles.skip}>{t.onboarding.skip}</Text>
         </Pressable>
       </View>
       <FlatList
@@ -102,11 +105,21 @@ export default function Onboarding(): JSX.Element {
         renderItem={({ item }) => (
           <View style={[styles.slide, { width }]}>
             <View style={styles.artStage}>
-              <View style={styles.artGlow} />
-              <Image source={item.image} style={styles.art} resizeMode="contain" />
+              {item.shape === 'framed' ? (
+                <Image source={item.image} style={styles.artFramed} resizeMode="cover" />
+              ) : (
+                <>
+                  <View style={styles.artGlow} />
+                  <Image
+                    source={item.image}
+                    style={item.shape === 'small' ? styles.artSmall : styles.art}
+                    resizeMode="contain"
+                  />
+                </>
+              )}
             </View>
-            <Text style={styles.title}>{item.title}</Text>
-            <Text style={styles.body}>{item.body}</Text>
+            <Text style={styles.title}>{t.onboarding[item.title]}</Text>
+            <Text style={styles.body}>{t.onboarding[item.body]}</Text>
           </View>
         )}
       />
@@ -123,7 +136,7 @@ export default function Onboarding(): JSX.Element {
             end={{ x: 1, y: 0 }}
             style={styles.cta}
           >
-            <Text style={styles.ctaText}>{last ? 'Boshlash' : 'Keyingi'}</Text>
+            <Text style={styles.ctaText}>{last ? t.onboarding.start : t.onboarding.next}</Text>
             <Icon name={last ? 'check' : 'next'} size={22} color={colors.textOnPrimary} />
           </LinearGradient>
         </Pressable>
@@ -150,7 +163,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1.4,
   },
   wordmarkAccent: { color: colors.accent },
-  wordmarkSeller: { color: colors.textMuted, fontWeight: '600' },
   skip: { ...text.small, color: colors.textMuted, fontWeight: '600' },
   slide: { flex: 1, alignItems: 'center', paddingHorizontal: spacing.xl },
   artStage: {
@@ -169,6 +181,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(139,44,245,0.08)',
   },
   art: { width: '93%', height: '93%' },
+  // 480 px manba — kattaroq chizilsa xira tortadi
+  artSmall: { width: 230, height: 230 },
+  // Kiyinish xonasi surati (941×1672) — bo'yiga, yumaloq ramkada
+  artFramed: { height: '94%', aspectRatio: 941 / 1672, borderRadius: radius.xxl },
   title: {
     ...text.h1,
     color: colors.text,

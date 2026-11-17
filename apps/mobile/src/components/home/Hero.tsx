@@ -34,6 +34,7 @@ const HERO_CLEAR = 'rgba(16,10,28,0.08)';
 
 export function Hero({
   headerInset,
+  eyebrow,
   title,
   titleAccent,
   titleEnd,
@@ -48,6 +49,8 @@ export function Hero({
 }: {
   /** Fixed header balandligi — kontent uning ostidan boshlanadi */
   headerInset: number;
+  /** Sarlavha ustidagi joy yorlig'i — lug'atdan (`home.eyebrow`) */
+  eyebrow: string;
   title: string;
   titleAccent: string;
   titleEnd: string;
@@ -178,7 +181,7 @@ export function Hero({
             {/* Eyebrow — moda jurnali uslubi: italic Fraunces, ALL CAPS emas */}
             <View style={styles.eyebrowPill}>
               <Icon name="stores" size={14} color={colors.primary} />
-              <Text style={[styles.eyebrow, rtlStyles.text(isRTL)]}>Atelye · Toshkent</Text>
+              <Text style={[styles.eyebrow, rtlStyles.text(isRTL)]}>{eyebrow}</Text>
             </View>
 
             {/* Sarlavha — title + titleAccent bir qatorda, titleEnd pastda */}

@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import {
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -32,6 +33,7 @@ export default function SignIn(): JSX.Element {
   const router = useRouter();
   const signIn = useAuthStore((state) => state.signIn);
   const t = useI18n((state) => state.t);
+  const locale = useI18n((state) => state.locale);
   const insets = useSafeAreaInsets();
 
   const [phone, setPhone] = useState('+998');
@@ -125,8 +127,19 @@ export default function SignIn(): JSX.Element {
             </Pressable>
           </View>
 
-          {/* Forgot password */}
-          <Pressable style={styles.forgotWrap} accessibilityRole="button">
+          {/*
+            Parolni tiklash — yordam xizmati orqali (SMS kodi yo'q, API'da tiklash
+            yo'li ham yo'q): tugma yordam sahifasini qurilma tilida ochadi.
+            Ilgari bu tugmada `onPress` umuman yo'q edi — bosilsa hech narsa
+            bo'lmasdi; App Review aynan shunday «o'lik» tugmalar uchun 2.1 bilan
+            qaytaradi.
+          */}
+          <Pressable
+            style={styles.forgotWrap}
+            accessibilityRole="button"
+            hitSlop={8}
+            onPress={() => void Linking.openURL(`https://looksave.uz/${locale}/support`)}
+          >
             <Text style={styles.forgotText}>{t.auth.forgotPassword}</Text>
           </Pressable>
 

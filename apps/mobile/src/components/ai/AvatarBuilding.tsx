@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Image, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '../Icon';
+import { useI18n, type Dictionary } from '../../i18n';
 import { colors, radius, spacing, text } from '../../theme/tokens';
 
 /**
@@ -31,15 +32,16 @@ import { colors, radius, spacing, text } from '../../theme/tokens';
  * o'rtachadan (≈25 soniya) uzunroq olingan — erta tugab qotib qolgandan
  * ko'ra kech tugagani yaxshi.
  */
-const STAGES = [
-  { at: 0, label: 'Yuzingiz o`qilmoqda' },
-  { at: 6, label: 'O`lchovlaringiz qo`llanmoqda' },
-  { at: 14, label: 'Gavda yasalmoqda' },
-  { at: 26, label: 'Tafsilotlar chizilmoqda' },
-  { at: 38, label: 'Deyarli tayyor' },
+const STAGES: Array<{ at: number; labelKey: keyof Dictionary['avatar'] }> = [
+  { at: 0, labelKey: 'buildStage1' },
+  { at: 6, labelKey: 'buildStage2' },
+  { at: 14, labelKey: 'buildStage3' },
+  { at: 26, labelKey: 'buildStage4' },
+  { at: 38, labelKey: 'buildStage5' },
 ];
 
 export function AvatarBuilding({ faceUrl }: { faceUrl: string | null }): JSX.Element {
+  const t = useI18n((state) => state.t);
   const [seconds, setSeconds] = useState(0);
   const spin = useRef(new Animated.Value(0)).current;
   const breathe = useRef(new Animated.Value(0)).current;
@@ -151,7 +153,7 @@ export function AvatarBuilding({ faceUrl }: { faceUrl: string | null }): JSX.Ele
         </View>
       </View>
 
-      <Text style={styles.title}>Avataringiz yasalmoqda</Text>
+      <Text style={styles.title}>{t.avatar.buildingTitle}</Text>
 
       {/* Bosqichlar — o'tilgani so'nadi, joriysi yorqin */}
       <View style={styles.stages}>
@@ -160,7 +162,7 @@ export function AvatarBuilding({ faceUrl }: { faceUrl: string | null }): JSX.Ele
           const active = index === activeIndex;
 
           return (
-            <View key={stage.label} style={styles.stageRow}>
+            <View key={stage.labelKey} style={styles.stageRow}>
               <View style={[styles.dot, passed && styles.dotPassed, active && styles.dotActive]}>
                 {passed ? <Icon name="authentic" size={10} color={colors.bg} /> : null}
               </View>
@@ -171,16 +173,14 @@ export function AvatarBuilding({ faceUrl }: { faceUrl: string | null }): JSX.Ele
                   active && styles.stageTextActive,
                 ]}
               >
-                {stage.label}
+                {t.avatar[stage.labelKey]}
               </Text>
             </View>
           );
         })}
       </View>
 
-      <Text style={styles.hint}>
-        Bu bir martalik — keyingi safar avatar tayyor turadi va kiyimlar darrov ko`rinadi.
-      </Text>
+      <Text style={styles.hint}>{t.avatar.buildingHint}</Text>
     </View>
   );
 }

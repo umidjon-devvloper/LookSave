@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 
+import { withScreenErrorBoundary } from '../../src/components/ScreenErrorBoundary';
 import { colors } from '../../src/theme/tokens';
 
 /**
@@ -9,6 +10,8 @@ import { colors } from '../../src/theme/tokens';
 export default function MarketLayout(): JSX.Element {
   return (
     <Stack
+      // Har ekran o'z xato chegarasida: chizishdagi xato ilovani yopmaydi (`ScreenErrorBoundary`)
+      screenLayout={withScreenErrorBoundary}
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: colors.bg },

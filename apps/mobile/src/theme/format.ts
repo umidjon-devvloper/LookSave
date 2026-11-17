@@ -31,6 +31,17 @@ export function distance(meters: number | null): string {
   return `${(meters / 1000).toFixed(1)} km`;
 }
 
+/*
+ * Sana qurilma tilida: ilgari hamma joyda `uz-UZ` qattiq yozilgan edi va
+ * inglizcha qurilmada ham o'zbekcha tartibda chiqardi.
+ */
+const DATE_TAG: Record<string, string> = { uz: 'uz-UZ', ru: 'ru-RU', en: 'en-GB', ar: 'ar-AE' };
+
+/** Qisqa sana (kun, oy, yil) — `locale` ilovaning tili (`uz` | `ru` | `en` | `ar`). */
+export function shortDate(value: string | number | Date, locale: string): string {
+  return new Date(value).toLocaleDateString(DATE_TAG[locale] ?? DATE_TAG.uz);
+}
+
 export function phone(value: string): string {
   const match = /^\+998(\d{2})(\d{3})(\d{2})(\d{2})$/.exec(value);
   return match ? `+998 ${match[1]} ${match[2]} ${match[3]} ${match[4]}` : value;

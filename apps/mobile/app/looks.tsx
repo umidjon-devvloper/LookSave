@@ -14,23 +14,37 @@ import {
 import { Button, Empty, ErrorView, Screen } from '../src/components/ui';
 import { SignInRequired } from '../src/components/SignInRequired';
 import { SkeletonList } from '../src/components/Skeleton';
-import { useI18n } from '../src/i18n';
+import { useI18n, type Dictionary } from '../src/i18n';
 import { useAuthStore } from '../src/store/authStore';
 import { useLookStore } from '../src/store/lookStore';
-import { money } from '../src/theme/format';
+import { money, shortDate } from '../src/theme/format';
 import { colors, radius, spacing, text } from '../src/theme/tokens';
 
-const SLOT_LABEL: Record<string, string> = {
-  head: 'Bosh',
-  face: "Ko'zoynak",
-  neck: 'Sharf',
-  top: 'Ustki',
-  outer: 'Kurtka',
-  bottom: 'Pastki',
-  feet: 'Oyoq',
-  wrist: 'Soat',
-  bag: 'Sumka',
-};
+/** Slot nomi qurilma tilida; notanish slot xom ko'rinishda qoladi. */
+function slotLabel(t: Dictionary, slot: string): string {
+  switch (slot) {
+    case 'head':
+      return t.looks.slotHead;
+    case 'face':
+      return t.looks.slotFace;
+    case 'neck':
+      return t.looks.slotNeck;
+    case 'top':
+      return t.look.slotTop;
+    case 'outer':
+      return t.look.slotOuter;
+    case 'bottom':
+      return t.look.slotBottom;
+    case 'feet':
+      return t.look.slotFeet;
+    case 'wrist':
+      return t.looks.slotWatch;
+    case 'bag':
+      return t.looks.slotBag;
+    default:
+      return slot;
+  }
+}
 
 /** Komplekt narxi — barcha mahsulotlar yig'indisi, tiyin aniqligida. */
 function totalPrice(look: Look): { amount: string; currency: string } {
@@ -45,6 +59,7 @@ export default function Looks(): JSX.Element {
   const queryClient = useQueryClient();
   const router = useRouter();
   const t = useI18n((state) => state.t);
+  const locale = useI18n((state) => state.locale);
   const wearOnly = useLookStore((state) => state.wearOnly);
 
   // Ko'p tanlash — bir nechta Look'ni birga kiyintirish uchun (2026-11-05).
@@ -120,21 +135,21 @@ export default function Looks(): JSX.Element {
    */
   const onShare = (look: Look): void => {
     Alert.alert(
-      'Komplektni ulashish',
-      'Havolani ochgan har kim bu komplektni va sizning avataringizni ko`radi. Ulashamizmi?',
+      t.looks.shareTitle,
+      t.looks.shareConfirm,
       [
-        { text: 'Bekor qilish', style: 'cancel' },
+        { text: t.common.cancel, style: 'cancel' },
         {
-          text: 'Ulashish',
+          text: t.looks.share,
           onPress: () => {
             void (async () => {
               try {
                 await shareLook(look.id);
                 await Share.share({
-                  message: `${look.name ?? 'Mening komplektim'} — ${sharedLookUrl(look.id)}`,
+                  message: `${look.name ?? t.looks.myLook} — ${sharedLookUrl(look.id)}`,
                 });
               } catch {
-                Alert.alert('Ulashilmadi', 'Havolani tayyorlab bo`lmadi. Keyinroq urinib ko`ring.');
+                Alert.alert(t.looks.shareFailedTitle, t.looks.shareFailedBody);
               }
             })();
           },
@@ -179,7 +194,7 @@ export default function Looks(): JSX.Element {
             icon="looks"
             action={
               <Button
-                title={t.home.marketplace}
+                title={t.marketplace.title}
                 onPress={() => router.push('/(tabs)/marketplace')}
               />
             }
@@ -217,26 +232,26 @@ export default function Looks(): JSX.Element {
                   <Text style={styles.name}>{item.name ?? t.looks.unnamed}</Text>
                   <Text style={styles.meta}>
                     {item.items.length} {t.looks.pieces} ·{' '}
-                    {new Date(item.createdAt).toLocaleDateString('uz-UZ')}
+                    {shortDate(item.createdAt, locale)}
                   </Text>
                   <Text style={styles.total}>{money(total.amount, total.currency)}</Text>
                   <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
                     <Pressable
                       accessibilityRole="button"
-                      accessibilityLabel="Komplektni qayta kiyib ko'rish"
+                      accessibilityLabel={t.looks.wearAgain}
                       onPress={() => wearLook(item)}
                       style={styles.wearBtn}
                     >
-                      <Text style={styles.wearBtnText}>Qayta kiyib ko'r</Text>
+                      <Text style={styles.wearBtnText}>{t.looks.wearAgain}</Text>
                     </Pressable>
                     <Pressable
                       accessibilityRole="button"
-                      accessibilityLabel="Birga kiyintirish uchun tanlash"
+                      accessibilityLabel={isSelected ? t.looks.picked : t.looks.pickTogether}
                       onPress={() => toggleSelect(item.id)}
                       style={[styles.pickBtn, isSelected && styles.pickBtnActive]}
                     >
                       <Text style={styles.pickBtnText}>
-                        {isSelected ? '✓ Tanlangan' : '+ Birga'}
+                        {isSelected ? t.looks.picked : t.looks.pickTogether}
                       </Text>
                     </Pressable>
                   </View>
@@ -244,14 +259,15 @@ export default function Looks(): JSX.Element {
 
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Komplektni ulashish"
+                  accessibilityLabel={t.looks.shareTitle}
                   hitSlop={12}
                   onPress={() => onShare(item)}
                 >
-                  <Text style={styles.share}>Ulashish</Text>
+                  <Text style={styles.share}>{t.looks.share}</Text>
                 </Pressable>
                 <Pressable
-                  accessibilityLabel="Komplektni o'chirish"
+                  accessibilityRole="button"
+                  accessibilityLabel={t.looks.deleteAria}
                   hitSlop={12}
                   disabled={remove.isPending}
                   onPress={() => remove.mutate(item.id)}
@@ -263,7 +279,7 @@ export default function Looks(): JSX.Element {
               <View style={styles.items}>
                 {item.items.map((piece) => (
                   <View key={`${piece.slot}-${piece.variantId}`} style={styles.item}>
-                    <Text style={styles.slot}>{SLOT_LABEL[piece.slot] ?? piece.slot}</Text>
+                    <Text style={styles.slot}>{slotLabel(t, piece.slot)}</Text>
                     <Text style={styles.itemTitle} numberOfLines={1}>
                       {piece.title}
                       {piece.colorName ? ` · ${piece.colorName}` : ''}
@@ -280,10 +296,10 @@ export default function Looks(): JSX.Element {
       {selectedList.length > 0 ? (
         <View style={styles.bar}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.barTitle}>{selectedList.length} ta look tanlandi</Text>
-            <Text style={styles.barHint}>
-              Hammasi bitta komplektga yig'iladi — bir slotga ikki narsa bo'lsa keyingi yutadi
+            <Text style={styles.barTitle}>
+              {t.looks.selectedCount.replace('{n}', String(selectedList.length))}
             </Text>
+            <Text style={styles.barHint}>{t.looks.selectedHint}</Text>
           </View>
           <Pressable
             accessibilityRole="button"
@@ -291,15 +307,15 @@ export default function Looks(): JSX.Element {
             style={styles.barCancel}
             hitSlop={8}
           >
-            <Text style={styles.barCancelText}>Bekor</Text>
+            <Text style={styles.barCancelText}>{t.common.cancel}</Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Tanlangan looklarni birga kiyintirish"
+            accessibilityLabel={t.looks.wearSelected}
             onPress={() => wearLooks(selectedList)}
             style={styles.barGo}
           >
-            <Text style={styles.barGoText}>Kiyintirish</Text>
+            <Text style={styles.barGoText}>{t.looks.wearSelected}</Text>
           </Pressable>
         </View>
       ) : null}

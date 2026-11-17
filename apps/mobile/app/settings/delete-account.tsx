@@ -4,10 +4,12 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { deleteAccount, getDeletionStatus, restoreAccount } from '../../src/api/endpoints';
+import { SignInRequired } from '../../src/components/SignInRequired';
 import { Button, ErrorView, Loading } from '../../src/components/ui';
 import { explainError } from '../../src/api/explainError';
 import { useI18n } from '../../src/i18n';
 import { useAuthStore } from '../../src/store/authStore';
+import { shortDate } from '../../src/theme/format';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 import { goBack } from '../../src/navigation/back';
 
@@ -23,12 +25,19 @@ import { goBack } from '../../src/navigation/back';
  */
 export default function DeleteAccount(): JSX.Element {
   const t = useI18n((state) => state.t);
+  const locale = useI18n((state) => state.locale);
   const queryClient = useQueryClient();
   const signOut = useAuthStore((state) => state.signOut);
+  const signedIn = useAuthStore((state) => state.status === 'signedIn');
 
   const [error, setError] = useState<string | null>(null);
 
-  const status = useQuery({ queryKey: ['deletion-status'], queryFn: getDeletionStatus });
+  const status = useQuery({
+    queryKey: ['deletion-status'],
+    queryFn: getDeletionStatus,
+    // Kirmagan holatda so'rov 401 qaytarardi va ekranda «sessiya tugadi» chiqardi
+    enabled: signedIn,
+  });
 
   const remove = useMutation({
     mutationFn: () => deleteAccount(),
@@ -49,6 +58,9 @@ export default function DeleteAccount(): JSX.Element {
     },
   });
 
+  // Boshqa shaxsiy ekranlar kabi: xato emas, kirish taklifi
+  if (!signedIn) return <SignInRequired title={t.profile.deleteAccount} />;
+
   if (status.isLoading) return <Loading />;
   if (status.isError) {
     return <ErrorView error={status.error} onRetry={() => void status.refetch()} />;
@@ -63,7 +75,7 @@ export default function DeleteAccount(): JSX.Element {
           <Text style={styles.warningTitle}>{t.deleteAccount.pendingTitle}</Text>
           <Text style={styles.body}>
             {t.deleteAccount.pendingBody}
-            {scheduled ? ` ${new Date(scheduled).toLocaleDateString('uz-UZ')}` : ''}
+            {scheduled ? ` ${shortDate(scheduled, locale)}` : ''}
           </Text>
         </View>
 

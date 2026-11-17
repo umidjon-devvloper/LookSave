@@ -52,21 +52,6 @@ function mapProvider(): typeof PROVIDER_GOOGLE | undefined {
 
 const PROVIDER = mapProvider();
 
-/**
- * Qorong'i uslub — ilova fonidan (#0A0A0F) ajralib turmasligi uchun.
- * Google'ning standart "night" uslubidan olingan, ranglar dizayn
- * tokenlariga moslangan.
- */
-const DARK_STYLE = [
-  { elementType: 'geometry', stylers: [{ color: '#14141c' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#9ca3af' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#0a0a0f' }] },
-  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1e1e2a' }] },
-  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#6b7280' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0a0a0f' }] },
-];
 
 export interface MapMarker {
   id: string;
@@ -127,14 +112,8 @@ export function StoreMap({
         provider={PROVIDER}
         style={StyleSheet.absoluteFill}
         initialRegion={region}
-        /*
-         * `customMapStyle` faqat Google'da ishlaydi. Apple Maps uni
-         * e'tiborsiz qoldiradi, shuning uchun u yerda qorong'i ko'rinish
-         * `userInterfaceStyle` orqali beriladi — aks holda oq xarita
-         * qorong'i ilovada ko'zni qamashtiradi.
-         */
-        customMapStyle={PROVIDER === PROVIDER_GOOGLE ? DARK_STYLE : undefined}
-        userInterfaceStyle="dark"
+        // Ilova yorug' — xarita ham yorug' (ilgari qorong'i mavzu uchun `dark` edi)
+        userInterfaceStyle="light"
         showsUserLocation
         showsMyLocationButton={false}
         // Places API yoqilmagani uchun POI'lar bosilmaydi ham

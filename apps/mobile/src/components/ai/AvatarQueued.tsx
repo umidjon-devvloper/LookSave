@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Image, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '../Icon';
+import { useI18n } from '../../i18n';
 import { colors, radius, spacing, text } from '../../theme/tokens';
 
 /**
@@ -55,6 +56,7 @@ export function AvatarQueued({
   /** Xabarnoma o'chiq bo'lsa boshqa matn — «xabar beramiz» deya olmaymiz */
   pushEnabled: boolean;
 }): JSX.Element {
+  const t = useI18n((state) => state.t);
   const elapsed = useElapsed(queue.queuedAt);
   const left = PROMISE_SECONDS - elapsed;
   const overdue = left <= 0;
@@ -87,18 +89,18 @@ export function AvatarQueued({
    * olmasligi mumkin — o'sha payt «5 daqiqa» deb turish aldash bo'lardi.
    */
   const title = overdue
-    ? 'Biroz ko`proq vaqt ketyapti'
+    ? t.avatar.queueOverdueTitle
     : queue.claimed
-      ? 'Avataringiz tayyorlanmoqda'
-      : 'Avataringiz navbatda';
+      ? t.avatar.queueClaimedTitle
+      : t.avatar.queueWaitingTitle;
 
   const hint = overdue
     ? pushEnabled
-      ? 'Band vaqt bo`lsa kerak. Tayyor bo`lishi bilan xabar yuboramiz — ilovani yopsangiz ham bo`ladi.'
-      : 'Band vaqt bo`lsa kerak. Ilovani ochiq qoldiring yoki keyinroq kiring — natija saqlanadi.'
+      ? t.avatar.queueOverduePush
+      : t.avatar.queueOverdueNoPush
     : pushEnabled
-      ? 'Ilovani yopsangiz ham bo`ladi — tayyor bo`lganda xabar keladi.'
-      : 'Xabarnoma o`chiq, shuning uchun natijani shu yerda kuting yoki keyinroq kiring.';
+      ? t.avatar.queuePush
+      : t.avatar.queueNoPush;
 
   return (
     <View style={styles.wrap}>
@@ -140,19 +142,21 @@ export function AvatarQueued({
       <Text style={styles.title}>{title}</Text>
 
       {!overdue ? (
-        <Text style={styles.promise}>Taxminan 5 daqiqada tayyor bo`ladi</Text>
+        <Text style={styles.promise}>{t.avatar.queuePromise}</Text>
       ) : (
-        <Text style={styles.promise}>Kutilmoqda · {clock(elapsed)}</Text>
+        <Text style={styles.promise}>
+          {t.avatar.queueWaited.replace('{time}', clock(elapsed))}
+        </Text>
       )}
 
       <View style={styles.steps}>
-        <Step done label="So`rovingiz qabul qilindi" />
+        <Step done label={t.avatar.queueStepAccepted} />
         <Step
           done={queue.claimed}
           active={!queue.claimed}
-          label={queue.claimed ? 'Mutaxassis ishlamoqda' : 'Mutaxassis kutilmoqda'}
+          label={queue.claimed ? t.avatar.queueStepWorking : t.avatar.queueStepWaiting}
         />
-        <Step label="Avatar tayyor bo`ladi" />
+        <Step label={t.avatar.queueStepReady} />
       </View>
 
       <Text style={styles.hint}>{hint}</Text>

@@ -29,8 +29,9 @@ import {
 } from '../../src/api/endpoints';
 import { explainError } from '../../src/api/explainError';
 import { Icon, type IconName } from '../../src/components/Icon';
-import { Screen } from '../../src/components/ui';
+import { Button, Empty, Screen } from '../../src/components/ui';
 import { useI18n, type Dictionary } from '../../src/i18n';
+import { useAuthStore } from '../../src/store/authStore';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 import { goBack } from '../../src/navigation/back';
 
@@ -97,6 +98,9 @@ export default function NewProduct(): JSX.Element {
   // id yo'q bo'lsa oddiy yangi mahsulot formasi.
   const { id: editId } = useLocalSearchParams<{ id?: string }>();
   const isEdit = Boolean(editId);
+  // Admin ham do'kon yuritishi mumkin — `seller/settings` va `seller/orders` bilan bir xil shart
+  const role = useAuthStore((state) => state.user?.role);
+  const isSeller = role === 'store_owner' || role === 'admin';
 
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
@@ -128,7 +132,7 @@ export default function NewProduct(): JSX.Element {
   const existing = useQuery({
     queryKey: ['store', 'product', editId],
     queryFn: () => getMyProduct(editId!),
-    enabled: isEdit,
+    enabled: isEdit && isSeller,
   });
   useEffect(() => {
     if (!existing.data) return;
@@ -314,6 +318,31 @@ export default function NewProduct(): JSX.Element {
     });
   };
 
+  /*
+   * Do'koni yo'q odamga forma emas, ariza taklifi — boshqa sotuvchi
+   * ekranlaridagidek. Ilgari bu ekran havola orqali xaridorga ham ochilardi:
+   * forma to'ldirilardi, yuborilganda esa server rad etardi.
+   * ⚠️ Shart barcha hooklardan KEYIN turadi — hooklar tartibi buzilmasin.
+   */
+  if (!isSeller) {
+    return (
+      <Screen>
+        <View style={{ height: insets.top }} />
+        <Empty
+          icon="shop"
+          title={t.sellerDashboard.notSellerTitle}
+          hint={t.sellerDashboard.notSellerDesc}
+          action={
+            <Button
+              title={t.sellerDashboard.applyNow}
+              onPress={() => router.push('/become-seller')}
+            />
+          }
+        />
+      </Screen>
+    );
+  }
+
   return (
     <Screen>
       <KeyboardAvoidingView
@@ -339,10 +368,10 @@ export default function NewProduct(): JSX.Element {
           <View style={styles.hero}>
             <View style={styles.heroCopy}>
               <Text style={styles.heroTitle}>
-                {isEdit ? 'Mahsulotni tahrirlash' : t.seller.newTitle}
+                {isEdit ? t.seller.editTitle : t.seller.newTitle}
               </Text>
               <Text style={styles.heroSubtitle}>
-                {isEdit ? "Ma'lumotlarni yangilash" : t.seller.newSubtitle}
+                {isEdit ? t.seller.editSubtitle : t.seller.newSubtitle}
               </Text>
             </View>
             <View style={styles.heroBagWrap}>
@@ -587,7 +616,9 @@ export default function NewProduct(): JSX.Element {
                 <View style={styles.submitIcon}>
                   <Text style={styles.submitIconText}>+</Text>
                 </View>
-                <Text style={styles.submitText}>{isEdit ? 'Saqlash' : t.seller.submitReview}</Text>
+                <Text style={styles.submitText}>
+                  {isEdit ? t.measurements.save : t.seller.submitReview}
+                </Text>
               </LinearGradient>
             </Pressable>
             <Pressable

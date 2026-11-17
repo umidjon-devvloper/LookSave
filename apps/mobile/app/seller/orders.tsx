@@ -20,6 +20,7 @@ import { SignInRequired } from '../../src/components/SignInRequired';
 import { SkeletonList } from '../../src/components/Skeleton';
 import { Button, Empty, ErrorView, Screen } from '../../src/components/ui';
 import { translations, useI18n, type Dictionary } from '../../src/i18n';
+import { deliveryWhenText } from '../../src/i18n/deliveryWhen';
 import { useAuthStore } from '../../src/store/authStore';
 import { money } from '../../src/theme/format';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
@@ -231,7 +232,7 @@ export default function SellerOrders(): JSX.Element {
         <View style={styles.headerBar}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Orqaga"
+            accessibilityLabel={t.common.back}
             onPress={() => goBack('/profile')}
             style={styles.iconButton}
           >
@@ -244,7 +245,7 @@ export default function SellerOrders(): JSX.Element {
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Yangi buyurtmalar"
+            accessibilityLabel={t.sellerDashboard.newOrders}
             onPress={() => setFilter('new')}
             style={styles.iconButton}
           >
@@ -270,7 +271,16 @@ export default function SellerOrders(): JSX.Element {
           </View>
 
           <View style={styles.identityText}>
-            <Text style={styles.storeName} numberOfLines={1}>
+            {/*
+              Uzun nom rasm ostiga kirib, harf o'rtasidan kesilardi. Endi matn
+              rasmgacha bo'lgan joyda qoladi: avval kichrayadi, sig'masa «…».
+            */}
+            <Text
+              style={styles.storeName}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+            >
               {store?.name ?? t.profile.myStore}
             </Text>
 
@@ -524,6 +534,7 @@ function OrderCard({
   ) => void;
 }): JSX.Element {
   const t = useI18n((state) => state.t);
+  const locale = useI18n((state) => state.locale);
   const next = NEXT_ACTION[order.status] ?? null;
 
   /*
@@ -571,7 +582,7 @@ function OrderCard({
         <Text style={styles.total}>{money(order.total, order.currency)}</Text>
         <Text style={styles.delivery}>
           {order.deliveryType === 'pickup' ? t.seller.pickupShort : t.seller.deliveryShort}
-          {order.deliveryWhen ? ` · ${order.deliveryWhen}` : ''}
+          {order.deliveryWhen ? ` · ${deliveryWhenText(t, locale, order.deliveryWhen)}` : ''}
         </Text>
       </View>
 
@@ -584,7 +595,7 @@ function OrderCard({
       <View style={styles.actions}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Mijozga qo`ng`iroq"
+          accessibilityLabel={t.stores.call}
           onPress={() => void Linking.openURL(`tel:${order.customer.phone}`)}
           style={styles.callButton}
         >
@@ -594,7 +605,7 @@ function OrderCard({
         {addressCoords(order.address) ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Manzilni xaritada ochish"
+            accessibilityLabel={t.stores.directions}
             onPress={() => {
               const c = addressCoords(order.address)!;
               // Universal `geo:` link iOS'da ishlamaydi — Google Maps web
@@ -685,7 +696,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 10 },
   },
   logoImg: { width: '100%', height: '100%' },
-  identityText: { flex: 1, gap: spacing.xs, maxWidth: '62%' },
+  // O'ng chet — `headerBag` rasmi (180 pt) uchun joy; matn uning ostiga kirmasin
+  identityText: { flex: 1, gap: spacing.xs, marginRight: 140 },
   storeName: { ...text.h1, color: colors.text },
   statusPill: {
     flexDirection: 'row',

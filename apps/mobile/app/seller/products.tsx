@@ -20,10 +20,14 @@ import { Button, Empty, ErrorView, Screen } from '../../src/components/ui';
 import { useI18n, type Dictionary } from '../../src/i18n';
 import { useAuthStore } from '../../src/store/authStore';
 import { money } from '../../src/theme/format';
+import { SELLER_TAB_BAR_SPACE } from '../../src/theme/sellerTabBar';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 import { goBack } from '../../src/navigation/back';
 
 const SELLER_BAG = require('../../assets/seller-dashboard-bag-v2.png');
+
+/** «Mahsulot qo'shish» suzuvchi tugmasining balandligi (`styles.addButton`) */
+const ADD_BUTTON_HEIGHT = 58;
 
 /**
  * Do'kon mahsulotlari.
@@ -131,9 +135,19 @@ export default function SellerProducts(): JSX.Element {
                 LOOK<Text style={styles.wordmarkAccent}>SAVE</Text>
                 <Text style={styles.wordmarkSeller}> · SELLER</Text>
               </Text>
-              <Pressable accessibilityRole="button" style={styles.roundButton}>
+              {/*
+                Qo'ng'iroq yangi buyurtmalarga olib boradi. Ilgari bu tugmada
+                amal yo'q edi va ustida DOIM nuqta yonib turardi — bosilsa hech
+                narsa bo'lmasdi (App Review 2.1 aynan shunday tugmalar uchun
+                qaytaradi).
+              */}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t.sellerDashboard.viewOrders}
+                style={styles.roundButton}
+                onPress={() => router.push('/seller/orders')}
+              >
                 <Icon name="bell" size={24} color={colors.text} />
-                <View style={styles.notificationDot} />
               </Pressable>
             </View>
 
@@ -287,7 +301,7 @@ function ProductRow({
         <View style={styles.cardActions}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Tahrirlash"
+            accessibilityLabel={t.seller.edit}
             hitSlop={8}
             onPress={onEdit}
             style={styles.cardActionBtn}
@@ -296,7 +310,7 @@ function ProductRow({
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="O`chirish"
+            accessibilityLabel={t.seller.deleteProductTitle}
             hitSlop={8}
             onPress={onDelete}
             style={styles.cardActionBtn}
@@ -456,17 +470,6 @@ const styles = StyleSheet.create({
   },
   wordmarkAccent: { color: colors.accent },
   wordmarkSeller: { color: colors.textMuted, fontWeight: '600' },
-  notificationDot: {
-    position: 'absolute',
-    right: 4,
-    top: 3,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.primary,
-    borderWidth: 2,
-    borderColor: colors.surface,
-  },
   hero: {
     height: 206,
     marginTop: spacing.xs,
@@ -549,7 +552,15 @@ const styles = StyleSheet.create({
   filterTextActive: { color: colors.textOnPrimary },
   filterDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#12C55B' },
 
-  list: { gap: spacing.md, paddingBottom: 112 },
+  /*
+   * Oxirgi karta tab bar VA suzuvchi «Mahsulot qo'shish» tugmasidan yuqoriga
+   * chiqa olsin — aks holda uning «Tahrirlash»/«O'chirish» tugmalari tugma
+   * ostida qolib, bosilmaydi.
+   */
+  list: {
+    gap: spacing.md,
+    paddingBottom: SELLER_TAB_BAR_SPACE + spacing.sm + ADD_BUTTON_HEIGHT + spacing.md,
+  },
 
   card: {
     marginHorizontal: spacing.md,
@@ -628,18 +639,24 @@ const styles = StyleSheet.create({
     ...text.body,
   },
 
+  /*
+   * ⚠️ TAB BARDAN YUQORIDA. Sotuvchi tab bari suzuvchi (`position: 'absolute'`)
+   * — ekran uning ostiga ham chiziladi. Ilgari bu yerda `bottom: spacing.sm`
+   * turardi va tugma BUTUNLAY bar ostida yashirin edi: ko'rinmasdi ham,
+   * bosilmasdi ham (2026-11-18, `sellerTabBar.ts`).
+   */
   fab: {
     position: 'absolute',
     left: spacing.md,
     right: spacing.md,
-    bottom: spacing.sm,
+    bottom: SELLER_TAB_BAR_SPACE + spacing.sm,
     shadowColor: colors.primary,
     shadowOpacity: 0.3,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 10 },
   },
   addButton: {
-    height: 58,
+    height: ADD_BUTTON_HEIGHT,
     borderRadius: radius.pill,
     flexDirection: 'row',
     alignItems: 'center',

@@ -26,6 +26,7 @@ import { SignInRequired } from '../../src/components/SignInRequired';
 import { Button, Empty, ErrorView, Screen } from '../../src/components/ui';
 import { matchSize, recommendSize } from '@looksave/validation';
 import { useI18n, type Dictionary } from '../../src/i18n';
+import { aiOptionLabel } from '../../src/i18n/aiOptions';
 import { useAuthStore } from '../../src/store/authStore';
 import { useAiFlowStore } from '../../src/store/aiFlowStore';
 import { money } from '../../src/theme/format';
@@ -74,6 +75,9 @@ export default function AiLookScreen(): JSX.Element {
   const occasion = useAiFlowStore((state) => state.occasion);
   const style = useAiFlowStore((state) => state.style);
 
+  // Tanlov qiymati o'zbekcha satr — ekranga qurilma tilidagi nomi chiqadi
+  const choiceLabel = `${aiOptionLabel(t, occasion)} · ${aiOptionLabel(t, style)}`;
+
   const [index, setIndex] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -89,7 +93,7 @@ export default function AiLookScreen(): JSX.Element {
   const save = useMutation({
     mutationFn: (look: SuggestedLook) =>
       createLook({
-        name: `${occasion} · ${style}`,
+        name: choiceLabel,
         occasion,
         items: look.items.map((item) => ({
           slot: item.slot,
@@ -138,9 +142,7 @@ export default function AiLookScreen(): JSX.Element {
         <View style={styles.loading}>
           <ActivityIndicator color={colors.accent} />
           <Text style={styles.loadingText}>{t.look.building}</Text>
-          <Text style={styles.loadingHint}>
-            {occasion} · {style}
-          </Text>
+          <Text style={styles.loadingHint}>{choiceLabel}</Text>
         </View>
       </Screen>
     );
@@ -176,7 +178,7 @@ export default function AiLookScreen(): JSX.Element {
       <View style={[styles.header, { paddingTop: insets.top + spacing.xs }]}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Orqaga"
+          accessibilityLabel={t.common.back}
           hitSlop={10}
           onPress={() => goBack('/ai')}
           style={styles.headerButton}
@@ -185,9 +187,7 @@ export default function AiLookScreen(): JSX.Element {
         </Pressable>
         <View style={styles.headerText}>
           <Text style={styles.headerTitle}>{t.look.title}</Text>
-          <Text style={styles.headerHint}>
-            {occasion} · {style}
-          </Text>
+          <Text style={styles.headerHint}>{choiceLabel}</Text>
         </View>
         <View style={styles.headerButton} />
       </View>

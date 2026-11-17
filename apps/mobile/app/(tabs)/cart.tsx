@@ -93,7 +93,7 @@ function StoreGroup({
               <View style={styles.qty}>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Kamaytirish"
+                  accessibilityLabel={t.cart.decrease}
                   disabled={busy}
                   style={styles.qtyButton}
                   onPress={() =>
@@ -111,7 +111,7 @@ function StoreGroup({
 
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Ko`paytirish"
+                  accessibilityLabel={t.cart.increase}
                   disabled={busy || item.qty >= item.stock}
                   style={[styles.qtyButtonAdd, item.qty >= item.stock && { opacity: 0.4 }]}
                   onPress={() => onQty(item.id, item.qty + 1)}
@@ -368,7 +368,7 @@ export default function Cart(): JSX.Element {
         <Text style={styles.topTitle}>{t.tabs.cart}</Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Savatni tozalash"
+          accessibilityLabel={t.cart.clearCart}
           disabled={busy}
           onPress={() => clear.mutate()}
           style={styles.clearButton}

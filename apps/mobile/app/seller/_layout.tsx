@@ -2,7 +2,9 @@ import { Tabs } from 'expo-router';
 import { Platform, StyleSheet } from 'react-native';
 
 import { Icon } from '../../src/components/Icon';
+import { withScreenErrorBoundary } from '../../src/components/ScreenErrorBoundary';
 import { useI18n } from '../../src/i18n';
+import { SELLER_TAB_BAR_BOTTOM, SELLER_TAB_BAR_HEIGHT } from '../../src/theme/sellerTabBar';
 import { colors, text } from '../../src/theme/tokens';
 
 /**
@@ -20,6 +22,8 @@ export default function SellerLayout(): JSX.Element {
 
   return (
     <Tabs
+      // Har ekran o'z xato chegarasida: chizishdagi xato ilovani yopmaydi (`ScreenErrorBoundary`)
+      screenLayout={withScreenErrorBoundary}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
@@ -73,11 +77,15 @@ export default function SellerLayout(): JSX.Element {
 }
 
 const styles = StyleSheet.create({
+  /*
+   * ⚠️ SUZUVCHI BAR: ekran uning ostiga ham chiziladi. Pastga yopishtirilgan
+   * narsalar `SELLER_TAB_BAR_SPACE` dan yuqorida tursin (`sellerTabBar.ts`).
+   */
   tabBar: {
     position: 'absolute',
     left: 10,
     right: 10,
-    bottom: 8,
+    bottom: SELLER_TAB_BAR_BOTTOM,
     backgroundColor: '#FFFFFF',
     borderTopColor: 'transparent',
     borderTopWidth: 0,
@@ -85,7 +93,7 @@ const styles = StyleSheet.create({
     borderColor: '#EBE4F7',
     borderRadius: 30,
     overflow: 'hidden',
-    height: Platform.OS === 'ios' ? 92 : 76,
+    height: SELLER_TAB_BAR_HEIGHT,
     paddingTop: 8,
     paddingHorizontal: 6,
     paddingBottom: Platform.OS === 'ios' ? 20 : 8,

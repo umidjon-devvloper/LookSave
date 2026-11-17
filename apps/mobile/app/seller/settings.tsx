@@ -242,7 +242,7 @@ export default function StoreSettings(): JSX.Element {
   const pickBrandLogo = async (): Promise<void> => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Ruxsat kerak', 'Logo tanlash uchun galereyaga ruxsat bering.');
+      Alert.alert(t.photo.permissionTitle, t.seller.logoPermBody);
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -260,7 +260,7 @@ export default function StoreSettings(): JSX.Element {
       setBrandForm((prev) => ({ ...prev, logoUrl: url }));
       setBrandSaved(false);
     } catch {
-      setBrandError('Logo yuklanmadi — qaytadan urinib ko`ring');
+      setBrandError(t.seller.logoUploadFailed);
     } finally {
       setBrandUploading(false);
     }
@@ -273,7 +273,16 @@ export default function StoreSettings(): JSX.Element {
       setBrandSaved(true);
       setBrandError(null);
     },
-    onError: (err) => setBrandError(err instanceof ApiError ? err.message : 'Saqlanmadi'),
+    /*
+     * Serverning o'z matni o'zbekcha — ekranga kod bo'yicha tarjima chiqadi.
+     * `ALREADY_EXISTS` bu yerda yagona tushunarli sabab: @username yoki nom band.
+     */
+    onError: (err) =>
+      setBrandError(
+        err instanceof ApiError && err.code === 'ALREADY_EXISTS'
+          ? t.seller.brandTaken
+          : explainError(err, t),
+      ),
   });
 
   const brandUsername = brandForm.username.trim().replace(/^@/, '').toLowerCase();
@@ -365,9 +374,19 @@ export default function StoreSettings(): JSX.Element {
               LOOK<Text style={styles.wordmarkAccent}>SAVE</Text>
               <Text style={styles.wordmarkSeller}> · SELLER</Text>
             </Text>
-            <Pressable style={styles.roundButton}>
+            {/*
+              Qo'ng'iroq yangi buyurtmalarga olib boradi. Ilgari bu tugmada
+              amal yo'q edi va ustida DOIM nuqta yonib turardi — bosilsa hech
+              narsa bo'lmasdi (App Review 2.1 aynan shunday tugmalar uchun
+              qaytaradi).
+            */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t.sellerDashboard.viewOrders}
+              style={styles.roundButton}
+              onPress={() => router.push('/seller/orders')}
+            >
               <Icon name="bell" size={24} color={colors.text} />
-              <View style={styles.notificationDot} />
             </Pressable>
           </View>
 
@@ -416,7 +435,7 @@ export default function StoreSettings(): JSX.Element {
           <View style={styles.logoRow}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Logo tanlash"
+              accessibilityLabel={t.seller.pickLogo}
               onPress={() => void pickLogo()}
               disabled={uploading}
               style={styles.logoBox}
@@ -431,7 +450,7 @@ export default function StoreSettings(): JSX.Element {
             </Pressable>
             <View style={styles.logoCopy}>
               <Text style={styles.logoTitle}>{t.seller.logoLabel}</Text>
-              <Text style={styles.logoHint}>Do‘koningiz uchun logoni tanlang</Text>
+              <Text style={styles.logoHint}>{t.seller.logoPickHint}</Text>
             </View>
             <Pressable style={styles.logoPick} onPress={() => void pickLogo()} disabled={uploading}>
               <Icon name="compare" size={18} color={colors.primary} />
@@ -583,9 +602,9 @@ export default function StoreSettings(): JSX.Element {
                 {delivery.nationwide ? <Text style={styles.checkboxMark}>✓</Text> : null}
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.toggleLabel}>Respublika bo‘ylab yuboraman</Text>
+                <Text style={styles.toggleLabel}>{t.seller.nationwide}</Text>
                 <Text style={[styles.toggleLabel, { opacity: 0.6, fontSize: 12 }]}>
-                  Pochta/kuryer orqali. Do‘konim barcha viloyat mijozlariga ko‘rinadi.
+                  {t.seller.nationwideHint}
                 </Text>
               </View>
             </Pressable>
@@ -651,17 +670,14 @@ export default function StoreSettings(): JSX.Element {
 
           {/* ── Mening brendim (@username bilan) — alohida saqlash ── */}
           <View style={styles.brandDivider} />
-          <Text style={styles.brandTitle}>MENING BRENDIM</Text>
-          <Text style={styles.brandHint}>
-            Xaridorlar «Brendlar» bo`limida shu nom, logo va @username bilan ko`radi. Qo`shgan
-            mahsulotlaringiz avtomatik shu brendga bog`lanadi.
-          </Text>
+          <Text style={styles.brandTitle}>{t.seller.brandTitle}</Text>
+          <Text style={styles.brandHint}>{t.seller.brandHint}</Text>
 
-          <Text style={styles.fieldLabel}>BREND LOGOSI</Text>
+          <Text style={styles.fieldLabel}>{t.seller.brandLogoLabel}</Text>
           <View style={styles.logoRow}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Brend logosi"
+              accessibilityLabel={t.seller.brandLogoLabel}
               onPress={() => void pickBrandLogo()}
               disabled={brandUploading}
               style={styles.logoBox}
@@ -680,7 +696,7 @@ export default function StoreSettings(): JSX.Element {
             </Pressable>
             <View style={styles.logoActions}>
               <Button
-                title={brandForm.logoUrl ? 'Logoni o`zgartirish' : 'Logo tanlash'}
+                title={brandForm.logoUrl ? t.seller.changeLogo : t.seller.pickLogo}
                 variant="ghost"
                 loading={brandUploading}
                 onPress={() => void pickBrandLogo()}
@@ -688,30 +704,32 @@ export default function StoreSettings(): JSX.Element {
             </View>
           </View>
 
-          <Field label="Brend nomi" value={brandForm.name} onChangeText={setBrand('name')} />
+          <Field label={t.seller.brandName} value={brandForm.name} onChangeText={setBrand('name')} />
           <Field
-            label="Username"
+            label={t.auth.username}
             value={brandForm.username}
             onChangeText={setBrand('username')}
             autoCapitalize="none"
             autoCorrect={false}
             placeholder="@chilonzor_moda"
           />
-          <Text style={styles.brandHint}>
-            3–30 belgi: lotin harfi bilan boshlanadi, faqat harf, raqam, _ va .
-          </Text>
+          <Text style={styles.brandHint}>{t.seller.brandUsernameHint}</Text>
           <Field
-            label="Brend tavsifi"
+            label={t.seller.brandDescription}
             value={brandForm.description}
             onChangeText={setBrand('description')}
             multiline
           />
 
           {brandError ? <Text style={styles.error}>{brandError}</Text> : null}
-          {brandSaved ? <Text style={styles.saved}>Saqlandi — @{brandUsername}</Text> : null}
+          {brandSaved ? (
+            <Text style={styles.saved}>
+              {t.seller.brandSaved.replace('{username}', brandUsername)}
+            </Text>
+          ) : null}
 
           <Button
-            title={brand.data ? 'Brendni saqlash' : 'Brend yaratish'}
+            title={brand.data ? t.seller.brandSave : t.seller.brandCreate}
             loading={saveBrand.isPending}
             disabled={!brandValid}
             onPress={() =>
@@ -783,17 +801,6 @@ const styles = StyleSheet.create({
   },
   wordmarkAccent: { color: colors.accent },
   wordmarkSeller: { color: colors.textMuted, fontWeight: '600' },
-  notificationDot: {
-    position: 'absolute',
-    right: 3,
-    top: 2,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.primary,
-    borderWidth: 2,
-    borderColor: colors.surface,
-  },
   hero: { height: 132, justifyContent: 'center', overflow: 'visible' },
   heroCopy: { zIndex: 2, maxWidth: '64%' },
   heroTitle: { ...text.h1, color: colors.text, fontSize: 32, lineHeight: 38 },

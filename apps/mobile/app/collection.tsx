@@ -100,6 +100,8 @@ function CollectionSkeleton({ rows = 3 }: { rows?: number }): JSX.Element {
 }
 
 function BannerCard({ banner, onPress }: { banner: MarketplaceBanner; onPress: () => void }): JSX.Element {
+  const t = useI18n((state) => state.t);
+
   return (
     <Pressable
       disabled={!banner.targetUrl}
@@ -114,7 +116,7 @@ function BannerCard({ banner, onPress }: { banner: MarketplaceBanner; onPress: (
         style={StyleSheet.absoluteFill}
       />
       <View style={styles.bannerCopy}>
-        <Text style={styles.bannerLabel}>Reklama</Text>
+        <Text style={styles.bannerLabel}>{t.home.adLabel}</Text>
         <Text style={styles.bannerTitle} numberOfLines={2}>{banner.title}</Text>
         {banner.subtitle ? <Text style={styles.bannerSubtitle} numberOfLines={2}>{banner.subtitle}</Text> : null}
       </View>
@@ -355,12 +357,17 @@ export default function Collection(): JSX.Element {
                     product={product}
                     favorite={favorites[product.id] ?? false}
                     onPress={() => router.push(`/product/${product.id}`)}
-                    onToggleFavorite={() =>
+                    onToggleFavorite={() => {
+                      // Kirmagan odamda yurakcha jimgina qaytardi — kirish ekrani ochiladi
+                      if (!signedIn) {
+                        router.push('/(auth)/sign-in');
+                        return;
+                      }
                       toggleFavorite.mutate({
                         id: product.id,
                         next: !(favorites[product.id] ?? false),
-                      })
-                    }
+                      });
+                    }}
                   />
                 ))}
               </View>

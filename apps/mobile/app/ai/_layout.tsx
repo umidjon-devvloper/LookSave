@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 
+import { withScreenErrorBoundary } from '../../src/components/ScreenErrorBoundary';
 import { colors } from '../../src/theme/tokens';
 
 /**
@@ -9,14 +10,16 @@ import { colors } from '../../src/theme/tokens';
  * qatori ko'rinib turmasligi shart. Bu marshrut ildiz `Stack` ining bolasi
  * bo'lgani uchun tab qatori ustidan ochiladi va o'z-o'zidan yashiradi.
  *
- * ⚠️ FON KREM — qolgan Atelier bilan bir xil. Faqat kirish ekrani
- * (`ai/index.tsx`) qora, chunki hologramma PNG'i qora fonda. Qolgan AI
- * ekranlari (kamera, kiyintirish) kremda ishlaydi: kamera preview'ining
- * o'zi qorong'i, undan ichkariga "photo booth" effekti chiqadi.
+ * ⚠️ FON YORUG' — ilovaning qolgan qismi bilan bir xil, kirish ekrani
+ * (`ai/index.tsx`) ham. U yerda faqat gologramma rasmi qora ramkada turadi,
+ * chunki PNG'ning o'z foni qora. Kamera preview'ining o'zi qorong'i, undan
+ * ichkariga "photo booth" effekti chiqadi.
  */
 export default function AiLayout(): JSX.Element {
   return (
     <Stack
+      // Har ekran o'z xato chegarasida: chizishdagi xato ilovani yopmaydi (`ScreenErrorBoundary`)
+      screenLayout={withScreenErrorBoundary}
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: colors.bg },

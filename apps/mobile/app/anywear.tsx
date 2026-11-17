@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '../src/components/Icon';
 import { Screen } from '../src/components/ui';
+import { useI18n } from '../src/i18n';
 import { colors, radius, spacing, text } from '../src/theme/tokens';
 
 /**
@@ -43,13 +44,14 @@ const WebViewComponent = loadWebView();
 export default function AnywearScreen(): JSX.Element {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const t = useI18n((state) => state.t);
 
   return (
     <Screen>
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Orqaga"
+          accessibilityLabel={t.common.back}
           onPress={() => router.back()}
           hitSlop={10}
           style={styles.backBtn}
@@ -58,7 +60,7 @@ export default function AnywearScreen(): JSX.Element {
         </Pressable>
         <View style={styles.titleWrap}>
           <Icon name="tryon" size={18} color={colors.primary} />
-          <Text style={styles.title}>Real-time kiyim ko‘rish</Text>
+          <Text style={styles.title}>{t.home.liveTryOn}</Text>
         </View>
         <View style={styles.backBtn} />
       </View>
@@ -76,7 +78,7 @@ export default function AnywearScreen(): JSX.Element {
           renderLoading={() => (
             <View style={styles.loading}>
               <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.loadingText}>Widget yuklanmoqda…</Text>
+              <Text style={styles.loadingText}>{t.common.loading}…</Text>
             </View>
           )}
         />

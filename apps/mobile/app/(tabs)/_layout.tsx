@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '../../src/components/Icon';
+import { withScreenErrorBoundary } from '../../src/components/ScreenErrorBoundary';
 import { useNotificationOpen } from '../../src/hooks/usePush';
 import { useI18n } from '../../src/i18n';
 import { useLookStore } from '../../src/store/lookStore';
@@ -165,6 +166,8 @@ export default function TabsLayout(): JSX.Element {
 
   return (
     <Tabs
+      // Har ekran o'z xato chegarasida: chizishdagi xato ilovani yopmaydi (`ScreenErrorBoundary`)
+      screenLayout={withScreenErrorBoundary}
       tabBar={(props) => <PremiumTabBar {...props} />}
       screenOptions={{
         headerStyle: { backgroundColor: colors.bg },

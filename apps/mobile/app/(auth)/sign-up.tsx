@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ApiError } from '../../src/api/client';
+import { explainError } from '../../src/api/explainError';
 import { Icon } from '../../src/components/Icon';
 import { useI18n } from '../../src/i18n';
 import { useAuthStore } from '../../src/store/authStore';
@@ -131,8 +132,21 @@ export default function SignUp(): JSX.Element {
     const parsed = registerSchema.safeParse(input);
     if (!parsed.success) {
       const first = parsed.error.issues[0];
-      setError(first?.message ?? t.auth.errSignUpFailed);
       const key = first?.path[0];
+      /*
+       * Sxemaning o'z xabari (`first.message`) o'zbekcha qattiq yozilgan —
+       * inglizcha qurilmada ham shu chiqardi. Maydon bo'yicha lug'atdagi
+       * matn ko'rsatiladi.
+       */
+      setError(
+        key === 'phone'
+          ? t.auth.errPhone
+          : key === 'password'
+            ? t.auth.errPasswordShort
+            : key === 'fullName'
+              ? t.auth.errName
+              : t.auth.errSignUpFailed,
+      );
       if (key === 'phone' || key === 'password') setStep(2);
       else setStep(1);
       return;
@@ -155,7 +169,7 @@ export default function SignUp(): JSX.Element {
         err instanceof ApiError && err.code === 'ALREADY_EXISTS'
           ? t.auth.errAlreadyExists
           : err instanceof ApiError
-            ? err.message
+            ? explainError(err, t)
             : t.auth.errSignUpFailed,
       );
       setStep(2);
@@ -205,9 +219,8 @@ export default function SignUp(): JSX.Element {
             ))}
           </View>
 
-          {/* Eyebrow + sarlavha */}
+          {/* Sarlavha — qadam raqami tepadagi chiziqda bor, ustiga yana yorliq shart emas */}
           <View style={styles.header}>
-            <Text style={styles.eyebrow}>{eyebrowFor(step)}</Text>
             <Text style={styles.title}>{titleFor(step, t)}</Text>
             {subtitleFor(step, t) ? (
               <Text style={styles.subtitle}>{subtitleFor(step, t)}</Text>
@@ -493,14 +506,6 @@ function subtitleFor(step: Step, t: ReturnType<typeof useI18n.getState>['t']): s
   return '';
 }
 
-function eyebrowFor(step: Step): string {
-  if (step === 1) return 'Shaxs · Birinchi tanishuv';
-  if (step === 2) return 'Aloqa · Kirish ma’lumotlari';
-  if (step === 3) return 'Joylashuv · Yaqin do‘konlar';
-  if (step === 4) return 'Rol · Xaridor yoki sotuvchi';
-  return 'Tayyor';
-}
-
 const styles = StyleSheet.create({
   bg: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
@@ -536,7 +541,6 @@ const styles = StyleSheet.create({
 
   /* ── Sarlavha bloki ── */
   header: { marginTop: spacing.lg, marginBottom: spacing.lg },
-  eyebrow: { ...text.eyebrow, color: colors.textMuted, marginBottom: spacing.xs },
   title: { ...text.h1, color: colors.text, marginBottom: spacing.sm },
   subtitle: { ...text.body, color: colors.textMuted, maxWidth: '92%' },
 

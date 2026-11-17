@@ -14,6 +14,7 @@ import {
 import { Icon, type IconName } from '../src/components/Icon';
 import { Empty, ErrorView, Field, Screen } from '../src/components/ui';
 import { CARD_PADDING, CARD_TEXT_INSET, SkeletonGrid } from '../src/components/Skeleton';
+import { useFavoriteToggle } from '../src/hooks/useFavoriteToggle';
 import { useI18n } from '../src/i18n';
 import { useAuthStore } from '../src/store/authStore';
 import { useLocationStore } from '../src/store/locationStore';
@@ -77,6 +78,7 @@ export default function Catalog(): JSX.Element {
     brand?: string;
   }>();
   const t = useI18n((state) => state.t);
+  const favorites = useFavoriteToggle();
   const { coords } = useLocationStore();
   const insets = useSafeAreaInsets();
   const signedIn = useAuthStore((state) => state.status) === 'signedIn';
@@ -350,9 +352,24 @@ export default function Catalog(): JSX.Element {
                 <View style={[styles.image, styles.placeholder]} />
               )}
 
-              <View style={styles.heart}>
-                <Icon name="favorite" size={15} color={colors.text} />
-              </View>
+              {/* Yurakcha — haqiqiy tugma (`useFavoriteToggle`); ilgari bezak edi */}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t.profile.myFavorites}
+                accessibilityState={{ selected: favorites.isFavorite(item.id) }}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  favorites.toggle(item.id);
+                }}
+                hitSlop={8}
+                style={styles.heart}
+              >
+                <Icon
+                  name={favorites.isFavorite(item.id) ? 'favoriteOn' : 'favorite'}
+                  size={15}
+                  color={favorites.isFavorite(item.id) ? colors.primary : colors.text}
+                />
+              </Pressable>
 
               {/*
                 Do'kon va masofa RASM USTIDA — maketdagidek. Ilgari ular
@@ -362,7 +379,8 @@ export default function Catalog(): JSX.Element {
                 <Icon name="location" size={11} color={colors.text} />
                 <Text style={styles.storeTagText} numberOfLines={1}>
                   {item.store.name}
-                  {item.store.distanceM !== null ? ` · ${distance(item.store.distanceM)}` : ''}
+                  {/* Juda uzoq masofa yozilmaydi (`distance` bo'sh qaytaradi) — nuqta ham osilib qolmasin */}
+                  {distance(item.store.distanceM) ? ` · ${distance(item.store.distanceM)}` : ''}
                 </Text>
               </View>
             </View>

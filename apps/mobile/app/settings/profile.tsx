@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 
-import { ApiError } from '../../src/api/client';
+import { explainError } from '../../src/api/explainError';
 import { getFullProfile, updateProfile } from '../../src/api/endpoints';
 import { Icon } from '../../src/components/Icon';
 import { AvatarPicker } from '../../src/components/profile/AvatarPicker';
@@ -96,7 +96,8 @@ export default function EditProfile(): JSX.Element {
       goBack('/profile');
     },
     onError: (err: unknown) => {
-      setError(err instanceof ApiError ? err.message : t.errors.generic);
+      // Serverning matni o'zbekcha — ekranga kod bo'yicha tarjima chiqadi
+      setError(explainError(err, t));
     },
   });
 
