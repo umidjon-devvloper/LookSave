@@ -91,6 +91,37 @@
         background: #fef2f2;
         color: #991b1b;
       }
+      /* `display: flex` brauzerning `[hidden]` qoidasini bosib qo'yadi — qaytaramiz */
+      [hidden] {
+        display: none !important;
+      }
+      .status .retry {
+        margin-inline-start: auto;
+        flex-shrink: 0;
+        appearance: none;
+        border: 1px solid currentColor;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        font-weight: 600;
+        padding: 6px 12px;
+        border-radius: 999px;
+        cursor: pointer;
+      }
+
+      /*
+        `?embed=1` — mobil ilovadagi WebView. Sarlavha ilovaning o'z panelida
+        turibdi; sahifada ikkinchi marta chiqmasin.
+      */
+      .embed header {
+        padding-top: 14px;
+      }
+      .embed header h1 {
+        display: none;
+      }
+      .embed header p {
+        font-size: 14px;
+      }
 
       .spinner {
         display: inline-block;
@@ -232,14 +263,19 @@
     </style>
   </head>
   <body>
+    <!--
+      Matnlar pastdagi skriptda, sahifa tiliga qarab yoziladi (`TEXT`).
+      Bu yerdagi qiymatlar — skript ishlaguncha ko'rinadigan bo'sh joy.
+    -->
     <header>
-      <h1>Real-time try-on</h1>
-      <p>Mahsulotni tanlang — kamera orqali o'zingizda ko'ring</p>
+      <h1 id="page-title">Live try-on</h1>
+      <p id="page-sub"></p>
     </header>
 
-    <div class="status" id="status">
-      <span class="spinner" aria-hidden="true"></span>
-      <span id="status-text">Widget va mahsulotlar yuklanmoqda…</span>
+    <div class="status" id="status" role="status">
+      <span class="spinner" id="status-spinner" aria-hidden="true"></span>
+      <span id="status-text"></span>
+      <button type="button" class="retry" id="status-retry" hidden></button>
     </div>
 
     <div class="grid" id="grid"></div>
@@ -258,33 +294,162 @@
         'use strict';
 
         /*
-         * ⚠️ API URL — kalit yo'q. `/products` ochiq endpoint, autentifikatsiya
-         * talab qilmaydi (katalog web va mobile ikkalasida ishlatiladi).
-         * `canTryOn: true` bo'lgan mahsulotlargina try-on uchun yaroqli.
+         * ⚠️ SAHIFA ILOVA TILIDA CHIQADI (2026-11-18).
+         *
+         * Ilgari hamma matn o'zbekcha edi: inglizcha telefonda ilovaning
+         * paneli «Live try-on» deb, ostidagi sahifa esa o'zbekcha chiqardi.
+         * Mobil ilova tilni `?lang=` bilan uzatadi
+         * (`apps/mobile/app/anywear.tsx`); to'g'ridan-to'g'ri brauzerda
+         * ochilsa brauzer tiliga qaraladi. To'rt til — ilova va sayt bilan
+         * bir xil: uz, ru, en, ar. Notanish til — inglizcha.
+         *
+         * Yangi matn qo'shsangiz TO'RTTALA tilga qo'shing: kalit topilmasa
+         * ekranda `undefined` chiqadi.
          */
-        var API = 'https://api.looksave.uz/v1/products?limit=24';
+        var TEXT = {
+          uz: {
+            title: "LookSave — Real vaqtda kiyib ko'rish",
+            heading: "Real vaqtda kiyib ko'rish",
+            sub: "Kiyimni tanlang va kamera orqali o'zingizda ko'ring",
+            loading: 'Vidjet va mahsulotlar yuklanmoqda…',
+            ready: "{n} ta mahsulot — bosing va o'zingizda ko'ring",
+            cta: "Kiyib ko'rish",
+            empty: "Hozircha kiyib ko'rsa bo'ladigan mahsulot yo'q",
+            loadFailed: "Mahsulotlarni yuklab bo'lmadi. Internetni tekshirib, qayta urinib ko'ring.",
+            retry: 'Qayta urinish',
+            widgetWait: 'Vidjet tayyorlanmoqda, biroz kuting…',
+            widgetFailed: 'Vidjet yuklanmadi. Internetni tekshirib, sahifani qayta oching.',
+            openFailed: "Kiyib ko'rishni ochib bo'lmadi. Qayta urinib ko'ring.",
+          },
+          ru: {
+            title: 'LookSave — Примерка в реальном времени',
+            heading: 'Примерка в реальном времени',
+            sub: 'Выберите вещь и примерьте её через камеру',
+            loading: 'Загружаем виджет и товары…',
+            ready: 'Товаров: {n} — нажмите, чтобы примерить',
+            cta: 'Примерить',
+            empty: 'Пока нет товаров для примерки',
+            loadFailed: 'Не удалось загрузить товары. Проверьте интернет и попробуйте ещё раз.',
+            retry: 'Повторить',
+            widgetWait: 'Виджет готовится, подождите…',
+            widgetFailed: 'Виджет не загрузился. Проверьте интернет и откройте страницу заново.',
+            openFailed: 'Не удалось открыть примерку. Попробуйте ещё раз.',
+          },
+          en: {
+            title: 'LookSave — Live try-on',
+            heading: 'Live try-on',
+            sub: 'Pick an item and see it on yourself through the camera',
+            loading: 'Loading the widget and products…',
+            ready: '{n} items — tap one to try it on',
+            cta: 'Try on',
+            empty: 'No items are available for live try-on yet',
+            loadFailed: 'Couldn’t load products. Check your connection and try again.',
+            retry: 'Try again',
+            widgetWait: 'Getting the widget ready, one moment…',
+            widgetFailed: 'The try-on widget didn’t load. Check your connection and reopen this page.',
+            openFailed: 'Couldn’t open the try-on. Please try again.',
+          },
+          ar: {
+            title: 'LookSave — تجربة مباشرة',
+            heading: 'تجربة مباشرة',
+            sub: 'اختر قطعة وشاهدها عليك عبر الكاميرا',
+            loading: 'جارٍ تحميل الأداة والمنتجات…',
+            ready: 'عدد المنتجات: {n} — اضغط على أي منها لتجربته',
+            cta: 'جرّب الآن',
+            empty: 'لا توجد منتجات متاحة للتجربة المباشرة حاليًا',
+            loadFailed: 'تعذّر تحميل المنتجات. تحقق من اتصالك وحاول مرة أخرى.',
+            retry: 'إعادة المحاولة',
+            widgetWait: 'جارٍ تجهيز الأداة، لحظة من فضلك…',
+            widgetFailed: 'تعذّر تحميل أداة التجربة. تحقق من اتصالك وأعد فتح الصفحة.',
+            openFailed: 'تعذّر فتح التجربة. حاول مرة أخرى.',
+          },
+        };
+
+        var params = new URLSearchParams(window.location.search);
+
+        function pickLang() {
+          var wanted = String(params.get('lang') || navigator.language || 'en')
+            .toLowerCase()
+            .slice(0, 2);
+          return Object.prototype.hasOwnProperty.call(TEXT, wanted) ? wanted : 'en';
+        }
+
+        var lang = pickLang();
+        var T = TEXT[lang];
+
+        document.documentElement.lang = lang;
+        document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+        document.title = T.title;
+        document.getElementById('page-title').textContent = T.heading;
+        document.getElementById('page-sub').textContent = T.sub;
+        if (params.get('embed') === '1') document.body.classList.add('embed');
+
+        /*
+         * ⚠️ FAQAT KIYIB KO'RSA BO'LADIGAN MAHSULOTLAR (`onlyTryon=true`).
+         *
+         * Ilgari sahifa eng yangi 24 mahsulotni olardi. 2026-11-18 da ular
+         * hammasi sumka edi (`canTryOn: false`) va sahifa boshdan-oyoq
+         * o'chiq «Try-on mavjud emas» tugmalaridan iborat chiqdi — holbuki
+         * katalogda 69 ta mos mahsulot bor edi, shunchaki ro'yxatning
+         * keyingi sahifalarida. Endi filtrni server qo'yadi va javob
+         * sahifalari oxirigacha (`MAX_PAGES` gacha) o'qiladi.
+         *
+         * Kalit yo'q: `/products` ochiq endpoint, autentifikatsiya talab
+         * qilmaydi (katalog web va mobile ikkalasida ishlatiladi).
+         */
+        var API = 'https://api.looksave.uz/v1/products';
+        var PAGE_SIZE = 50; // serverning yuqori chegarasi
+        var MAX_PAGES = 3;
+
+        /*
+         * Old kamera gavdaning yuqori qismini ko'radi: avval ustki kiyim,
+         * keyin shim, oxirida poyabzal. Guruh ichida server tartibi
+         * (yangisi oldin) saqlanadi.
+         */
+        var SLOT_RANK = { outer: 0, top: 0, bottom: 1, feet: 2 };
+
+        function slotRank(product) {
+          var rank = SLOT_RANK[product.slot];
+          return rank === undefined ? 3 : rank;
+        }
 
         var statusEl = document.getElementById('status');
         var statusText = document.getElementById('status-text');
+        var statusSpinner = document.getElementById('status-spinner');
+        var statusRetry = document.getElementById('status-retry');
         var grid = document.getElementById('grid');
         var schemaEl = document.getElementById('__product_schema');
         var widgetReady = false;
+        var widgetFailed = false;
         var pendingProduct = null;
+        /** Mahsulotlar yuklangach ko'rsatiladigan qator — vidjet xabaridan keyin shunga qaytamiz */
+        var readyText = '';
 
+        statusRetry.textContent = T.retry;
+        statusRetry.addEventListener('click', function () {
+          void loadProducts();
+        });
+
+        /*
+         * Mobil ilovadagi `money()` bilan bir xil (`apps/mobile/src/theme/format.ts`):
+         * mingliklar bo'sh joy bilan. `toLocaleString('uz-UZ')` brauzerga qarab
+         * goh «1 200 000», goh «1,200,000» berardi.
+         */
         function money(price, currency) {
-          var n = Number(price);
-          if (!isFinite(n)) return '';
-          var formatted = n.toLocaleString('uz-UZ');
-          return formatted + " so'm";
+          if (price === null || price === undefined || price === '') return '';
+          var whole = String(price).split('.')[0];
+          if (!/^\d+$/.test(whole)) return '';
+          var grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+          return !currency || currency === 'UZS' ? grouped + " so'm" : grouped + ' ' + currency;
         }
 
-        function setStatus(cls, text) {
-          statusEl.className = 'status ' + (cls || '');
+        /** `kind`: '' — kutish (aylanuvchi belgi), 'ok' yoki 'err'. */
+        function setStatus(kind, text, withRetry) {
+          statusEl.hidden = false;
+          statusEl.className = 'status' + (kind ? ' ' + kind : '');
           statusText.textContent = text;
-          if (cls === 'ok' || cls === 'err') {
-            var sp = statusEl.querySelector('.spinner');
-            if (sp) sp.style.display = 'none';
-          }
+          statusSpinner.hidden = kind !== '';
+          statusRetry.hidden = !withRetry;
         }
 
         /*
@@ -307,10 +472,9 @@
               }
             } else if (tries > 60) {
               clearInterval(iv);
-              setStatus(
-                'err',
-                "Widget yuklanmadi. Internet aloqasini tekshiring yoki VPN'ni o'chirib ko'ring.",
-              );
+              widgetFailed = true;
+              pendingProduct = null;
+              setStatus('err', T.widgetFailed);
             }
           }, 500);
         }
@@ -324,9 +488,13 @@
          * mahsulot bilan to'ldiramiz.
          */
         function openTryOn(product) {
+          if (widgetFailed) {
+            setStatus('err', T.widgetFailed);
+            return;
+          }
           if (!widgetReady) {
             pendingProduct = product;
-            setStatus('', 'Widget tayyorlanmoqda, biroz kuting…');
+            setStatus('', T.widgetWait);
             return;
           }
           try {
@@ -342,8 +510,12 @@
             schemaEl.textContent = JSON.stringify(data);
 
             window.DecartWidget.open({ mobileCamera: 'user' });
+            // «Tayyorlanmoqda…» yozuvi ochilgandan keyin osilib qolmasin
+            if (readyText) setStatus('ok', readyText);
           } catch (e) {
-            setStatus('err', 'Xatolik: ' + (e && e.message ? e.message : e));
+            // Xom xato matni odamga hech narsa demaydi — tafsiloti konsolda
+            console.error('[anywear] kiyib ko`rish ochilmadi', e);
+            setStatus('err', T.openFailed);
           }
         }
 
@@ -376,21 +548,27 @@
             meta.appendChild(store);
           }
 
+          /*
+           * ⚠️ NARX ALOHIDA `<bdi dir="ltr">` ICHIDA. Arabchada (o'ngdan chapga)
+           * bo'sh joy bilan ajratilgan raqam guruhlari teskari tartibda chizilardi:
+           * «2 000 000 so'm» ekranda «so'm 000 000 2» bo'lib chiqardi.
+           */
           var price = document.createElement('div');
           price.className = 'price';
-          price.textContent = money(p.price, p.currency);
+          var amount = document.createElement('bdi');
+          amount.dir = 'ltr';
+          amount.textContent = money(p.price, p.currency);
+          price.appendChild(amount);
           meta.appendChild(price);
 
+          // Ro'yxatda faqat kiyib ko'rsa bo'ladiganlar bor — o'chiq tugma yo'q
           var cta = document.createElement('button');
           cta.className = 'cta';
           cta.type = 'button';
-          cta.textContent = p.canTryOn ? 'Kiyib ko‘rish' : 'Try-on mavjud emas';
-          cta.disabled = !p.canTryOn;
-          if (p.canTryOn) {
-            cta.addEventListener('click', function () {
-              openTryOn(p);
-            });
-          }
+          cta.textContent = T.cta;
+          cta.addEventListener('click', function () {
+            openTryOn(p);
+          });
           meta.appendChild(cta);
 
           card.appendChild(meta);
@@ -399,10 +577,10 @@
 
         function renderProducts(list) {
           grid.innerHTML = '';
-          if (!list || list.length === 0) {
+          if (list.length === 0) {
             var empty = document.createElement('div');
             empty.className = 'empty';
-            empty.textContent = 'Hozircha mahsulot yo‘q';
+            empty.textContent = T.empty;
             grid.appendChild(empty);
             return;
           }
@@ -413,28 +591,64 @@
           grid.appendChild(frag);
         }
 
+        async function fetchPage(cursor) {
+          var url =
+            API +
+            '?onlyTryon=true&limit=' +
+            PAGE_SIZE +
+            (cursor ? '&cursor=' + encodeURIComponent(cursor) : '');
+          var res = await fetch(url, { credentials: 'omit' });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.json();
+        }
+
         async function loadProducts() {
+          setStatus('', T.loading);
           try {
-            var res = await fetch(API, { credentials: 'omit' });
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            var json = await res.json();
-            var items = (json && json.data) || [];
-            // Try-on bor mahsulotlar oldinroq
-            items.sort(function (a, b) {
-              return (b.canTryOn ? 1 : 0) - (a.canTryOn ? 1 : 0);
-            });
-            renderProducts(items);
-            setStatus(
-              'ok',
-              items.length + " ta mahsulot — kiyimni bosib o'zingizda ko'ring",
-            );
+            var items = [];
+            var cursor = null;
+            for (var page = 0; page < MAX_PAGES; page++) {
+              var json = await fetchPage(cursor);
+              items = items.concat((json && json.data) || []);
+              var meta = (json && json.meta) || {};
+              if (!meta.hasMore || !meta.nextCursor) break;
+              cursor = meta.nextCursor;
+            }
+
+            // Filtrni server qo'yadi; bu — u filtrni tanimay qolsa ham
+            // sahifada kiyib bo'lmaydigan mahsulot chiqmasligi uchun.
+            var ordered = items
+              .filter(function (p) {
+                return p && p.canTryOn;
+              })
+              .map(function (p, index) {
+                return { p: p, index: index };
+              })
+              .sort(function (a, b) {
+                return slotRank(a.p) - slotRank(b.p) || a.index - b.index;
+              })
+              .map(function (entry) {
+                return entry.p;
+              });
+
+            renderProducts(ordered);
+            if (ordered.length === 0) {
+              // Bo'sh holat matni panjaraning o'zida — ustidagi qator ortiqcha
+              readyText = '';
+              statusEl.hidden = true;
+              return;
+            }
+            readyText = T.ready.replace('{n}', String(ordered.length));
+            // Vidjet yuklanmagani haqidagi xabarni «tayyor» bilan bosib ketmaymiz
+            if (!widgetFailed) setStatus('ok', readyText);
           } catch (e) {
-            setStatus('err', 'Mahsulotlarni yuklab bo‘lmadi: ' + (e.message || e));
+            console.error('[anywear] mahsulotlar yuklanmadi', e);
+            setStatus('err', T.loadFailed, true);
           }
         }
 
         waitForWidget();
-        loadProducts();
+        void loadProducts();
       })();
     </script>
   </body>
