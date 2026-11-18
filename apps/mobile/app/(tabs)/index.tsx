@@ -34,14 +34,6 @@ import { colors, radius, spacing, text } from '../../src/theme/tokens';
  * tugmasi, pastda nom va narx. Do'kon nomi va masofa kartadan olib tashlandi —
  * deckda ular yo'q, va ikki ustunli gridda matn juda siqilib qolardi.
  */
-/*
- * «Live try-on» (kamera belgisi) saytdagi sahifani WebView'da ochadi. U hali
- * chala: matni faqat o'zbekcha, mahsulotlarda «Try-on mavjud emas» chiqadi.
- * Tayyor bo'lguncha kirish tugmasi yashirilgan — ekranning o'zi
- * (`app/anywear.tsx`) joyida, yoqish uchun shu bayroqni `true` qiling.
- */
-const LIVE_TRYON_ENABLED = false;
-
 function TrendingCard({
   product,
   onPress,
@@ -421,16 +413,20 @@ export default function Home(): JSX.Element {
             <Pressable onPress={() => router.push('/catalog')} hitSlop={8}>
               <Icon name="search" size={22} color="#FFFFFF" />
             </Pressable>
-            {LIVE_TRYON_ENABLED ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t.home.liveTryOn}
-                onPress={() => router.push('/anywear')}
-                hitSlop={8}
-              >
-                <Icon name="camera" size={22} color="#FFFFFF" />
-              </Pressable>
-            ) : null}
+            {/*
+              «Live try-on» (kamera): saytdagi sahifani WebView'da ochadi
+              (`app/anywear.tsx`). ⚠️ SARLAVHADA TURADI — egasining qarori
+              (2026-11-18). 17-noyabrda sahifa chala ko'ringani uchun uni
+              yashirgan edim; egasi qaytarishni so'radi. Yashirmang.
+            */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t.home.liveTryOn}
+              onPress={() => router.push('/anywear')}
+              hitSlop={8}
+            >
+              <Icon name="camera" size={22} color="#FFFFFF" />
+            </Pressable>
             <Pressable onPress={() => router.push('/orders')} hitSlop={8}>
               <Icon name="bell" size={22} color="#FFFFFF" />
             </Pressable>

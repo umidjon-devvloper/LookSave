@@ -45,6 +45,14 @@ export default function AnywearScreen(): JSX.Element {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const t = useI18n((state) => state.t);
+  const locale = useI18n((state) => state.locale);
+
+  /*
+   * Sahifa matnini ilova tilida chiqaradi (`lang`), sarlavhasini esa
+   * yashiradi (`embed=1`) — u shu ekranning o'z panelida turibdi.
+   * Ilgari sahifa doim o'zbekcha chiqardi (`apps/web/public/anywear.html`).
+   */
+  const pageUrl = `${ANYWEAR_URL}?lang=${locale}&embed=1`;
 
   return (
     <Screen>
@@ -67,7 +75,7 @@ export default function AnywearScreen(): JSX.Element {
 
       {WebViewComponent ? (
         <WebViewComponent
-          source={{ uri: ANYWEAR_URL }}
+          source={{ uri: pageUrl }}
           originWhitelist={['*']}
           javaScriptEnabled
           domStorageEnabled
@@ -92,7 +100,7 @@ export default function AnywearScreen(): JSX.Element {
           </Text>
           <Pressable
             accessibilityRole="button"
-            onPress={() => void Linking.openURL(ANYWEAR_URL)}
+            onPress={() => void Linking.openURL(`${ANYWEAR_URL}?lang=${locale}`)}
             style={({ pressed }) => [styles.openBtn, pressed && { opacity: 0.8 }]}
           >
             <Text style={styles.openBtnText}>Brauzerda ochish</Text>
