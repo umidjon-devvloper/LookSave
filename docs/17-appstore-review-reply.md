@@ -96,6 +96,16 @@ olib boradi).
       o'lchangan (matndagi `[60]` shu son bilan almashtiriladi).
 - [ ] **Build:** UIScene tuzatishi ichida; release build iOS 27 li iPhone VA
       iPad'da ochilgan, fonga chiqib qaytgan. Qurilma nomlari xatga yoziladi.
+      **70-build (2026-11-18, TestFlight'ga yuklangan):** lokal Xcode 27.2
+      (iOS 27.2 SDK), sahna manifesti ichida; 69-builddan Info.plist'da faqat
+      raqam va joylashuv matni farq qiladi. Arxivdagi AYNAN O'SHA JS iOS 27.0
+      simulyatorida sinalgan: iPhone'da toza o'rnatish (onboarding uch
+      slayddan «Next» bilan o'tadi → bosh sahifa) va 41 ekran; iPad'da
+      (iPhone-moslik oynasi) 41 ekran va ochilish — qulash yo'q, ko'rinib
+      turib bosilmaydigan tugma yo'q. Bu simulyator: HAQIQIY qurilmada hali
+      ochilmagan. Topshirishdan oldin TestFlight'dan o'rnatib, ilovani
+      o'chirib qayta o'rnatib, onboarding'dan o'tib ko'ring — shundan keyin
+      belgilang.
 - [x] **AI provayderi tasdiqlangan (2026-11-12).** Ikkalasi ham ishlatiladi:
       server OpenAI'ni chaqiradi, operator esa ChatGPT va Gemini'da ishlaydi.
       Matnlarda «OpenAI or Google» qoladi (tavsif, Review Notes, ilovadagi
@@ -129,11 +139,35 @@ olib boradi).
       komplektlarim, o'lchamlar, checkout, buyurtmalar, sotuvchi paneli,
       xato xabarlari. Yangi build'da inglizcha telefonda bir marta aylanib
       chiqing — shundan keyin belgilang.
-- [ ] **Bosilmaydigan tugmalar (2026-11-17, kodda — keyingi build'da).**
+- [ ] **Bosilmaydigan tugmalar (2026-11-17, build 70 da).**
       «Forgot password?», kartalardagi yurakcha, sotuvchi panelidagi
       qo'ng'iroq (uch ekranda) ishlaydigan qilindi; bosilmaydigan «Barchasi»
       yozuvlari olib tashlandi. 2-raddagi «tugmalar bosilmaydi» e'tirozi
       takrorlanmasligi uchun yangi build'da qo'lda bosib ko'ring.
+      **2026-11-18, avtomatik tekshiruv (iOS 27.0 simulyatori, XCUITest
+      `isHittable`):** kirmagan holatda 41 ekran — ko'rinib turgan, lekin
+      bosilmaydigan tugma 0 ta; kirgan xaridor va sotuvchi ekranlari (20 ta,
+      sinov ma'lumoti bilan) — pastdagi sotuvchi bandidan tashqari 0 ta. Bu
+      simulyator natijasi; qo'lda tekshiruv o'rnini bosmaydi.
+- [x] **Sotuvchi paneli: pastki menyu ostidagi tugmalar (2026-11-18, build
+      70 da).** «Products» tabidagi «Add product» tugmasi suzuvchi tab bar
+      ostida butunlay yashirin edi (ko'rinmasdi ham, bosilmasdi ham), bosh
+      ekrandagi oxirgi amal («Store settings») esa oxirigacha aylantirilganda
+      ham yarmi bilan bar ostida qolardi. Demo akkaunt aynan shu panelga
+      tushadi. Tuzatildi (`src/theme/sellerTabBar.ts`) va sinov ma'lumoti
+      bilan iPhone hamda iPad simulyatorida tekshirildi: tugma bar ustida,
+      bosiladi, shaklni ochadi; panelning olti ekrani oxirigacha
+      aylantirilganda bar ostida qolib ketadigan tugma yo'q.
+      ⚠️ Kirgach iOS «Save Password?» oynasini chiqaradi — u yopilmaguncha
+      ilovadagi hech narsa bosilmaydi. Bu tizim oynasi, ilova nuqsoni emas
+      (iPad sinovida shu oyna «hamma tugma bosilmaydi» degan soxta signal
+      bergan edi).
+- [x] **Kutilmagan xatoda ilova yopilmaydi (2026-11-18, build 70 da).** Har
+      navigatorda ekran xato chegarasi bor (`ScreenErrorBoundary`), ildizda —
+      oxirgi to'siq. Buzuq server javobi ekranni «Something went wrong · Try
+      again · Go to home» ga almashtiradi, navigatsiya ishlayveradi. Ilgari
+      bironta chegara yo'q edi: bitta buzuq mahsulot yozuvi release build'ni
+      yopardi (2.1(a)). Ataylab buzilgan mahsulot javobi bilan sinalgan.
 - [ ] **TestFlight:** tashqi sinovchilar bo'lgan bo'lsa — soni va sanalari
       xatga yoziladi; bo'lmagan bo'lsa o'sha jumla o'chiriladi.
 
