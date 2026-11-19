@@ -488,17 +488,13 @@ export default function Product({ loaderData }: Route.ComponentProps): JSX.Eleme
             <p className="mt-3 text-sm text-[#ef4444]">{error}</p>
           ) : null}
 
-          {/* Ishonch kartasi — uchta ustun */}
+          {/*
+            Ishonch kartasi — ikki ustun.
+            ⚠️ «Original mahsulot» ustuni ATAYLAB YO'Q (2026-11-19, egasining
+            qarori): sayt mahsulotning asl ekanini tekshirmaydi. Ilovadan
+            ham olib tashlangan. Qaytarib qo'shmang.
+          */}
           <div className="product-trust">
-            <div className="product-trust-item">
-              <span className="product-trust-icon">
-                <Icon name="authentic" size={18} />
-              </span>
-              <span className="product-trust-text">
-                <strong>Original</strong>
-                mahsulot
-              </span>
-            </div>
             <div className="product-trust-item">
               <span className="product-trust-icon">
                 <Icon name="delivery" size={18} />

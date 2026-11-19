@@ -281,12 +281,16 @@ export default function Cart(): JSX.Element {
           </View>
 
           <Text style={styles.sectionTitle}>{t.cart.whyTitle}</Text>
+          {/*
+            ⚠️ «Sifat kafolati · faqat original mahsulot» kartasi ATAYLAB YO'Q
+            (2026-11-19, egasining qarori): ilova mahsulotning asl ekanini
+            tekshirmaydi. Qaytarib qo'shmang.
+          */}
           <View style={styles.whyRow}>
             {(
               [
                 { icon: 'authentic', title: t.cart.whySecure, hint: t.cart.whySecureHint },
                 { icon: 'delivery', title: t.cart.whyDelivery, hint: t.cart.whyDeliveryHint },
-                { icon: 'premium', title: t.cart.whyQuality, hint: t.cart.whyQualityHint },
               ] as Array<{ icon: IconName; title: string; hint: string }>
             ).map((item) => (
               <View key={item.title} style={styles.whyCard}>

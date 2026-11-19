@@ -8,16 +8,18 @@ import { Reveal } from '@/components/Reveal';
  * ⚠️ HERO'DAGI PANELDAN FARQI BOR VA U ATAYIN:
  *   hero paneli — O'LCHOV (`1 000+`, `360°`, `100%`), ya'ni xizmat
  *   nimani va'da qilayotgani;
- *   bu qator — SABAB (original, yetkazish, tanlangan), ya'ni nega
+ *   bu qator — SABAB (yetkazish, tanlangan), ya'ni nega
  *   ishonish mumkinligi.
  * Ikkalasi bir xil ko'rinishda bo'lsa takrorlanayotgandek tuyulardi,
  * shuning uchun bu yerda raqam yo'q va ajratgich vertikal chiziq.
  *
- * Ilova bilan bir xil uchlik (`components/home/Hero.tsx` dagi `badges`).
+ * ⚠️ «Original · Tekshirilgan do'konlar» KATAGI ATAYLAB YO'Q (2026-11-19,
+ * egasining qarori). Sayt mahsulotning asl ekanini ham, do'konni ham
+ * tekshirmaydi — e'lonni sotuvchi yozadi. Xuddi shu da'vo ilovadan ham
+ * olib tashlangan. Qaytarib qo'shmang.
  */
 
 const ITEMS: Array<{ icon: IconName; title: string; hint: string }> = [
-  { icon: 'authentic', title: 'Original', hint: "Tekshirilgan do'konlar" },
   { icon: 'delivery', title: 'Yetkazish', hint: 'Shahar ichida bir kunda' },
   { icon: 'premium', title: 'Tanlangan', hint: 'Brend va mahalliy ishlab chiqaruvchi' },
 ];
@@ -38,7 +40,7 @@ export function TrustBar(): JSX.Element {
           data-landing-depth
           className="landing-trust-panel edge-beam rounded-card border border-borderStrong bg-panel/75 shadow-[0_0_44px_hsl(var(--primary)/0.14),inset_0_1px_0_rgba(255,255,255,0.045)] backdrop-blur-xl"
         >
-          <div className="grid sm:grid-cols-3">
+          <div className="grid sm:grid-cols-2">
             {ITEMS.map((item, index) => (
               <div key={item.title} className="relative flex items-center gap-5 px-8 py-6">
                 {index > 0 ? (

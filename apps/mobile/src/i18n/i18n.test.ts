@@ -56,7 +56,6 @@ describe('tarjimalar', () => {
     'marketplace.title', // brend yozuvi — deckda lotincha
     'marketplace.limited', // "Limited drops" — brend atamasi
     'home.marketplace', // hero ustidagi lotincha yozuv
-    'home.badgeAuthentic', // "100%" — raqam, tarjimasi yo'q
     'home.badgeBrands', // "PREMIUM" — inglizchada ham shu so'z
     'seller.phName', // "Chilonzor Fashion" — do'kon nomi namunasi, brend yozuvi
     'seller.phPhone', // "+998 90 123 45 67" — telefon formati, har tilda bir xil

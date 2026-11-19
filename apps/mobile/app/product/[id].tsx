@@ -166,8 +166,13 @@ export default function Product(): JSX.Element {
    */
   const canTryOn = supportsAiTryon(data.slot) && Boolean(data.images[0]);
 
+  /*
+   * ⚠️ «100% original» QATORI ATAYLAB YO'Q (2026-11-19, egasining qarori).
+   * Ilova mahsulotning asl ekanini tekshirmaydi — e'lonni sotuvchi yozadi,
+   * shuning uchun bu da'vo har mahsulot sahifasida turishi noto'g'ri edi.
+   * Qaytarib qo'shmang.
+   */
   const trust: Array<{ icon: IconName; label: string; hint: string }> = [
-    { icon: 'authentic', label: t.product.trustOriginal, hint: t.product.trustOriginalHint },
     { icon: 'reset', label: t.product.trustReturn, hint: t.product.trustReturnHint },
     { icon: 'delivery', label: t.product.trustDelivery, hint: t.product.trustDeliveryHint },
   ];
