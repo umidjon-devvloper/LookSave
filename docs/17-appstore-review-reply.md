@@ -10,9 +10,10 @@ javob xati. Review Notes — `docs/16-appstore-metadata.md` §5 da.
 > olib tashlangan (server faqat OpenAI'ni chaqiradi), avatar sehrgarida esa
 > galereyadan yuklash yo'li yo'q.
 
-## Holat (2026-11-12)
+## Holat (2026-11-19)
 
-Bitta ariza (`684aa5e7-f6e8-40a0-adfa-6fda75c0649b`) bo'yicha 5 ta rad:
+Ikki ariza bo'yicha 6 ta rad (1–5: `684aa5e7-f6e8-40a0-adfa-6fda75c0649b`;
+6: `9f8db0f2-dfdf-4f2c-88e6-31670777afeb`):
 
 | # | Sana | Build | Qurilma | Band |
 |---|---|---|---|---|
@@ -21,8 +22,16 @@ Bitta ariza (`684aa5e7-f6e8-40a0-adfa-6fda75c0649b`) bo'yicha 5 ta rad:
 | 3 | 9-okt | 26 | iPad Air (M3) | 4.3(b) + Extended Review |
 | 4 | 6-noy | 47 | iPhone 17 Pro Max | 4.3(b) + Extended Review |
 | 5 | 11-noy | 61 | iPhone 17 Pro Max, iOS 27.0.1 | 4.3(b) + Extended Review + 2.1(a) ishga tushishda qulash |
+| 6 | 19-noy | 72 | iPad Air 11" (M3) | 4.3(b) + Extended Review (boshqa band yo'q) |
 
 11-oktabrda Apple'dan aniq sabab so'ralgan — yozma javob kelmagan.
+
+**6-rad nimani ko'rsatdi.** 72-build 18-noyabrda topshirilgan (pastdagi 0-bo'lim
+ro'yxatidagi kontent bandlari bajarilmasdan). Ilova Apple'da ochilgan — qulash
+shikoyati yo'q, ya'ni UIScene tuzatishi ishlagan. Apple ishlaydigan, yangi
+dizayndagi build'ni birinchi marta ko'rdi va baribir 4.3(b) dedi: sabab kodda
+emas (bu bizning xulosamiz — Apple aniq sabab aytmagan). Aniqlashtirish xati —
+1a-bo'limda.
 
 ---
 
@@ -45,6 +54,29 @@ olib boradi).
       sehrgarining «do'kon tanlash» qadamida ro'yxat bo'lib chiqadi.
 - [ ] **Brend logotiplari.** Hamkor bo'lmagan brendlar (Nike, Adidas, Zara,
       Puma, New Balance) `/v1/brands` dan va bosh sahifadan olib tashlangan.
+- [x] **«100% original» da'vosi ilovadan olib tashlangan (2026-11-19, kodda —
+      keyingi build'da; 72-buildda HALI BOR).** Mahsulot sahifasidagi «100%
+      Original product» qatori va bo'sh savatdagi «Best quality · Authentic
+      products only» kartasi o'chirildi, lug'atdan to'rt tilda olib tashlandi
+      (`app/product/[id].tsx`, `app/(tabs)/cart.tsx`). Sabab: ilova
+      mahsulotning asl ekanini tekshirmaydi — e'lonni sotuvchi yozadi.
+      Mahsulot sahifasi iOS 27 simulyatorida ko'rilgan; savat kartasi
+      ko'rilmagan (kirgan akkaunt kerak).
+      **Veb-sayt ham (2026-11-19, kodda — jonli saytda HALI BOR):** bosh
+      sahifadagi «Original · Tekshirilgan do'konlar» katagi
+      (`apps/web/src/sections/TrustBar.tsx`) va mahsulot sahifasidagi
+      «Original mahsulot» ustuni (`apps/web/src/routes/product.tsx`)
+      olib tashlandi; lokal dev serverda ikkala sahifa ko'rilgan. Jonli
+      saytga chiqishi uchun commit asosiy repoga yetishi kerak (Vercel).
+      Saytda qolgan, tekshirilmagan da'volar (egasi hal qiladi): hero'dagi
+      «1 000+ Premium mahsulotlar» (katalogda 100 ta), «100% Xavfsiz va
+      ishonchli», «Dubay va Toshkent»; mahsulot sahifasida «14 kun ichida
+      qaytarish» (ilovada «7 kun»).
+- [ ] **E'lonlardagi begona brend nomlari.** Katalogdagi e'lonlarning bir
+      qismida begona brend nomlari va belgilari bor (5.2.1 — brend egasining
+      ruxsati talab qilinadi). Ular bo'yicha egasining qarori kerak:
+      yuqoridagi band faqat ilovaning o'z da'vosini olib tashlaydi,
+      e'lonlarning o'zi katalogda turibdi.
 - [ ] **Demo akkaunt** — 2026-11-13 dan `+998937844572` («LookSave Review»);
       eski `+998900007777` endi ishlatilmaydi. Jonli API'dan o'qilgan holati
       (2026-11-13): avatar tayyor (old · yon · orqa, kesimi bor), yuz surati
@@ -200,6 +232,66 @@ Uchrashuvda TestFlight'dagi yangi build'ni ko'rsating va shularni so'rang:
 
 ---
 
+## 1a. 6-raddan keyingi aniqlashtirish xati (2026-11-19, buildsiz)
+
+Egasining so'rovi bilan yozildi: «hozirgi do'konlar sinov uchun kiritilgan,
+dizaynning qaysi qismini o'zgartiray — aniqroq ayting». Yangi build
+yuborilmaydi, faqat javob: App Store Connect → LookSave → **App Review** →
+19-noyabrdagi xabar → **Reply**.
+
+> **Holati:** qoralama — yuborilgani tasdiqlanmagan. Yuborilgach shu yerga
+> sanasini va Apple javobini yozing.
+>
+> **Yuborishdan oldin uch jumlani tekshiring** (xatda faqat rost gap bo'lsin):
+> - «Most of the stores and some of the product listings … for testing» —
+>   egasi 2026-11-19 da aytdi: «luxury» HAQIQIY do'kon (100 mahsulotdan 71
+>   tasi uniki), qolgan do'konlar sinov. Matn shunga moslangan.
+> - Xatda do'kon nomlari keltirilmagan. Qayta topshirishdan oldin 0-bo'limdagi
+>   ikki band yopilsin: «100% original» da'vosi (kodda olib tashlangan, lekin
+>   Apple ko'rgan 72-buildda hali bor) va «e'lonlardagi begona brend nomlari».
+> - «Before the next submission we will remove all test stores and test
+>   listings» — bu VA'DA. Keyingi topshirishda Apple shuni tekshiradi;
+>   bajarilmasa 2.3.1 (chalg'ituvchi ma'lumot). Sinov do'konlari olib
+>   tashlangach ilovada BITTA do'kon qoladi.
+> - «it is not built from a template or an app builder» — ilova tayyor
+>   shablondan olinmagan bo'lsa qoladi.
+
+```
+Hello,
+
+Thank you for reviewing LookSave 1.0 (72). We will not resubmit until we have made significant changes. To make the right ones, we kindly ask for more specific guidance.
+
+1. About the content you saw
+
+Most of the stores and some of the product listings that are currently in the app were entered by our own team for testing during development. They are not final content, and we understand they should not have been in a build submitted for review. Before the next submission we will remove all test stores and test listings, so that only real stores with their real products remain.
+
+2. About the design
+
+Your message says that the app's design, content and overall concept do not provide the expected quality, but not which parts. Could you please tell us:
+
+a) Which screens or parts of the design should we change — for example Home, the catalog, the product page, the AI try-on screen, checkout or the seller panel?
+
+b) Is the test content described above the main concern, or would the app still fall under Guideline 4.3(b) after it is removed and only real stores remain?
+
+c) Were you able to see the core feature with the demo account: collecting items with "Add to Look" and generating the whole outfit on the avatar on the Try-on screen? If it did not work or took too long, please let us know.
+
+d) Is the concern that LookSave is too similar to other apps on the App Store, or is it the quality of the app itself?
+
+For context: LookSave was designed and developed by our own team; it is not built from a template or an app builder. Its purpose is to let shoppers in Uzbekistan try on a complete outfit from local stores on their own avatar before they order.
+
+If a call is easier, we would be glad to walk you through the app in an App Review Appointment.
+
+Thank you for your time and help.
+
+Best regards,
+LookSave team
+```
+
+Javob kelmasa yoki yana shablon kelsa — 1-bo'limdagi uchrashuvni so'rang
+(11-oktabrdagi yozma savollarga ham javob kelmagan).
+
+---
+
 ## 2. Qayta topshirishdagi javob xati (inglizcha)
 
 App Store Connect → ilova → rad etilgan versiya → **Reply to App Review**.
@@ -263,9 +355,10 @@ tushunilganini ko'rsatadi.
 ## 3. Qoidalar
 
 - **Tez qayta yubormang.** Apple «Do not resubmit until significant changes»
-  deb yozgan va Extended Review ogohlantirishi uch marta kelgan; takroriy
+  deb yozgan va Extended Review ogohlantirishi to'rt marta kelgan; takroriy
   rad hisobning dasturdan chiqarilishiga olib kelishi mumkin.
-- Xat yangi build bilan BIRGA yuboriladi, alohida emas.
+- Qayta topshirish xati (2-bo'lim) yangi build bilan BIRGA yuboriladi, alohida
+  emas. Aniqlashtirish so'rovi (1a-bo'lim) — buildsiz, oddiy javob sifatida.
 - Xatda faqat tekshirilgan narsa yoziladi. Sonlar (do'kon, mahsulot, sinovchi)
   yuborish kunidagi haqiqiy qiymat bo'lsin.
 - Bitta rad uchun faqat bitta apellyatsiya beriladi (App Review Board) — uni
