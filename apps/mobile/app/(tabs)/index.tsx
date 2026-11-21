@@ -19,6 +19,7 @@ import { Icon } from '../../src/components/Icon';
 import { FeaturesRow } from '../../src/components/home/FeaturesRow';
 import { Hero, HERO_HEIGHT } from '../../src/components/home/Hero';
 import { SectionHeader, StoreRow } from '../../src/components/home/Sections';
+import { StylistPanel } from '../../src/components/home/StylistPanel';
 import { Empty, ErrorView, Screen } from '../../src/components/ui';
 import { useFavoriteToggle } from '../../src/hooks/useFavoriteToggle';
 import { rtlStyles, useI18n } from '../../src/i18n';
@@ -274,6 +275,8 @@ export default function Home(): JSX.Element {
             />
 
             <View style={styles.contentSheet}>
+              <StylistPanel />
+
               <View style={styles.section}>
                 <SectionHeader title="Yangi funksiyalar" />
                 <FeaturesRow />
