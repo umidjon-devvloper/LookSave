@@ -25,11 +25,15 @@ interface Feature {
 
 const FEATURES: Feature[] = [
   { key: 'stylist', emoji: '✨', label: 'AI stilist', tag: 'Yangi', bg: '#F3E8FF', fg: '#6E2CD5', href: '/stylist' },
+  { key: 'outfit', emoji: '👗', label: 'Outfit builder', tag: "Ko'p kiyim", bg: '#EDE9FE', fg: '#5B21B6', href: '/outfit-builder' },
   { key: 'trends', emoji: '🔥', label: 'Trend radar', tag: 'Bu hafta', bg: '#FEE2E2', fg: '#B91C1C', href: '/trends' },
   { key: 'wardrobe', emoji: '🧥', label: 'Garderobim', tag: 'AI', bg: '#DBEAFE', fg: '#1D4ED8', href: '/wardrobe' },
   { key: 'visual', emoji: '📷', label: 'Rasmdan topish', tag: 'Visual', bg: '#D1FAE5', fg: '#047857', href: '/visual-search' },
   { key: 'brands', emoji: '🏷', label: 'Mahalliy brendlar', tag: 'Hub', bg: '#FEF3C7', fg: '#B45309', href: '/local-brands' },
+  { key: 'seasonal', emoji: '🌙', label: "Bayramlar", tag: 'Mavsum', bg: '#FFE4E6', fg: '#9F1239', href: '/seasonal' },
   { key: 'gift', emoji: '🎁', label: 'Sovg\'a', tag: 'Hadya', bg: '#FCE7F3', fg: '#BE185D', href: '/gift' },
+  { key: 'discount', emoji: '🎟', label: 'Vijdon kodi', tag: 'QR', bg: '#E0F2FE', fg: '#0369A1', href: '/discount-code' },
+  { key: 'loyalty', emoji: '🏆', label: 'Ballar', tag: 'Loyalty', bg: '#FEF9C3', fg: '#A16207', href: '/loyalty' },
 ];
 
 export function FeaturesRow(): JSX.Element {
