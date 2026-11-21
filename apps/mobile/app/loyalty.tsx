@@ -32,7 +32,7 @@ const CURRENT_TIER_INDEX = 0;
 
 export default function Loyalty(): JSX.Element {
   const router = useRouter();
-  const tier = TIERS[CURRENT_TIER_INDEX];
+  const tier = TIERS[CURRENT_TIER_INDEX]!;
   const next = TIERS[CURRENT_TIER_INDEX + 1];
   const toNext = next ? next.min - CURRENT_POINTS : 0;
   const progress = next ? (CURRENT_POINTS - tier.min) / (next.min - tier.min) : 1;
