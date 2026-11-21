@@ -79,16 +79,19 @@ uchun **Review Notes** matni va yangi funksiyalar inventari.
 
 ## Yangi fayllar ro'yxati (bu commit'da qo'shilgan)
 
-**Sahifalar (ekranlar):**
-- `app/compare.tsx` — ikki mahsulot taqqoslash
-- `app/stylist.tsx` — AI stilist chat
-- `app/gift.tsx` — sovg'a qilish
-- `app/trends.tsx` — trend radar
-- `app/visual-search.tsx` — rasmdan topish (kamera skelet)
-- `app/wardrobe.tsx` — shaxsiy garderob
+**Sahifalar (ekranlar) — 12 ta yangi:**
+- `app/compare.tsx` — ikki mahsulot taqqoslash (narx yashil — arzonroq)
+- `app/stylist.tsx` — AI stilist chat (chipli, OpenAI fallback)
+- `app/gift.tsx` — sovg'a qilish (anonim variant ham bor)
+- `app/trends.tsx` — trend radar (10 ta + ko'tarilayotgan ranglar)
+- `app/visual-search.tsx` — rasmdan topish (kamera UI skelet)
+- `app/wardrobe.tsx` — shaxsiy garderob (6 ta kategoriya)
 - `app/local-brands.tsx` — mahalliy brendlar hubi
-- `app/seasonal.tsx` — mavsumiy kolleksiyalar
-- `app/loyalty.tsx` — ballar va darajalar
+- `app/seasonal.tsx` — mavsumiy kolleksiyalar (Navro'z, Hayit, Ramazon…)
+- `app/loyalty.tsx` — Bronza/Kumush/Oltin/Platinum ballar
+- `app/outfit-builder.tsx` — 4 slot (yuqori, pastki, poyafzal, aksessuar)
+- `app/discount-code.tsx` — QR vijdon kodi (oflayn chegirma)
+- `app/try-on-history.tsx` — kiyintirish tarixi galereya
 
 **Komponentlar:**
 - `src/components/StoreStatusPill.tsx` — "Hozir ochiq" pill
