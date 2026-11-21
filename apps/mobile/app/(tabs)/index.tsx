@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { hasItem } from '../../src/ai/lookTray';
 import { getNearbyStores, getProducts, type ProductCard } from '../../src/api/endpoints';
 import { Icon } from '../../src/components/Icon';
+import { FeaturesRow } from '../../src/components/home/FeaturesRow';
 import { Hero, HERO_HEIGHT } from '../../src/components/home/Hero';
 import { SectionHeader, StoreRow } from '../../src/components/home/Sections';
 import { Empty, ErrorView, Screen } from '../../src/components/ui';
@@ -273,6 +274,11 @@ export default function Home(): JSX.Element {
             />
 
             <View style={styles.contentSheet}>
+              <View style={styles.section}>
+                <SectionHeader title="Yangi funksiyalar" />
+                <FeaturesRow />
+              </View>
+
               {(stores.data ?? []).length > 0 ? (
                 <View style={styles.section}>
                   <SectionHeader

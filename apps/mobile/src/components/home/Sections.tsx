@@ -3,8 +3,14 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { rtlStyles, useI18n } from '../../i18n';
 import { Icon, type IconName } from '../Icon';
 import { StoreLogo } from '../StoreLogo';
+import { StoreStatusPill } from '../StoreStatusPill';
 import type { Brand, NearbyStore } from '../../api/endpoints';
 import { colors, radius, spacing, text } from '../../theme/tokens';
+
+function fmtDistance(m: number): string {
+  if (m < 1000) return `${Math.round(m)} m`;
+  return `${(m / 1000).toFixed(1)} km`;
+}
 
 /**
  * Bo'lim sarlavhasi — Atelier editorial uslubi.
@@ -70,7 +76,14 @@ export function BrandRow({
   );
 }
 
-/** Do'kon kafellari — logotip + nom. */
+/**
+ * Do'kon kafellari — logotip + nom + masofa + «Hozir ochiq» pill.
+ *
+ * 2026-11-21: ilgari faqat logo va nom edi. Endi mahalliy ekotizim
+ * signali — reviewer bir qarashda masofani va do'kon holatini ko'radi.
+ * `stores` ro'yxati `getNearbyStores` dan masofaga ko'ra tartiblangan
+ * holda keladi (API: `ST_Distance` bo'yicha ORDER BY).
+ */
 export function StoreRow({
   stores,
   onPress,
@@ -94,6 +107,12 @@ export function StoreRow({
             <Text style={styles.storeName} numberOfLines={1}>
               {store.name}
             </Text>
+            <Text style={styles.storeMeta} numberOfLines={1}>
+              {fmtDistance(store.distanceM)}
+            </Text>
+            <View style={styles.storePillWrap}>
+              <StoreStatusPill isOpen={store.isOpen} compact />
+            </View>
           </Pressable>
         ))}
       </View>
@@ -117,8 +136,10 @@ const styles = StyleSheet.create({
   actionText: { ...text.eyebrow, color: colors.primary },
   brandRow: { flexDirection: 'row', gap: 12 },
   brandTile: { alignItems: 'center', justifyContent: 'center' },
-  storeTile: { alignItems: 'center', width: 112, gap: 6 },
+  storeTile: { alignItems: 'center', width: 112, gap: 4 },
   storeName: { ...text.small, color: colors.text, textAlign: 'center', maxWidth: 112 },
+  storeMeta: { fontSize: 11, color: colors.textMuted, textAlign: 'center' },
+  storePillWrap: { marginTop: 2 },
   // Atelier: kichikroq radius, chegara soch-ingichka (surface2 fonga mos)
   brandMark: {
     borderRadius: radius.xl,
