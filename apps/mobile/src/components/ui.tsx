@@ -14,6 +14,7 @@ import { Icon, type IconName } from './Icon';
 import { ApiError } from '../api/client';
 import { explainError } from '../api/explainError';
 import { useI18n } from '../i18n';
+import { APP_MAX_WIDTH, useIsTablet } from '../theme/responsive';
 import { colors, radius, spacing, text } from '../theme/tokens';
 
 /**
@@ -279,12 +280,45 @@ export function Field({
   );
 }
 
+/**
+ * Har bir sahifaning ildiz konteyneri.
+ *
+ * iPhone'da: to'liq ekran, krem-lavender fon.
+ *
+ * iPad'da (`useIsTablet()` true bo'lganda): fon to'liq ekranda, lekin
+ * kontent markazda `APP_MAX_WIDTH` (520pt) kengligida ushlab turiladi.
+ * Chetda ingichka bo'sh polosalar qoladi — moda-jurnali hoshiasi, bo'sh joy
+ * emas. Bu "mobile-first" niyatni iPad'da ham buzmaydi va reviewer iPad
+ * Air 11" (reviewer qurilmasi) da kiyim rasmlari cho'zilib ketgan emas,
+ * tozalab oluvchi balandlikda ko'rinadi.
+ *
+ * ⚠️ Fon RANG'I TASHQI qatlamda; CHEKLANGAN kenglik ichki qatlamda — chetdagi
+ * hoshiada ham bg rangi ko'rinadi, oq polosa paydo bo'lmaydi.
+ */
 export function Screen({ children }: { children: ReactNode }): JSX.Element {
-  return <View style={styles.screen}>{children}</View>;
+  const isTablet = useIsTablet();
+
+  if (!isTablet) {
+    return <View style={styles.screen}>{children}</View>;
+  }
+
+  return (
+    <View style={styles.screen}>
+      <View style={styles.tabletCenter}>{children}</View>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
+  // iPad: markazda 520pt kenglikda ushlab turadigan konteyner. Chetdagi
+  // polosalar `screen` ning bg rangi bilan to'ladi — oq joy ochilmaydi.
+  tabletCenter: {
+    flex: 1,
+    width: '100%',
+    maxWidth: APP_MAX_WIDTH,
+    alignSelf: 'center',
+  },
   center: {
     flex: 1,
     alignItems: 'center',

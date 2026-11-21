@@ -9,13 +9,16 @@
     "userInterfaceStyle": "light",
     "_comment_newArch": "SDK 54 dan boshlab yangi arxitektura (Fabric/bridgeless) MAJBURIY: react-native-reanimated 4 va boshqa SDK 54 native kutubxonalari eski arxitekturada umuman qurilmaydi (`assertNewArchitectureEnabledTask` ishdan bo'shaydi). Ilgari expo-gl eski arxitekturani talab qilardi, lekin u 2026-10-31 da butunlay olib tashlandi (PhotoSwipe RN View'ga ko'chirildi).",
     "newArchEnabled": true,
-    "backgroundColor": "#F7F2EA",
+    "_comment_backgroundColor": "Splash → ilova o'tishida rang sakramasin: tokens.ts dagi `colors.bg` bilan mos (#FBFAFF — lavender-oq). Ilgari krem (#F7F2EA) edi, lekin palitra binafsha asosga ko'chgach krem + lavender ikki tomoni ekranda bir soniya ko'rinardi.",
+    "backgroundColor": "#FBFAFF",
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
       "bundleIdentifier": "com.looksave.looksave",
-      "supportsTablet": false,
+      "_comment_supportsTablet": "2026-11-20: oldingi 72-build iPad Air 11\" (M3) da 4.3(b) bilan rad etilgan sabablaridan biri — ilova iPad'da «iPhone compatibility» kichkina oynasida ochilardi (supportsTablet=false). Endi TRUE: iPad'da to'liq ekranda, portret rejimida, ichki max-width container bilan (qarang: `src/theme/responsive.ts`).",
+      "supportsTablet": true,
+      "requireFullScreen": true,
       "infoPlist": {
         "NSCameraUsageDescription": "LookSave uses the camera to take a photo of your face and body so it can build your try-on avatar. The photo is stored on our servers and sent to an external AI service to generate the avatar. You can delete it in the app at any time.",
         "NSPhotoLibraryUsageDescription": "LookSave accesses your photo library only when you choose a photo — for example, your own photo for the try-on avatar, a profile picture, or, if you are a seller, your store logo and product photos. The selected photo is stored on our servers and used only for that purpose. You can delete it at any time.",
@@ -23,19 +26,19 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSMicrophoneUsageDescription": "LookSave does not record audio. The camera is used only to take photos for your try-on avatar."
       },
-      "buildNumber": "70"
+      "buildNumber": "72"
     },
     "android": {
       "package": "com.looksave.looksave",
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo-mark.png",
-        "backgroundColor": "#F7F2EA"
+        "backgroundColor": "#FBFAFF"
       },
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
       ],
-      "versionCode": 24
+      "versionCode": 26
     },
     "plugins": [
       "expo-router",

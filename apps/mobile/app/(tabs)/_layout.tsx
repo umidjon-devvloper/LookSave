@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '../../src/components/Icon';
@@ -8,6 +8,7 @@ import { withScreenErrorBoundary } from '../../src/components/ScreenErrorBoundar
 import { useNotificationOpen } from '../../src/hooks/usePush';
 import { useI18n } from '../../src/i18n';
 import { useLookStore } from '../../src/store/lookStore';
+import { APP_MAX_WIDTH, useIsTablet } from '../../src/theme/responsive';
 import { colors, radius, text } from '../../src/theme/tokens';
 
 /**
@@ -47,6 +48,10 @@ function PremiumTabBar({
 }: BottomTabBarProps): JSX.Element {
   const insets = useSafeAreaInsets();
   const t = useI18n((state) => state.t);
+  // iPad: tab bar ham kontent bilan bir xil 520pt kenglikda, markazda. Aks
+  // holda ekran contenti markazda 520pt da bo'lsa, lekin tab bar butun
+  // 820pt da bo'lsa, ko'rinish yirtiq bo'ladi.
+  const isTablet = useIsTablet();
   /*
    * «Look» bilan yig'ilgan kiyimlar soni — markaziy tugmada.
    *
@@ -62,6 +67,7 @@ function PremiumTabBar({
       style={[
         styles.tabDock,
         { paddingBottom: Math.max(insets.bottom, 8) },
+        isTablet && styles.tabDockTablet,
       ]}
       pointerEvents="box-none"
     >
@@ -159,7 +165,6 @@ function PremiumTabBar({
 
 export default function TabsLayout(): JSX.Element {
   const t = useI18n((state) => state.t);
-  const dark = useColorScheme() === 'dark';
 
   // Bildirishnoma bosilishi — nega aynan shu yerda, `usePush.ts` da yozilgan
   useNotificationOpen();
@@ -173,7 +178,12 @@ export default function TabsLayout(): JSX.Element {
         headerStyle: { backgroundColor: colors.bg },
         headerTintColor: colors.text,
         headerShadowVisible: false,
-        sceneStyle: { backgroundColor: dark ? '#0A0812' : colors.bg },
+        // ⚠️ Ilova to'liq yorug' — `userInterfaceStyle: "light"` (app.json) bu
+        // tanlovni expo tomonidan majburiy qiladi. Ilgari bu yerda
+        // `useColorScheme() === 'dark'` ga qarab fonni qora qilardi — agar
+        // u konfiguratsiya bir sababdan ishlamay qolsa yoki OS qurilma
+        // mavzusini o'zgartirsa, ilova noto'g'ri qora ko'rinardi.
+        sceneStyle: { backgroundColor: colors.bg },
       }}
     >
       <Tabs.Screen
@@ -235,9 +245,18 @@ const styles = StyleSheet.create({
     zIndex: 100,
     elevation: 10,
   },
+  // iPad: dock to'liq kenglikda qoladi (pastdagi xavfsiz zona uchun), lekin
+  // ichidagi `tabBar` markazda APP_MAX_WIDTH kengligida chiziladi.
+  tabDockTablet: {
+    alignItems: 'center',
+  },
   tabBar: {
     flexDirection: 'row',
     marginHorizontal: 16,
+    // iPad'da bu kenglik ichida Pressable'lar flex:1 bilan yoyiladi
+    maxWidth: APP_MAX_WIDTH - 32,
+    width: '100%',
+    alignSelf: 'center',
     paddingTop: 8,
     height: 72,
     borderRadius: radius.xxl,
@@ -246,8 +265,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     // overflow 'visible' — markaziy AI tugmasi tab bar ustiga chiqib to'liq ko'rinishi uchun
     overflow: 'visible',
-    shadowColor: '#27134A',
-    shadowOpacity: 0.12,
+    // Ink soya (ilgari binafsha #27134A — oq fonda sun'iy ko'rinardi)
+    shadowColor: '#15131E',
+    shadowOpacity: 0.1,
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 10 },
     elevation: 10,

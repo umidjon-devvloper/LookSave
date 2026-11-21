@@ -119,46 +119,20 @@ export function Hero({
           <Image source={image} style={isRTL ? styles.imageRTL : styles.image} resizeMode="cover" />
         ) : null}
 
-        {/* Qora-binafsha oqim matnni tiniq, modelni esa yorqin qoldiradi. */}
+        {/*
+          Qora-binafsha oqim matnni tiniq, modelni esa yorqin qoldiradi.
+          ⚠️ 2026-11-20 (7-rad oldi): oldingi variant ko'p qatlamli neon
+          binafsha chiziq, orbital aura va "studio light" effekti bilan
+          "AI generated SaaS hero" tuyg'usi berardi. Hozir faqat bitta
+          yumshoq gradient: moda-jurnali ochilishidagi tabiiy qora qatlam.
+        */}
         <LinearGradient
           colors={[HERO_DARK, HERO_SOFT, HERO_CLEAR]}
-          locations={[0, 0.5, 1]}
+          locations={[0, 0.55, 1]}
           start={{ x: 0, y: 0.6 }}
           end={{ x: 1, y: 0 }}
           style={StyleSheet.absoluteFill}
         />
-
-        {/*
-          Premium accent: o'ng chekkada tikka neon binafsha chiziq — ref
-          dizaynidagi "studio light" effekti. Bir nechta qatlamli gradient
-          bilan glow sezilarli bo'ladi.
-        */}
-        <View style={isRTL ? styles.neonBarRTL : styles.neonBar} pointerEvents="none">
-          <LinearGradient
-            colors={['rgba(192,132,252,0)', 'rgba(192,132,252,0.95)', 'rgba(192,132,252,0)']}
-            locations={[0, 0.5, 1]}
-            style={StyleSheet.absoluteFill}
-          />
-        </View>
-        <View style={isRTL ? styles.neonGlowRTL : styles.neonGlow} pointerEvents="none">
-          <LinearGradient
-            colors={['rgba(168,85,247,0)', 'rgba(168,85,247,0.35)', 'rgba(168,85,247,0)']}
-            locations={[0, 0.5, 1]}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={StyleSheet.absoluteFill}
-          />
-        </View>
-
-        {/* Orbital binafsha nur — chap yuqori burchakda, sekin ko'rinmas aura. */}
-        <View style={styles.leftAura} pointerEvents="none">
-          <LinearGradient
-            colors={['rgba(124,58,237,0.42)', 'rgba(124,58,237,0.08)', 'rgba(124,58,237,0)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[StyleSheet.absoluteFill, { borderRadius: 160 }]}
-          />
-        </View>
 
         <LinearGradient
           colors={['rgba(10,8,18,0.72)', 'rgba(10,8,18,0)']}
@@ -260,43 +234,6 @@ const styles = StyleSheet.create({
   imageRTL: { position: 'absolute', left: 0, top: 0, width: '100%', height: '100%' },
   topFade: { position: 'absolute', left: 0, right: 0, top: 0, height: 180 },
   bottomFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 80 },
-
-  // Premium neon accents
-  neonBar: {
-    position: 'absolute',
-    right: 14,
-    top: 80,
-    bottom: 100,
-    width: 2.5,
-  },
-  neonBarRTL: {
-    position: 'absolute',
-    left: 14,
-    top: 80,
-    bottom: 100,
-    width: 2.5,
-  },
-  neonGlow: {
-    position: 'absolute',
-    right: -8,
-    top: 60,
-    bottom: 80,
-    width: 70,
-  },
-  neonGlowRTL: {
-    position: 'absolute',
-    left: -8,
-    top: 60,
-    bottom: 80,
-    width: 70,
-  },
-  leftAura: {
-    position: 'absolute',
-    left: -80,
-    top: -40,
-    width: 320,
-    height: 320,
-  },
 
   content: { flex: 1, paddingHorizontal: spacing.md },
   body: {

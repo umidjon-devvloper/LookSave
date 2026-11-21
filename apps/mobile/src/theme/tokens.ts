@@ -71,9 +71,13 @@ export const fonts = {
   bold: 'Inter_700Bold',
 
   // Display — Fraunces (editorial serif, "moda jurnali tili")
-  display: 'Inter_700Bold',
-  displayItalic: 'Inter_600SemiBold',
-  displaySemibold: 'Inter_700Bold',
+  // ⚠️ Shriftlar `app/_layout.tsx` da `useFonts` ga ro'yxatlanadi: yangi
+  // oila qo'shsangiz o'sha ro'yxatga ham qo'shing. Fraunces 500 Medium
+  // (display, sarlavha) va 600 SemiBold (narx, wordmark) — ikki vazn
+  // hero/h1/h2 da tortish farqini beradi.
+  display: 'Fraunces_500Medium',
+  displayItalic: 'Fraunces_500Medium_Italic',
+  displaySemibold: 'Fraunces_600SemiBold',
 } as const;
 
 /**

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Dimensions, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { matches } from '../../src/ai/lookTray';
@@ -14,6 +14,7 @@ import { useI18n } from '../../src/i18n';
 import { useAuthStore } from '../../src/store/authStore';
 import { useLookStore } from '../../src/store/lookStore';
 import { money } from '../../src/theme/format';
+import { APP_MAX_WIDTH } from '../../src/theme/responsive';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 import { goBack } from '../../src/navigation/back';
 
@@ -24,9 +25,12 @@ import { goBack } from '../../src/navigation/back';
  * tipografik blok. Dark overlay olib tashlandi: rasm ustida oq pill
  * tugmalar va krem fonga oqadigan pastki chekka. Narx serifda —
  * karta ichidagi eng muhim fakt.
+ *
+ * ⚠️ iPad'da rasm BALANDLIGI oyna kengligidan hisoblansa, 820 × 1.15 = 943pt
+ * chiqadi va kiyim yarmidan yuqorisi kesiladi. `useWindowDimensions` qaytargan
+ * oyna kengligi `APP_MAX_WIDTH` bilan cheklanadi — demak iPad'da ham iPhone'dagi
+ * nisbat (karta ko'rinishi 520 × 598pt) saqlanadi.
  */
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const IMAGE_HEIGHT = Math.round(SCREEN_WIDTH * 1.15);
 
 // colors.bg = #F7F2EA — krem rangning rgba'si gradient'lar uchun
 const CREAM_CLEAR = 'rgba(247,242,234,0)';
@@ -99,6 +103,11 @@ export default function Product(): JSX.Element {
   const queryClient = useQueryClient();
   const t = useI18n((state) => state.t);
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
+  // iPad'da oyna 820pt — `Screen` esa 520pt markazda ushlab turadi. Rasm shu
+  // chegaraga mos bo'lishi uchun kenglikni `APP_MAX_WIDTH` bilan cheklaymiz.
+  const imageWidth = Math.min(windowWidth, APP_MAX_WIDTH);
+  const imageHeight = Math.round(imageWidth * 1.15);
   const [variantIndex, setVariantIndex] = useState(0);
   const [size, setSize] = useState<string | null>(null);
   const [cartError, setCartError] = useState<string | null>(null);
@@ -190,7 +199,7 @@ export default function Product(): JSX.Element {
             pagingEnabled
             showsHorizontalScrollIndicator={false}
             onScroll={(event) =>
-              setImageIndex(Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH))
+              setImageIndex(Math.round(event.nativeEvent.contentOffset.x / imageWidth))
             }
             scrollEventThrottle={16}
           >
@@ -202,7 +211,11 @@ export default function Product(): JSX.Element {
                   accessibilityLabel={t.product.zoomImage}
                   onPress={() => setZoomedImage(url)}
                 >
-                  <Image source={{ uri: url }} style={styles.image} resizeMode="cover" />
+                  <Image
+                    source={{ uri: url }}
+                    style={[styles.image, { width: imageWidth, height: imageHeight }]}
+                    resizeMode="cover"
+                  />
                 </Pressable>
               ))
             ) : (
@@ -520,7 +533,11 @@ export default function Product(): JSX.Element {
             centerContent
           >
             {zoomedImage ? (
-              <Image source={{ uri: zoomedImage }} style={styles.zoomImage} resizeMode="contain" />
+              <Image
+                source={{ uri: zoomedImage }}
+                style={[styles.zoomImage, { width: windowWidth, height: windowWidth * 1.4 }]}
+                resizeMode="contain"
+              />
             ) : null}
           </ScrollView>
 
@@ -543,7 +560,8 @@ const styles = StyleSheet.create({
   content: { paddingBottom: spacing.xxl },
 
   hero: { position: 'relative' },
-  image: { width: SCREEN_WIDTH, height: IMAGE_HEIGHT, backgroundColor: colors.surface2 },
+  // Rasm o'lchami komponent ichida dinamik beriladi (iPad'da APP_MAX_WIDTH).
+  image: { backgroundColor: colors.surface2 },
   imagePlaceholder: { borderBottomWidth: 1, borderColor: colors.border },
   topFade: { position: 'absolute', left: 0, right: 0, top: 0 },
   bottomFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 60 },
@@ -721,10 +739,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  zoomImage: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_WIDTH * 1.4,
-  },
+  // Zoom modal to'liq ekranni egallaydi (`Screen` konteyneridan tashqarida),
+  // shuning uchun rasm o'lchami komponent ichida `windowWidth` dan hisoblanadi.
+  zoomImage: {},
   zoomClose: {
     position: 'absolute',
     right: spacing.md,
