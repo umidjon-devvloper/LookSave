@@ -30,11 +30,21 @@ import { colors, radius, spacing, text } from '../src/theme/tokens';
  */
 
 type Role = 'user' | 'assistant';
+interface StylistProduct {
+  id: string;
+  title: string;
+  price: string;
+  currency: string;
+  image: string | null;
+  slot?: string;
+  storeId?: string;
+  storeName?: string;
+}
 interface Msg {
   id: string;
   role: Role;
   text: string;
-  products?: Array<{ id: string; title: string; price: string; currency: string; image: string | null }>;
+  products?: StylistProduct[];
 }
 
 const INTRO: Msg = {
@@ -48,7 +58,7 @@ const CHIPS = ["To'y uchun", "Ish uchun", "Uyg'oq kun", 'Sport', 'Sayohat', 'Uch
 
 async function askStylist(prompt: string): Promise<Msg> {
   try {
-    const res = await api<{ answer: string; products: Msg['products'] }>('/ai/stylist', {
+    const res = await api<{ answer: string; products: StylistProduct[] }>('/ai/stylist', {
       method: 'POST',
       body: { prompt },
     });
@@ -59,11 +69,11 @@ async function askStylist(prompt: string): Promise<Msg> {
       products: res.products,
     };
   } catch {
-    // Mock javob — endpoint hali tayyor emas
+    // API hali tayyor emas yoki tarmoq uzilgan — foydalanuvchiga tushunarli xabar
     return {
       id: String(Date.now()),
       role: 'assistant',
-      text: `«${prompt}» bo'yicha tavsiya: katalogda yoqimli variantlar bor. Keyingi versiyada sizga aniq mahsulotlar taqdim etiladi.`,
+      text: `Kechirasiz, hozir stilist bilan aloqa yo'q. Biroz o'tib qayta urinib ko'ring.`,
     };
   }
 }
@@ -176,15 +186,20 @@ function Bubble({ msg, onProduct }: { msg: Msg; onProduct: (id: string) => void 
         <Text style={[styles.bubbleText, isUser && styles.bubbleTextUser]}>{msg.text}</Text>
         {msg.products && msg.products.length > 0 ? (
           <View style={styles.products}>
-            {msg.products.slice(0, 3).map((p) => (
+            {msg.products.map((p) => (
               <Pressable key={p.id} style={styles.productCard} onPress={() => onProduct(p.id)}>
                 {p.image ? (
-                  <Image source={{ uri: p.image }} style={styles.productImg} resizeMode="contain" />
+                  <Image source={{ uri: p.image }} style={styles.productImg} resizeMode="cover" />
                 ) : (
                   <View style={[styles.productImg, { backgroundColor: colors.surface2 }]} />
                 )}
-                <Text style={styles.productName} numberOfLines={2}>{p.title}</Text>
-                <Text style={styles.productPrice}>{money(p.price, p.currency)}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.productName} numberOfLines={2}>{p.title}</Text>
+                  {p.storeName ? (
+                    <Text style={styles.productStore} numberOfLines={1}>{p.storeName}</Text>
+                  ) : null}
+                  <Text style={styles.productPrice}>{money(p.price, p.currency)}</Text>
+                </View>
               </Pressable>
             ))}
           </View>
@@ -229,9 +244,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgElevated,
     borderRadius: radius.md,
   },
-  productImg: { width: 48, height: 48, borderRadius: radius.sm },
-  productName: { flex: 1, fontSize: 12, color: colors.text, fontWeight: '500' },
-  productPrice: { fontSize: 12, color: colors.primary, fontWeight: '700' },
+  productImg: { width: 64, height: 64, borderRadius: radius.sm, backgroundColor: colors.surface2 },
+  productName: { fontSize: 13, color: colors.text, fontWeight: '600' },
+  productStore: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
+  productPrice: { fontSize: 13, color: colors.primary, fontWeight: '700', marginTop: 4 },
   chips: {
     paddingVertical: spacing.xs,
   },

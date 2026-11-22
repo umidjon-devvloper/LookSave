@@ -222,6 +222,20 @@ const envSchema = z.object({
     .default('high'),
 
   /*
+   * ⚠️ MATN MODELI — AI stilist uchun.
+   *
+   * Rasm modelidan ALOHIDA, chunki ular turli oilalar va turli
+   * `chat/completions` oqimida yashaydi. Sukut: `gpt-4o-mini` — eng arzon,
+   * JSON mode'ni qo'llaydi va o'zbek/rus/ingliz tillarini yetarli tushunadi.
+   * Chaqiruv ~800 input + ~300 output tokeni atrofida, ya'ni har stilist
+   * so'rovi $0.001 dan kam.
+   *
+   * ⚠️ BO'SH BO'LSA stilist qoidalar asosida ishlaydi (fallback), to'xtab
+   * qolmaydi. Shu sababli bu yerda `required` emas.
+   */
+  OPENAI_TEXT_MODEL: z.string().default('gpt-4o-mini'),
+
+  /*
    * ⚠️ KUNLIK CHEGARA — PUL HIMOYASI. Har bir yasalgan surat pul turadi,
    * kesh esa faqat TAKRORIY so'rovni to'sadi: foydalanuvchi har safar yangi
    * kiyimni so'rasa har biri alohida to'lanadi. Chegarasiz bitta hisob bir

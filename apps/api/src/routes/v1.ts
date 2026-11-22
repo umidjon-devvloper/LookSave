@@ -6,6 +6,7 @@ import { pool } from '../db/pool';
 import { sendData } from '../http/respond';
 import { route } from '../http/validate';
 import { findActiveBanners } from '../admin/banners';
+import { buildOutfit } from '../catalog/stylist';
 
 export const v1Router: Router = Router();
 
@@ -131,6 +132,35 @@ v1Router.get(
     async (input, _req, res) => {
       res.setHeader('Cache-Control', 'public, max-age=60');
       sendData(res, await findActiveBanners(input.query.audience));
+    },
+  ),
+);
+
+/**
+ * POST /v1/ai/stylist — AI stilist komplekt tavsiyasi.
+ *
+ * Kirish: `{ prompt: string }` — foydalanuvchi yozgan maqsad yoki vaziyat
+ * (masalan "To'y uchun", "Ish uchun", "Ko'k ko'ylak qidiryapman").
+ *
+ * Chiqish: `{ answer: string, products: OutfitItem[] }` — stilistning
+ * bir-ikki jumla javobi va DB'dan tanlangan 2-4 ta mahsulot, iloji
+ * boricha turli do'konlardan (`catalog/stylist.ts`).
+ *
+ * ⚠️ AUTH YO'Q — stilist har bir foydalanuvchiga ochiq. Agar kunlik
+ * chegara kerak bo'lsa, `TRYON_DAILY_LIMIT` ga o'xshash o'zgaruvchi
+ * `catalog/stylist.ts` da qo'shiladi.
+ */
+v1Router.post(
+  '/ai/stylist',
+  route(
+    {
+      body: z.object({
+        prompt: z.string().min(1).max(300),
+      }),
+    },
+    async (input, _req, res) => {
+      const result = await buildOutfit(input.body.prompt);
+      sendData(res, result);
     },
   ),
 );
