@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getTryonHistory } from '../src/api/endpoints';
 import { Icon } from '../src/components/Icon';
@@ -27,6 +28,7 @@ function fmtDate(iso: string): string {
 }
 
 export default function TryOnHistoryPage(): JSX.Element {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { data = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['tryon-history'],
@@ -35,7 +37,7 @@ export default function TryOnHistoryPage(): JSX.Element {
 
   return (
     <Screen>
-      <View style={styles.head}>
+      <View style={[styles.head, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={() => goBack('/(tabs)')} hitSlop={10}>
           <Icon name="back" size={24} color={colors.text} />
         </Pressable>

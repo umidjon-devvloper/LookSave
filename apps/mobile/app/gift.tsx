@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '../src/components/Icon';
 import { Button, Screen } from '../src/components/ui';
@@ -16,6 +17,7 @@ import { colors, radius, spacing, text } from '../src/theme/tokens';
  * bosib shu sahifaga tushadi.
  */
 export default function Gift(): JSX.Element {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
@@ -26,7 +28,7 @@ export default function Gift(): JSX.Element {
 
   return (
     <Screen>
-      <View style={styles.head}>
+      <View style={[styles.head, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={() => goBack('/(tabs)')} hitSlop={10}>
           <Icon name="back" size={24} color={colors.text} />
         </Pressable>

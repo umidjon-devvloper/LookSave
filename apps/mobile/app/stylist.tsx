@@ -1,16 +1,16 @@
 import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   FlatList,
   Image,
-  KeyboardAvoidingView,
-  Platform,
+  Keyboard,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { api } from '../src/api/client';
 import { Icon } from '../src/components/Icon';
@@ -70,10 +70,28 @@ async function askStylist(prompt: string): Promise<Msg> {
 
 export default function Stylist(): JSX.Element {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Msg[]>([INTRO]);
   const [busy, setBusy] = useState(false);
+  const [kbHeight, setKbHeight] = useState(0);
   const listRef = useRef<FlatList<Msg>>(null);
+
+  // iOS 27 simulyatorida `KeyboardAvoidingView` xato ishlaydi —
+  // klaviatura ochilgan vaqtda qo'lda `paddingBottom`ni klaviatura
+  // balandligiga tenglaymiz. Yopiq bo'lsa — pastki safe-area.
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardWillShow', (e) => {
+      setKbHeight(e.endCoordinates.height);
+    });
+    const hide = Keyboard.addListener('keyboardWillHide', () => setKbHeight(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
+  const bottomPad = kbHeight > 0 ? spacing.sm : insets.bottom + spacing.sm;
 
   const send = async (text: string): Promise<void> => {
     if (!text.trim() || busy) return;
@@ -92,7 +110,7 @@ export default function Stylist(): JSX.Element {
 
   return (
     <Screen>
-      <View style={styles.head}>
+      <View style={[styles.head, { paddingTop: insets.top + spacing.sm }]}>
         <Pressable onPress={() => goBack('/(tabs)')} hitSlop={10}>
           <Icon name="back" size={24} color={colors.text} />
         </Pressable>
@@ -103,34 +121,31 @@ export default function Stylist(): JSX.Element {
         <View style={{ width: 24 }} />
       </View>
 
-      <FlatList
-        ref={listRef}
-        data={messages}
-        keyExtractor={(m) => m.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => <Bubble msg={item} onProduct={(id) => router.push(`/product/${id}` as any)} />}
-      />
-
-      <View style={styles.chips}>
+      <View style={{ flex: 1, paddingBottom: kbHeight }}>
         <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={CHIPS}
-          keyExtractor={(c) => c}
-          contentContainerStyle={{ gap: spacing.xs, paddingHorizontal: spacing.md }}
-          renderItem={({ item }) => (
-            <Pressable style={styles.chip} onPress={() => void send(item)}>
-              <Text style={styles.chipText}>{item}</Text>
-            </Pressable>
-          )}
+          ref={listRef}
+          data={messages}
+          keyExtractor={(m) => m.id}
+          contentContainerStyle={styles.list}
+          renderItem={({ item }) => <Bubble msg={item} onProduct={(id) => router.push(`/product/${id}` as any)} />}
         />
-      </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-      >
-        <View style={styles.inputRow}>
+        <View style={styles.chips}>
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={CHIPS}
+            keyExtractor={(c) => c}
+            contentContainerStyle={{ gap: spacing.xs, paddingHorizontal: spacing.md }}
+            renderItem={({ item }) => (
+              <Pressable style={styles.chip} onPress={() => void send(item)}>
+                <Text style={styles.chipText}>{item}</Text>
+              </Pressable>
+            )}
+          />
+        </View>
+
+        <View style={[styles.inputRow, { paddingBottom: bottomPad }]}>
           <TextInput
             style={styles.input}
             placeholder="Savol yozing…"
@@ -148,7 +163,7 @@ export default function Stylist(): JSX.Element {
             <Text style={styles.sendText}>↑</Text>
           </Pressable>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Screen>
   );
 }

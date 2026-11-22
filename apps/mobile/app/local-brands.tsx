@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getBrands, type Brand } from '../src/api/endpoints';
 import { Icon } from '../src/components/Icon';
@@ -17,6 +18,7 @@ import { colors, radius, spacing, text } from '../src/theme/tokens';
  * emas, Uzbekistonlik dizaynerlarga joy.
  */
 export default function LocalBrands(): JSX.Element {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { data: brands = [], isLoading } = useQuery({
     queryKey: ['brands'],
@@ -25,7 +27,7 @@ export default function LocalBrands(): JSX.Element {
 
   return (
     <Screen>
-      <View style={styles.head}>
+      <View style={[styles.head, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={() => goBack('/(tabs)')} hitSlop={10}>
           <Icon name="back" size={24} color={colors.text} />
         </Pressable>

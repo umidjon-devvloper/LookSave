@@ -201,6 +201,24 @@ function AppShell(): JSX.Element {
             name="settings/delete-account"
             options={{ title: t.profile.deleteAccount }}
           />
+          {/*
+            Bosh sahifa «Yangi funksiyalar» lentasidan ochiladigan sahifalar.
+            Har biri o'z custom header'ini chizadi (orqaga + sarlavha),
+            shuning uchun bu yerda ildiz Stack sarlavhasini o'chiramiz —
+            aks holda IKKITA sarlavha va ikkita «orqaga» tugmasi chiqadi.
+          */}
+          <Stack.Screen name="stylist" options={{ headerShown: false }} />
+          <Stack.Screen name="compare" options={{ headerShown: false }} />
+          <Stack.Screen name="trends" options={{ headerShown: false }} />
+          <Stack.Screen name="wardrobe" options={{ headerShown: false }} />
+          <Stack.Screen name="visual-search" options={{ headerShown: false }} />
+          <Stack.Screen name="local-brands" options={{ headerShown: false }} />
+          <Stack.Screen name="seasonal" options={{ headerShown: false }} />
+          <Stack.Screen name="loyalty" options={{ headerShown: false }} />
+          <Stack.Screen name="outfit-builder" options={{ headerShown: false }} />
+          <Stack.Screen name="discount-code" options={{ headerShown: false }} />
+          <Stack.Screen name="try-on-history" options={{ headerShown: false }} />
+          <Stack.Screen name="gift" options={{ headerShown: false }} />
           {/* Mavjud bo'lmagan havola — expo-router'ning qora standart sahifasi o'rniga */}
           <Stack.Screen name="+not-found" options={{ headerShown: false }} />
         </Stack>

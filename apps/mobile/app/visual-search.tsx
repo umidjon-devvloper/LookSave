@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '../src/components/Icon';
 import { Button, Screen } from '../src/components/ui';
@@ -14,11 +15,12 @@ import { colors, radius, spacing, text } from '../src/theme/tokens';
  * katalogdan eng o'xshash 20 mahsulot qaytariladi (pgvector).
  */
 export default function VisualSearch(): JSX.Element {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
 
   return (
     <Screen>
-      <View style={styles.head}>
+      <View style={[styles.head, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={() => goBack('/(tabs)')} hitSlop={10}>
           <Icon name="back" size={24} color={colors.text} />
         </Pressable>

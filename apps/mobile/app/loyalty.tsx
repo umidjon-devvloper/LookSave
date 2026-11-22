@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '../src/components/Icon';
 import { Screen } from '../src/components/ui';
@@ -31,6 +32,7 @@ const CURRENT_POINTS = 320;
 const CURRENT_TIER_INDEX = 0;
 
 export default function Loyalty(): JSX.Element {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const tier = TIERS[CURRENT_TIER_INDEX]!;
   const next = TIERS[CURRENT_TIER_INDEX + 1];
@@ -39,7 +41,7 @@ export default function Loyalty(): JSX.Element {
 
   return (
     <Screen>
-      <View style={styles.head}>
+      <View style={[styles.head, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={() => goBack('/(tabs)')} hitSlop={10}>
           <Icon name="back" size={24} color={colors.text} />
         </Pressable>

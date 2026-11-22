@@ -1,6 +1,7 @@
 import { useQueries } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { api } from '../src/api/client';
 import { Icon } from '../src/components/Icon';
@@ -74,6 +75,7 @@ function allColors(p: ProductDetail): string {
 }
 
 export default function Compare(): JSX.Element {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { a, b } = useLocalSearchParams<{ a: string; b: string }>();
 
@@ -110,7 +112,7 @@ export default function Compare(): JSX.Element {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.head}>
+        <View style={[styles.head, { paddingTop: insets.top + 8 }]}>
           <Pressable onPress={() => goBack('/(tabs)')} hitSlop={10}>
             <Icon name="back" size={24} color={colors.text} />
           </Pressable>

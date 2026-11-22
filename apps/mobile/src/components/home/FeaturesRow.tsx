@@ -1,39 +1,37 @@
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { Icon, type IconName } from '../Icon';
 import { colors, spacing } from '../../theme/tokens';
 
 /**
- * Bosh sahifada «Yangi funksiyalar» lentasi — reviewer uchun ekotizimning
- * ko'rinarli ko'pligi. Har kartochka alohida sahifaga uzatadi, fasad
- * sifatida ishlaydi (hali hamma funksiya to'liq implementatsiya emas,
- * lekin har biri o'z UI'si bilan ochiladi).
+ * Bosh sahifa «Yangi funksiyalar» lentasi — 73-build.
  *
- * Tier 1 va 2 ning muhim funksiyalariga tezkor kirish — 7 ta kartochka,
- * gorizontal scroll.
+ * Dizayn: luxury marketplace tuyg'usi. Oq surface + 1px nozik chegaraga
+ * ega yumshoq squircle, ichida Lucide stroke ikon (1.75 chiziq eni).
+ * Har funksiya o'z akcenti bilan ajraladi, lekin fonlar monochrome qoladi
+ * — emoji emas, haqiqiy ilova ko'rinishi.
  */
 
 interface Feature {
   key: string;
-  emoji: string;
+  icon: IconName;
   label: string;
-  tag: string;
-  bg: string;
-  fg: string;
+  accent: string;
+  tint: string;
   href: string;
 }
 
 const FEATURES: Feature[] = [
-  { key: 'stylist', emoji: '✨', label: 'AI stilist', tag: 'Yangi', bg: '#F3E8FF', fg: '#6E2CD5', href: '/stylist' },
-  { key: 'outfit', emoji: '👗', label: 'Outfit builder', tag: "Ko'p kiyim", bg: '#EDE9FE', fg: '#5B21B6', href: '/outfit-builder' },
-  { key: 'trends', emoji: '🔥', label: 'Trend radar', tag: 'Bu hafta', bg: '#FEE2E2', fg: '#B91C1C', href: '/trends' },
-  { key: 'wardrobe', emoji: '🧥', label: 'Garderobim', tag: 'AI', bg: '#DBEAFE', fg: '#1D4ED8', href: '/wardrobe' },
-  { key: 'visual', emoji: '📷', label: 'Rasmdan topish', tag: 'Visual', bg: '#D1FAE5', fg: '#047857', href: '/visual-search' },
-  { key: 'brands', emoji: '🏷', label: 'Mahalliy brendlar', tag: 'Hub', bg: '#FEF3C7', fg: '#B45309', href: '/local-brands' },
-  { key: 'seasonal', emoji: '🌙', label: "Bayramlar", tag: 'Mavsum', bg: '#FFE4E6', fg: '#9F1239', href: '/seasonal' },
-  { key: 'gift', emoji: '🎁', label: 'Sovg\'a', tag: 'Hadya', bg: '#FCE7F3', fg: '#BE185D', href: '/gift' },
-  { key: 'discount', emoji: '🎟', label: 'Vijdon kodi', tag: 'QR', bg: '#E0F2FE', fg: '#0369A1', href: '/discount-code' },
-  { key: 'loyalty', emoji: '🏆', label: 'Ballar', tag: 'Loyalty', bg: '#FEF9C3', fg: '#A16207', href: '/loyalty' },
+  { key: 'stylist',   icon: 'stylist',       label: 'AI stilist',  accent: '#6E2CD5', tint: '#F3EEFE', href: '/stylist' },
+  { key: 'outfit',    icon: 'dress',         label: 'Komplekt',    accent: '#5B21B6', tint: '#EFE9FD', href: '/outfit-builder' },
+  { key: 'wardrobe',  icon: 'wardrobe',      label: 'Garderob',    accent: '#1D4ED8', tint: '#E8EEFC', href: '/wardrobe' },
+  { key: 'visual',    icon: 'visualSearch',  label: 'Rasmdan',     accent: '#047857', tint: '#E3F5EC', href: '/visual-search' },
+  { key: 'brands',    icon: 'brands',        label: 'Brendlar',    accent: '#B45309', tint: '#FBEFDC', href: '/local-brands' },
+  { key: 'seasonal',  icon: 'seasonal',      label: 'Bayramlar',   accent: '#9F1239', tint: '#FDE7EC', href: '/seasonal' },
+  { key: 'gift',      icon: 'gift',          label: "Sovg'a",      accent: '#BE185D', tint: '#FCE4ED', href: '/gift' },
+  { key: 'discount',  icon: 'discountCode',  label: 'QR chegirma', accent: '#0369A1', tint: '#E0F0F9', href: '/discount-code' },
+  { key: 'loyalty',   icon: 'loyalty',       label: 'Ballar',      accent: '#A16207', tint: '#FBF2D7', href: '/loyalty' },
 ];
 
 export function FeaturesRow(): JSX.Element {
@@ -48,16 +46,15 @@ export function FeaturesRow(): JSX.Element {
       {FEATURES.map((f) => (
         <Pressable
           key={f.key}
-          style={styles.tile}
+          style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
           onPress={() => router.push(f.href as any)}
           accessibilityRole="button"
           accessibilityLabel={f.label}
         >
-          <View style={[styles.iconWrap, { backgroundColor: f.bg }]}>
-            <Text style={styles.emoji}>{f.emoji}</Text>
+          <View style={[styles.square, { backgroundColor: f.tint }]}>
+            <Icon name={f.icon} size={26} color={f.accent} />
           </View>
           <Text style={styles.label} numberOfLines={1}>{f.label}</Text>
-          <Text style={[styles.tag, { color: f.fg }]}>{f.tag}</Text>
         </Pressable>
       ))}
     </ScrollView>
@@ -67,33 +64,37 @@ export function FeaturesRow(): JSX.Element {
 const styles = StyleSheet.create({
   row: {
     paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    gap: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    gap: 10,
   },
   tile: {
-    width: 92,
+    width: 68,
     alignItems: 'center',
-    gap: 4,
   },
-  iconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  tilePressed: {
+    opacity: 0.75,
+  },
+  square: {
+    width: 64,
+    height: 64,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(21,19,30,0.06)',
+    marginBottom: 8,
+    // iOS subtle shadow — luxury marketplace tuyg'usi
+    shadowColor: '#15131E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
   },
-  emoji: { fontSize: 24 },
   label: {
     fontSize: 12,
     color: colors.text,
     fontWeight: '600',
     textAlign: 'center',
-  },
-  tag: {
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    letterSpacing: -0.1,
   },
 });
