@@ -167,6 +167,27 @@ const UPDATABLE: Record<string, string> = {
   status: 'status',
 };
 
+/**
+ * Tahrirda holat qanday yoziladi.
+ *
+ * ⚠️ AVTO-NASHR TAHRIRDA HAM (2026-11-24). `createProduct` da `pending`
+ * darhol `active` bo'ladi, bu yerda esa ilgari aynan yozilardi: sotuvchi
+ * FAOL mahsulotning narxini yoki nomini tuzatib «Saqlash» ni bosganda
+ * (ilova `status: 'pending'` yuboradi) mahsulot `pending` ga tushib,
+ * katalogdan yo'qolardi — admin qo'lda tasdiqlamaguncha.
+ *
+ * Istisno: admin RAD ETGAN mahsulot qayta yuborilsa `pending` da qoladi —
+ * aks holda rad etishning ma'nosi yo'q. `draft` (ataylab yashirish) va
+ * holat yuborilmagan tahrir o'zgarmaydi.
+ */
+export function statusOnUpdate(
+  current: string,
+  requested: UpdateProductInput['status'],
+): 'draft' | 'pending' | 'active' | undefined {
+  if (requested !== 'pending') return requested;
+  return current === 'rejected' ? 'pending' : 'active';
+}
+
 export async function updateProduct(
   storeId: string,
   productId: string,
@@ -187,8 +208,10 @@ export async function updateProduct(
     const fields: string[] = [];
     const params: unknown[] = [productId, storeId];
 
+    const nextStatus = statusOnUpdate(current[0].status, input.status);
+
     for (const [key, column] of Object.entries(UPDATABLE)) {
-      const value = (input as Record<string, unknown>)[key];
+      const value = key === 'status' ? nextStatus : (input as Record<string, unknown>)[key];
       if (value === undefined) continue;
 
       params.push(key === 'images' ? JSON.stringify(value) : value);

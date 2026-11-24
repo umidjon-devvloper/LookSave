@@ -72,7 +72,16 @@ export function route<S extends Schemas>(
       const schema = schemas[key];
       if (!schema) continue;
 
-      const result = schema.safeParse(req[key]);
+      /*
+       * ⚠️ TANASIZ SO'ROV — BO'SH OBYEKT. Express 5 da tanasiz POST'da
+       * `req.body === undefined`, `z.object()` esa buni «(root) REQUIRED»
+       * bilan rad etadi — hatto hamma maydoni ixtiyoriy bo'lsa ham. Mobil
+       * ilova (build ≤ 74) sotuvchining «Yakunlash» tugmasini aynan
+       * shunday tanasiz yuborardi va buyurtmani yakunlab bo'lmasdi.
+       * Majburiy maydonli sxema baribir rad etadi — endi maydon nomi bilan.
+       */
+      const raw = key === 'body' && req.body === undefined ? {} : req[key];
+      const result = schema.safeParse(raw);
       if (result.success) {
         parsed[key] = result.data;
       } else {

@@ -110,6 +110,17 @@ function testApp(): express.Express {
     ),
   );
 
+  // Hamma maydoni ixtiyoriy tana — sotuvchining «Yakunlash» so'rovi kabi
+  app.post(
+    '/complete',
+    route(
+      { body: z.object({ paymentMethod: z.enum(['cash', 'transfer']).default('cash') }) },
+      (input, _req, res) => {
+        sendData(res, { paymentMethod: input.body.paymentMethod });
+      },
+    ),
+  );
+
   app.get('/boom', () => {
     throw new Error('kutilmagan xato');
   });
@@ -186,6 +197,24 @@ describe('validatsiya', () => {
 
     const fields = res.body.error.details.fields as Array<{ field: string; code: string }>;
     expect(fields.some((f) => f.field === 'address.lng' && f.code === 'REQUIRED')).toBe(true);
+  });
+
+  /*
+   * ⚠️ Mobil ilova (build ≤ 74) «Yakunlash» ni TANASIZ yuborardi. Express 5
+   * da bunda `req.body === undefined` va sxema «(root) REQUIRED» bilan rad
+   * etardi — sotuvchi buyurtmani hech qachon yakunlay olmasdi.
+   */
+  it('tanasiz POST bo`sh obyekt sifatida tekshiriladi (ixtiyoriy maydonlar sukuti bilan)', async () => {
+    const res = await request(testApp()).post('/complete');
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({ paymentMethod: 'cash' });
+  });
+
+  it('tanasiz POST majburiy maydonli sxemada baribir rad etiladi — maydon nomi bilan', async () => {
+    const res = await request(testApp()).post('/order');
+    expect(res.status).toBe(422);
+    const fields = res.body.error.details.fields as Array<{ field: string; code: string }>;
+    expect(fields.map((f) => f.field).sort()).toEqual(['address', 'contactName']);
   });
 
   it('to`g`ri so`rov o`tadi', async () => {

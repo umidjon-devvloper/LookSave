@@ -1237,13 +1237,34 @@ export async function listRenderHistory(
  * ham server qayta ishga tushganda yo'qoladi va qator abadiy `pending`
  * bo'lib qolardi. Muddat uzunroq (30 daqiqa): navbat uzun bo'lsa ish
  * haqiqatan uzoq kutishi mumkin va tirigini o'ldirib qo'ymaslik kerak.
+ *
+ * ⚠️ OPERATOR NAVBATIDAGILAR TEGILMAYDI (2026-11-24). Operator rejimida
+ * qator ish tugaguncha `pending` turadi va navbat uzun bo'lsa (yoki kechasi)
+ * 30 daqiqadan ko'p kutadi. Ilgari shu yerda u «uzilib qoldi» bo'lardi:
+ * mijoz «Qayta urinish» ni bosardi, yangi ish navbat OXIRIGA tushardi,
+ * operator esa eskisini bekorga bajarardi. Avatar tozalagichida
+ * (`avatar.ts sweepStaleAvatars`) bu himoya bor edi, bu yerda yo'q edi.
+ *
+ * Ochiq ish komplektning ASOSIY qatoriga yoziladi (`ref_id`), qolgan
+ * qatorlar u bilan `user_id + source_hash` orqali bog'lanadi — shuning
+ * uchun tekshiruv shu juftlik bo'yicha. Ish yopilgach (bajarildi, rad
+ * etildi, muddati o'tdi) odatdagi muddatlar yana kuchga kiradi.
  */
 export async function sweepStaleRenders(): Promise<number> {
   const { rowCount } = await pool.query(
-    `UPDATE tryon_renders
+    `UPDATE tryon_renders r
         SET status = 'failed', error = $1, completed_at = now()
-      WHERE (status = 'processing' AND created_at < now() - interval '10 minutes')
-         OR (status = 'pending'    AND created_at < now() - interval '30 minutes')`,
+      WHERE ((r.status = 'processing' AND r.created_at < now() - interval '10 minutes')
+          OR (r.status = 'pending'    AND r.created_at < now() - interval '30 minutes'))
+        AND NOT EXISTS (
+          SELECT 1
+            FROM developer_ai_tasks t
+            JOIN tryon_renders m ON m.id = t.ref_id
+           WHERE t.kind = 'render'
+             AND t.status IN ('pending', 'claimed')
+             AND m.user_id = r.user_id
+             AND m.source_hash = r.source_hash
+        )`,
     ['Kiyintirish uzilib qoldi — qaytadan urinib ko`ring'],
   );
 
