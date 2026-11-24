@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { pool } from '../db/pool';
 import { env } from '../config/env';
 import { ApiError } from '../http/api-error';
-import { getAuth, getAuthOptional } from '../http/auth-middleware';
+import { getAuth, getAuthOptional, requireAuth } from '../http/auth-middleware';
 import { sendData } from '../http/respond';
 import { route } from '../http/validate';
 
@@ -89,6 +89,10 @@ function shareUrlFor(id: string): string {
  */
 groupTryonRouter.post(
   '/group-tryon',
+  // ⚠️ `requireAuth` SHART. Global `optionalAuth` muddati o'tgan tokenni jim
+  // tashlab yuboradi — usiz `getAuth` 401 emas, 500 berardi va ilova tokenni
+  // yangilamasdan «ulashib bo'lmadi» derdi (prod'da 2026-11-24 da ushlangan).
+  requireAuth,
   route(
     {
       body: z.object({
