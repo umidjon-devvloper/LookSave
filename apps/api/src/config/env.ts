@@ -236,6 +236,17 @@ const envSchema = z.object({
   OPENAI_TEXT_MODEL: z.string().default('gpt-4o-mini'),
 
   /*
+   * ⚠️ STILISTNING ALOHIDA KALITI (egasining talabi, 2026-11-24).
+   *
+   * Bu kalit FAQAT AI stilist (`/v1/ai/stylist`, matn) uchun. Kiyintirish
+   * va avatar rasmlari doim `OPENAI_API_KEY` bilan chiziladi — shu bilan
+   * stilist kaliti qimmat rasm so'rovlariga sarflanmaydi va har birining
+   * xarajati alohida ko'rinadi. Bo'sh bo'lsa stilist `OPENAI_API_KEY` ni
+   * oladi (lokal dev va eski serverlar buzilmasin).
+   */
+  OPENAI_STYLIST_API_KEY: z.string().default(''),
+
+  /*
    * ⚠️ KUNLIK CHEGARA — PUL HIMOYASI. Har bir yasalgan surat pul turadi,
    * kesh esa faqat TAKRORIY so'rovni to'sadi: foydalanuvchi har safar yangi
    * kiyimni so'rasa har biri alohida to'lanadi. Chegarasiz bitta hisob bir

@@ -85,8 +85,17 @@ interface ChatResponse {
 
 const CHAT_TIMEOUT_MS = 30_000;
 
+/**
+ * Stilist kaliti: avval `OPENAI_STYLIST_API_KEY` (faqat stilist uchun
+ * ajratilgan), bo'sh bo'lsa umumiy `OPENAI_API_KEY`. Rasm chaqiruvlari
+ * (`openai.ts`) bu funksiyani ISHLATMAYDI — ular doim umumiy kalitda.
+ */
+function stylistApiKey(): string {
+  return env().OPENAI_STYLIST_API_KEY || env().OPENAI_API_KEY;
+}
+
 export function isTextAiEnabled(): boolean {
-  return env().OPENAI_API_KEY.length > 0;
+  return stylistApiKey().length > 0;
 }
 
 /**
@@ -98,7 +107,7 @@ export function isTextAiEnabled(): boolean {
  * markdown kodo blok ichida qaytaradi va `JSON.parse` yiqiladi.
  */
 export async function generateStylistPlan(userPrompt: string): Promise<StylistPlan> {
-  const key = env().OPENAI_API_KEY;
+  const key = stylistApiKey();
   if (!key) throw new Error('OpenAI kaliti sozlanmagan');
 
   const messages: ChatMessage[] = [
