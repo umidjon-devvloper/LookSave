@@ -1,53 +1,62 @@
--- 2026-11-21 — App Store 4.3(b) uchun: luxury do'kon sarlavhalaridan
--- brend nomlarini olib tashlash. Mahsulot, rasm, do'kon TEGILMAYDI —
--- faqat `title` matni tozalanadi.
+-- 2026-11-21 (tuzatildi 2026-11-24) — sarlavha, tavsif va teglardan begona
+-- brend nomlarini olib tashlash: Hermes / Hermès, Loro Piana, Louis Vuitton.
 --
--- Reviewer sotayotgan mahsulotlarda «Hermès», «Loro Piana», «Louis Vuitton»
--- so'zlarini va «100% original» da'vosini birga ko'rib shubha qilgan.
--- «100% original» avval olib tashlangan (edff4f8). Endi brend so'zlari.
+-- ⚠️ 2026-11-24 TUZATISHI: birinchi versiyadagi `'Hermès?\s+'` qoidasi «Herm»
+-- + ixtiyoriy «è» ni qidirardi, ya'ni oddiy «Hermes» ga HECH QACHON mos
+-- kelmasdi — skript ishlagan bo'lsa ham jonli katalogda 46 ta sarlavhada
+-- «Hermes» qolgan edi. Endi so'z chegarasi bilan (`\m…\M`), ikkala yozuv
+-- (`herm[eè]s`), katta-kichik harfdan qat'i nazar.
 --
--- Ishga tushirish (VPS'da, prod .env bilan):
---   cd /var/www/looksave/apps/api
---   psql "$DATABASE_URL" -f scripts/sql/2026-11-21-luxury-brand-names.sql
---   # yoki ichidan:  pm2 restart ecosystem.config.js --only api  (shart emas)
+-- Natija: «Krasovka Hermes Bouncing №23» → «Krasovka Bouncing №23»,
+-- «Kepka Hermes — ko'k» → «Kepka — ko'k». Qo'sh bo'shliqlar yig'iladi.
+-- `search_vec` GENERATED ustun — o'zi yangilanadi.
+--
+-- Hamma do'konga qo'llanadi (faqat luxury emas): to'xtatilgan do'kon qayta
+-- yoqilsa ham brend nomi qaytib chiqmasin. Buyurtma tarixiga tegilmaydi.
+--
+-- Qaytarish: ishga tushirishdan oldin `id, title, description, tags` CSV
+-- zaxirasi olinadi (README), qaytarish — o'sha CSV'dan UPDATE.
 
 BEGIN;
 
--- 1. Dry preview — qanday o'zgarishi
-\echo '--- O''zgarishlar ro''yxati ---'
+\echo '--- Oldin: brend nomi bor qatorlar ---'
 SELECT
-  id,
-  title AS old_title,
-  regexp_replace(
-    regexp_replace(
-      regexp_replace(title, 'Hermès?\s+', '', 'gi'),
-      'Loro\s+Piana\s+', '', 'gi'
-    ),
-    'Louis\s+Vuitton\s+', '', 'gi'
-  ) AS new_title
-FROM products
-WHERE store_id = '9a598e34-52c7-4ad7-88a7-12faf4b04d44'
-  AND (title ~* 'Hermès?' OR title ~* 'Loro\s+Piana' OR title ~* 'Louis\s+Vuitton')
-ORDER BY title;
+  count(*) FILTER (WHERE title ~* '\m(herm[eè]s|loro\s+piana|louis\s+vuitton)\M')       AS sarlavha,
+  count(*) FILTER (WHERE description ~* '\m(herm[eè]s|loro\s+piana|louis\s+vuitton)\M') AS tavsif,
+  count(*) FILTER (WHERE EXISTS (
+    SELECT 1 FROM unnest(tags) t WHERE t ~* '\m(herm[eè]s|loro\s+piana|louis\s+vuitton)\M'
+  ))                                                                                    AS teg
+FROM products;
 
--- 2. Yangilash
 UPDATE products
-SET
-  title = regexp_replace(
-            regexp_replace(
-              regexp_replace(title, 'Hermès?\s+', '', 'gi'),
-              'Loro\s+Piana\s+', '', 'gi'
-            ),
-            'Louis\s+Vuitton\s+', '', 'gi'
-          ),
-  updated_at = NOW()
-WHERE store_id = '9a598e34-52c7-4ad7-88a7-12faf4b04d44'
-  AND (title ~* 'Hermès?' OR title ~* 'Loro\s+Piana' OR title ~* 'Louis\s+Vuitton');
+SET title = btrim(regexp_replace(
+              regexp_replace(title, '\s*\m(herm[eè]s|loro\s+piana|louis\s+vuitton)\M', '', 'gi'),
+              '\s{2,}', ' ', 'g')),
+    updated_at = now()
+WHERE title ~* '\m(herm[eè]s|loro\s+piana|louis\s+vuitton)\M';
 
-\echo '--- Tozalangan qatorlar soni ---'
-SELECT COUNT(*) AS cleaned_rows
-FROM products
-WHERE store_id = '9a598e34-52c7-4ad7-88a7-12faf4b04d44'
-  AND updated_at >= NOW() - INTERVAL '1 minute';
+UPDATE products
+SET description = btrim(regexp_replace(
+                    regexp_replace(description, '\s*\m(herm[eè]s|loro\s+piana|louis\s+vuitton)\M', '', 'gi'),
+                    '\s{2,}', ' ', 'g')),
+    updated_at = now()
+WHERE description ~* '\m(herm[eè]s|loro\s+piana|louis\s+vuitton)\M';
+
+UPDATE products
+SET tags = ARRAY(
+      SELECT t FROM unnest(tags) t
+       WHERE t !~* '\m(herm[eè]s|loro\s+piana|louis\s+vuitton)\M'
+    ),
+    updated_at = now()
+WHERE EXISTS (
+  SELECT 1 FROM unnest(tags) t WHERE t ~* '\m(herm[eè]s|loro\s+piana|louis\s+vuitton)\M'
+);
+
+\echo '--- Keyin: qolgan qatorlar (hammasi 0 bo''lishi kerak) ---'
+SELECT
+  count(*) FILTER (WHERE title ~* '\m(herm[eè]s|loro\s+piana|louis\s+vuitton)\M')       AS sarlavha,
+  count(*) FILTER (WHERE description ~* '\m(herm[eè]s|loro\s+piana|louis\s+vuitton)\M') AS tavsif,
+  count(*) FILTER (WHERE title = '')                                                    AS bosh_sarlavha
+FROM products;
 
 COMMIT;
