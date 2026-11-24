@@ -247,6 +247,15 @@ const envSchema = z.object({
   OPENAI_STYLIST_API_KEY: z.string().default(''),
 
   /*
+   * ⚠️ OCHIQ WEB MANZILI — ulashish havolalari uchun.
+   *
+   * Group try-on sessiyasi `shareUrl` da `PUBLIC_WEB_URL/g/<id>` bo'lib
+   * chiqadi: do'st ilovasiz ham ko'rishi mumkin. Bo'sh bo'lsa `looksave://`
+   * sxemasi beriladi — faqat ilovada ochiladi.
+   */
+  PUBLIC_WEB_URL: z.string().default(''),
+
+  /*
    * ⚠️ KUNLIK CHEGARA — PUL HIMOYASI. Har bir yasalgan surat pul turadi,
    * kesh esa faqat TAKRORIY so'rovni to'sadi: foydalanuvchi har safar yangi
    * kiyimni so'rasa har biri alohida to'lanadi. Chegarasiz bitta hisob bir

@@ -9,6 +9,7 @@ import { logger } from './logger';
 import { adminRouter } from './routes/admin';
 import { deliveryRouter } from './routes/delivery';
 import { developerAiRouter } from './routes/developer-ai';
+import { groupTryonRouter } from './routes/group-tryon';
 import { authRouter } from './routes/auth';
 import { healthRouter } from './routes/health';
 import { cartRouter } from './routes/cart';
@@ -119,6 +120,7 @@ export function createApp(): Express {
   app.use('/v1', storesRouter);
   app.use('/v1', productsRouter);
   app.use('/v1', tryonRouter);
+  app.use('/v1', groupTryonRouter);
   app.use('/v1', v1Router);
 
   app.use(notFoundHandler);
