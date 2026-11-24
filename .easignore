@@ -67,6 +67,14 @@ DerivedData/
 *.p12
 *.key
 *.mobileprovision
+# ⚠️ `apps/mobile/.gitignore` dagi imzolash qoidalari (2026-11-18 da ko'chirildi).
+# Ular faqat o'sha ichki `.gitignore` da turardi, EAS esa bu fayl bor ekan
+# hech bir `.gitignore` ni o'qimaydi — `credentials.json` (ichida keystore
+# parollari) loyiha arxivi bilan Expo serveriga yuklanardi. Build masofaviy
+# (EAS boshqaradigan) kalit bilan imzolanadi, bu fayllar unga kerak emas.
+apps/mobile/credentials.json
+apps/mobile/credentials/
+*.keystore
 
 # Vite / web panellar
 apps/*/dist/

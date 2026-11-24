@@ -423,8 +423,18 @@ export interface StoreDetail {
 
 export const getStore = (id: string): Promise<StoreDetail> => api<StoreDetail>(`/stores/${id}`);
 
-export const getStoreProducts = (storeId: string) =>
-  apiList<ProductCard>(`/stores/${storeId}/products?limit=20`);
+/**
+ * Do'kon mahsulotlari — sahifalab.
+ *
+ * ⚠️ `cursor` SHART EMAS, LEKIN U BILAN CHAQIRILADI. Ilgari bu funksiya faqat
+ * birinchi 20 tasini qaytarardi va do'kon sahifasi shu bilan to'xtardi:
+ * 71 mahsulotli do'konda «Katalog 20» ko'rinardi (2026-11-18). Endi sahifa
+ * `nextCursor` bilan oxirigacha so'raydi; 50 — serverning yuqori chegarasi.
+ */
+export const getStoreProducts = (storeId: string, cursor?: string) =>
+  apiList<ProductCard>(
+    `/stores/${storeId}/products?limit=50${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
+  );
 
 // ── Profil va o'lchamlar ──
 
@@ -994,6 +1004,56 @@ export const unshareLook = (id: string): Promise<{ id: string; isPublic: boolean
  * o'sha odam ko'rishi. Sayt havolasi brauzerda ochiladi.
  */
 export const sharedLookUrl = (id: string): string => `https://looksave.uz/looks/${id}`;
+
+// ============================================================
+// Group try-on — do'stlar bilan birga sinash (Tier 1 №01)
+// ============================================================
+
+export type GroupTryonEmoji = 'like' | 'love' | 'fire' | 'cool' | 'no';
+
+export interface GroupTryonSession {
+  id: string;
+  imageUrl: string;
+  caption: string | null;
+  createdAt: string;
+  expiresAt: string;
+  isExpired: boolean;
+  isMine: boolean;
+  counts: Record<GroupTryonEmoji, number>;
+  totalVotes: number;
+  myEmoji: GroupTryonEmoji | null;
+  comments: Array<{ emoji: GroupTryonEmoji; comment: string; createdAt: string }>;
+}
+
+export interface GroupTryonCreated {
+  id: string;
+  imageUrl: string;
+  caption: string | null;
+  shareUrl: string;
+  expiresAt: string;
+}
+
+export const createGroupTryon = (
+  renderId: string,
+  caption?: string,
+): Promise<GroupTryonCreated> =>
+  api<GroupTryonCreated>('/group-tryon', {
+    method: 'POST',
+    body: { renderId, caption },
+  });
+
+export const getGroupTryon = (id: string): Promise<GroupTryonSession> =>
+  api<GroupTryonSession>(`/group-tryon/${id}`);
+
+export const voteGroupTryon = (
+  id: string,
+  emoji: GroupTryonEmoji,
+  comment?: string,
+): Promise<{ ok: true; emoji: GroupTryonEmoji }> =>
+  api<{ ok: true; emoji: GroupTryonEmoji }>(`/group-tryon/${id}/vote`, {
+    method: 'POST',
+    body: { emoji, comment },
+  });
 
 export const deleteLook = (id: string): Promise<void> =>
   api<void>(`/looks/${id}`, { method: 'DELETE' });

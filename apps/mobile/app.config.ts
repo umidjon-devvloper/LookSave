@@ -14,8 +14,10 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
  *   eas secret:create --name GOOGLE_MAPS_IOS_KEY --value AIza…
  *
  * ⚠️ Kalit berilmasa build baribir o'tadi va ilova ishga tushadi, lekin
- * Android'da xarita BO'SH kulrang maydon bo'lib ko'rinadi — xato xabari
- * chiqmaydi. Shuning uchun pastda ogohlantirish chiqariladi.
+ * Android'da xarita CHIZILMAYDI: `MapView` kalitsiz ochilsa butun ilova
+ * bo'sh ekranga tushadi (2026-11-18 da emulyatorda takrorlandi), shuning
+ * uchun ilova uni yashiradi (`extra.androidMapsKey`, `src/map/availability.ts`).
+ * Pastda ogohlantirish chiqariladi.
  *
  * Kalitni Google Cloud'da cheklang: Android uchun paket nomi + SHA-1,
  * iOS uchun bundle ID. Places API YOQILMAYDI (K-05) — faqat
@@ -36,6 +38,16 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ...config,
     name: config.name ?? 'LookSave',
     slug: config.slug ?? 'looksave',
+    extra: {
+      ...config.extra,
+      /*
+       * Ish vaqtida «Android'da xarita chizsa bo'ladimi?» savoliga javob
+       * (`src/map/availability.ts`). Kalitning o'zi ilovaga joylanadigan
+       * ochiq konfiguratsiyaga tushmaydi (`android.config` undan olib
+       * tashlanadi), shuning uchun faqat bor-yo'qligi yoziladi.
+       */
+      androidMapsKey: Boolean(androidKey),
+    },
     android: {
       ...config.android,
       ...(androidKey ? { config: { googleMaps: { apiKey: androidKey } } } : {}),

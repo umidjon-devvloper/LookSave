@@ -5,6 +5,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getNearbyStores, getStoresMap, type NearbyStore } from '../src/api/endpoints';
 import { StoreMap } from '../src/components/StoreMap';
+import { MAP_AVAILABLE } from '../src/map/availability';
 import { Empty, ErrorView, Screen } from '../src/components/ui';
 import { SkeletonList } from '../src/components/Skeleton';
 import { initialRegion, regionToBounds, type Bounds } from '../src/map/region';
@@ -82,7 +83,12 @@ export default function Stores(): JSX.Element {
     setBounds(next);
   }, []);
 
-  const toggle = (
+  /*
+   * Android'da Google Maps kaliti bo'lmasa xarita ochilmaydi (butun ilovani
+   * o'ldiradi — `src/map/availability.ts`): almashtirgich ham ko'rsatilmaydi,
+   * do'konlar ro'yxat bo'lib qoladi.
+   */
+  const toggle = !MAP_AVAILABLE ? null : (
     <View style={styles.toggle}>
       {(['list', 'map'] as const).map((value) => (
         <Pressable
@@ -102,7 +108,7 @@ export default function Stores(): JSX.Element {
     </View>
   );
 
-  if (mode === 'map') {
+  if (mode === 'map' && MAP_AVAILABLE) {
     return (
       <Screen>
         {toggle}

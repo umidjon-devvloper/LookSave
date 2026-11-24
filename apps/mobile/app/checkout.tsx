@@ -20,6 +20,7 @@ import { SignInRequired } from '../src/components/SignInRequired';
 import { ErrorView, Field, Loading, Screen } from '../src/components/ui';
 import { Icon, type IconName } from '../src/components/Icon';
 import { LocationPicker } from '../src/components/LocationPicker';
+import { MAP_AVAILABLE } from '../src/map/availability';
 import { useAuthStore } from '../src/store/authStore';
 import { useI18n } from '../src/i18n';
 import { useLocationStore } from '../src/store/locationStore';
@@ -259,7 +260,7 @@ export default function Checkout(): JSX.Element {
                 taxminiy bo'lsa ham, pin kuryerni to'g'ri eshikka olib
                 keladi. GPS'dan boshlaydi, keyin sudrab/bosib ko'chadi.
               */}
-              <Text style={styles.label}>{t.checkout.mapPoint}</Text>
+              {MAP_AVAILABLE ? <Text style={styles.label}>{t.checkout.mapPoint}</Text> : null}
               <LocationPicker coords={pickedCoords} onChange={setPickedCoords} />
 
               <Field

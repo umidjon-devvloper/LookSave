@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, FlatList, Image, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { getTryonHistory } from '../src/api/endpoints';
+import { createGroupTryon, getTryonHistory } from '../src/api/endpoints';
 import { Icon } from '../src/components/Icon';
 import { Screen } from '../src/components/ui';
 import { goBack } from '../src/navigation/back';
@@ -30,10 +31,32 @@ function fmtDate(iso: string): string {
 export default function TryOnHistoryPage(): JSX.Element {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const [sharingId, setSharingId] = useState<string | null>(null);
   const { data = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['tryon-history'],
     queryFn: () => getTryonHistory(60),
   });
+
+  /**
+   * Try-on natijasini do'stlar bilan ulashish — group try-on sessiyasi
+   * yaratadi (POST /v1/group-tryon) va `Share` sheet'ni ochadi. Do'st
+   * havola orqali emoji ovoz beradi (Tier 1 №01).
+   */
+  const shareWithFriends = async (renderId: string): Promise<void> => {
+    if (sharingId) return;
+    setSharingId(renderId);
+    try {
+      const session = await createGroupTryon(renderId);
+      await Share.share({
+        url: session.shareUrl,
+        message: `Qanday ko'rinadi? Ovoz bering: ${session.shareUrl}`,
+      });
+    } catch {
+      Alert.alert('Xato', 'Havola yasalmadi. Qayta urinib ko`ring.');
+    } finally {
+      setSharingId(null);
+    }
+  };
 
   return (
     <Screen>
@@ -90,6 +113,17 @@ export default function TryOnHistoryPage(): JSX.Element {
                 <Text style={{ fontSize: 48 }}>🧍</Text>
               </View>
             )}
+            <Pressable
+              style={styles.shareBtn}
+              onPress={(e) => {
+                e.stopPropagation();
+                void shareWithFriends(item.render.id);
+              }}
+              disabled={sharingId === item.render.id}
+              hitSlop={8}
+            >
+              <Icon name="share" size={16} color="#FFFFFF" />
+            </Pressable>
             <Text style={styles.cardDate}>{fmtDate(item.completedAt)}</Text>
           </Pressable>
         )}
@@ -146,5 +180,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
+  },
+  shareBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

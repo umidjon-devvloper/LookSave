@@ -5,6 +5,7 @@ import MapView, { Marker, PROVIDER_GOOGLE, type MapPressEvent, type Region } fro
 
 import { Icon } from './Icon';
 import { useI18n } from '../i18n';
+import { MAP_AVAILABLE } from '../map/availability';
 import { colors, radius, spacing, text } from '../theme/tokens';
 
 /**
@@ -36,7 +37,27 @@ interface Props {
   height?: number;
 }
 
-export function LocationPicker({ coords, onChange, height = 200 }: Props): JSX.Element {
+export function LocationPicker(props: Props): JSX.Element {
+  /*
+   * Android'da Google Maps kaliti bo'lmasa `MapView` butun ilovani o'ldiradi
+   * (`src/map/availability.ts`). Buyurtma berish to'xtab qolmasin: xarita
+   * o'rnida izoh turadi, koordinata esa qurilma joylashuvidan olinadi.
+   */
+  if (!MAP_AVAILABLE) return <MapUnavailable />;
+  return <LocationPickerMap {...props} />;
+}
+
+function MapUnavailable(): JSX.Element {
+  const t = useI18n((state) => state.t);
+  return (
+    <View style={styles.unavailable}>
+      <Icon name="location" size={18} color={colors.primary} />
+      <Text style={styles.unavailableText}>{t.checkout.mapUnavailable}</Text>
+    </View>
+  );
+}
+
+function LocationPickerMap({ coords, onChange, height = 200 }: Props): JSX.Element {
   const t = useI18n((state) => state.t);
   const mapRef = useRef<MapView | null>(null);
   // Birinchi region faqat MOUNT'da hisoblanadi: aks holda pin har safar
@@ -115,6 +136,18 @@ export function LocationPicker({ coords, onChange, height = 200 }: Props): JSX.E
 }
 
 const styles = StyleSheet.create({
+  // Xarita chizib bo'lmaydigan holat (Android, kalit yo'q)
+  unavailable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface2,
+  },
+  unavailableText: { ...text.small, color: colors.textMuted, flex: 1 },
   container: {
     borderRadius: radius.lg,
     overflow: 'hidden',

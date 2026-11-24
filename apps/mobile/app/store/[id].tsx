@@ -1,15 +1,28 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { FlatList, Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  Image,
+  Linking,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getStore, getStoreProducts } from '../../src/api/endpoints';
 import { Icon } from '../../src/components/Icon';
 import { Button, Empty, ErrorView, Loading, Screen } from '../../src/components/ui';
+import { useLookToggle } from '../../src/hooks/useLookToggle';
 import { useI18n } from '../../src/i18n';
 import { goBack } from '../../src/navigation/back';
 import { money } from '../../src/theme/format';
+import { APP_MAX_WIDTH } from '../../src/theme/responsive';
 import { colors, radius, spacing, text } from '../../src/theme/tokens';
 
 /**
@@ -19,23 +32,51 @@ import { colors, radius, spacing, text } from '../../src/theme/tokens';
  * yetkazib berish qatori — hammasi bir xil og'irlikdagi matn qatorlari
  * sifatida ketma-ket turardi va «ariza namunasi» tuyg'usi berardi.
  * Endi butun ma'lumot bitta ko'tarilgan karta ichida: chapda do'kon
- * tamg'asi (initsial + gradient), o'ngda nom va status pili, pastroqda
+ * tamg'asi (logo yoki initsial), o'ngda nom va status pili, pastroqda
  * ikonkali qatorlar, oxirida gradientli asosiy tugma va delivery chip.
+ *
+ * ⚠️ MAHSULOTLAR OXIRIGACHA YUKLANADI (2026-11-18). Ilgari bitta so'rov
+ * (20 ta) bilan to'xtardi: 71 mahsulotli do'konda «Katalog 20» chiqardi va
+ * qolgan 51 tasini ko'rishning iloji yo'q edi. Endi ro'yxat pastga
+ * aylantirilganda keyingi sahifa so'raladi, sanagich esa do'kondagi
+ * UMUMIY sonni ko'rsatadi.
  */
+
+/** Tamg'a (logo/initsial) doirasining tashqi o'lchami */
+const AVATAR_SIZE = 72;
+
 export default function Store(): JSX.Element {
   const t = useI18n((state) => state.t);
+  const isRTL = useI18n((state) => state.isRTL);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const look = useLookToggle();
+  /*
+   * Karta kengligi aniq hisoblanadi, `flex: 1` emas: mahsulotlar soni toq
+   * bo'lsa oxirgi qatordagi yakka karta butun qatorga cho'zilib, ulkan
+   * bo'lib qolardi.
+   *
+   * ⚠️ iPad'da `Screen` kontenti 520pt da markazga cheklangan
+   * (`src/theme/responsive.ts`), lekin `useWindowDimensions()` haqiqiy
+   * oyna kengligini (iPad'da ~820pt) qaytaradi. `Math.min` bilan cheklamasak
+   * karta kengligi 400pt chiqadi va ikki kartaning yarmi konteynerdan tashqariga
+   * kesiladi.
+   */
+  const containerWidth = Math.min(width, APP_MAX_WIDTH);
+  const cardWidth = Math.floor((containerWidth - spacing.md * 2 - spacing.sm) / 2);
 
   const store = useQuery({
     queryKey: ['store', id],
     queryFn: () => getStore(id),
     enabled: Boolean(id),
   });
-  const products = useQuery({
+  const products = useInfiniteQuery({
     queryKey: ['store', id, 'products'],
-    queryFn: () => getStoreProducts(id),
+    queryFn: ({ pageParam }) => getStoreProducts(id, pageParam || undefined),
+    initialPageParam: '',
+    getNextPageParam: (last) => (last.hasMore ? (last.nextCursor ?? undefined) : undefined),
     enabled: Boolean(id),
   });
 
@@ -56,7 +97,14 @@ export default function Store(): JSX.Element {
 
   const data = store.data;
   const initial = (data.name ?? '?').trim().charAt(0).toUpperCase() || '?';
-  const items = products.data?.items ?? [];
+  const items = products.data?.pages.flatMap((page) => page.items) ?? [];
+  /*
+   * Sanagich — do'kondagi umumiy son, ekranga yuklanganlari emas. Server uni
+   * alohida bermaydi, lekin toifalar bo'yicha sonlar bor — yig'indisi shu.
+   * Hammasi yuklangach aniq son (yuklanganlar) ko'rsatiladi.
+   */
+  const categoryTotal = (data.categories ?? []).reduce((sum, item) => sum + (item.count ?? 0), 0);
+  const totalCount = products.hasNextPage ? Math.max(categoryTotal, items.length) : items.length;
 
   const statusText = data.isOpen
     ? data.closesAt
@@ -82,10 +130,24 @@ export default function Store(): JSX.Element {
 
       <FlatList
         data={items}
+        // «Look» holati o'zgarganda kartalar qayta chizilsin (ro'yxatning o'zi o'zgarmaydi)
+        extraData={look.items}
         keyExtractor={(product) => product.id}
         numColumns={2}
         columnWrapperStyle={{ gap: spacing.sm }}
         contentContainerStyle={[styles.list, { paddingTop: insets.top + 56 }]}
+        onEndReachedThreshold={0.6}
+        onEndReached={() => {
+          // `isFetchingNextPage` shart: usiz bitta aylantirishda bir necha so'rov ketadi
+          if (products.hasNextPage && !products.isFetchingNextPage) {
+            void products.fetchNextPage();
+          }
+        }}
+        ListFooterComponent={
+          products.isFetchingNextPage ? (
+            <ActivityIndicator color={colors.primary} style={styles.footerLoader} />
+          ) : null
+        }
         ListHeaderComponent={
           <View>
             {/*
@@ -103,14 +165,7 @@ export default function Store(): JSX.Element {
 
               {/* Yuqori qator: tamg'a + nom + handle + status pili */}
               <View style={styles.heroTop}>
-                <LinearGradient
-                  colors={[colors.primary, colors.primaryDark]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.avatar}
-                >
-                  <Text style={styles.avatarInitial}>{initial}</Text>
-                </LinearGradient>
+                <StoreAvatar logoUrl={data.logoUrl} name={data.name} initial={initial} />
 
                 <View style={styles.heroIdentity}>
                   <Text style={styles.name} numberOfLines={1}>
@@ -216,18 +271,33 @@ export default function Store(): JSX.Element {
             {items.length > 0 ? (
               <View style={styles.sectionHead}>
                 <Text style={styles.sectionTitle}>{t.catalog.title.toUpperCase()}</Text>
-                <Text style={styles.sectionCount}>{items.length}</Text>
+                <Text style={styles.sectionCount}>{totalCount}</Text>
               </View>
             ) : null}
           </View>
         }
         renderItem={({ item }) => (
-          <Pressable style={styles.card} onPress={() => router.push(`/product/${item.id}`)}>
-            {item.image ? (
-              <Image source={{ uri: item.image }} style={styles.image} resizeMode="cover" />
-            ) : (
-              <View style={[styles.image, styles.imagePlaceholder]} />
-            )}
+          <Pressable
+            style={[styles.card, { width: cardWidth }]}
+            onPress={() => router.push(`/product/${item.id}`)}
+          >
+            <View>
+              {item.image ? (
+                <Image source={{ uri: item.image }} style={styles.image} resizeMode="cover" />
+              ) : (
+                <View style={[styles.image, styles.imagePlaceholder]} />
+              )}
+              {/*
+                «Look» tugmasi — bosh sahifadagi kartalar bilan bir xil ko'rinish
+                va qoida (`useLookToggle`): kiyimni kiyintirish savatiga qo'shadi.
+                Egasining talabi (2026-11-18).
+              */}
+              <LookPill
+                inLook={look.inLook(item.id)}
+                isRTL={isRTL}
+                onPress={() => look.toggle(item)}
+              />
+            </View>
             <Text style={styles.cardTitle} numberOfLines={1}>
               {item.title}
             </Text>
@@ -235,10 +305,117 @@ export default function Store(): JSX.Element {
           </Pressable>
         )}
         ListEmptyComponent={
-          products.isLoading ? <Loading /> : <Empty title={t.stores.noProducts} />
+          products.isLoading ? (
+            <Loading />
+          ) : products.isError ? (
+            // Ilgari yuklash xatosi ham «mahsulot yo'q» bo'lib ko'rinardi
+            <ErrorView error={products.error} onRetry={() => void products.refetch()} />
+          ) : (
+            <Empty title={t.stores.noProducts} />
+          )
         }
       />
     </Screen>
+  );
+}
+
+/** Rasmning pastki burchagidagi «Look» pili — bosilganda kartaning o'zi ochilmaydi. */
+function LookPill({
+  inLook,
+  isRTL,
+  onPress,
+}: {
+  inLook: boolean;
+  isRTL: boolean;
+  onPress: () => void;
+}): JSX.Element {
+  const t = useI18n((state) => state.t);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={inLook ? t.tryon.removeFromLook : t.tryon.addToLook}
+      accessibilityState={{ selected: inLook }}
+      onPress={(event) => {
+        event.stopPropagation();
+        onPress();
+      }}
+      hitSlop={6}
+      style={[
+        styles.lookBtn,
+        inLook && styles.lookBtnOn,
+        isRTL ? { right: spacing.sm, left: undefined } : null,
+      ]}
+    >
+      <Icon
+        name={inLook ? 'check' : 'looks'}
+        size={13}
+        color={inLook ? colors.textOnPrimary : colors.primary}
+      />
+      <Text style={[styles.lookBtnText, inLook && { color: colors.textOnPrimary }]}>
+        {/* «Look» — brend atamasi, har tilda bir xil; qo'shilgan holati tarjima qilinadi */}
+        {inLook ? t.tryon.inLook : 'Look'}
+      </Text>
+    </Pressable>
+  );
+}
+
+/**
+ * Do'kon tamg'asi: logo bo'lsa — doira ichida, bo'lmasa — bosh harf.
+ *
+ * ⚠️ ILGARI BU YERDA LOGO UMUMAN CHIQMASDI: sotuvchi logo yuklagan bo'lsa
+ * ham sahifa doim bosh harfni chizardi (2026-11-18, egasining talabi).
+ *
+ * Logo `cover` bilan to'ldiriladi: sotuvchi uni kvadrat qilib kesib yuklaydi
+ * (`seller/settings.tsx`, `aspect: [1, 1]`), doira faqat burchaklarini oladi.
+ * Atrofida ingichka gradient halqa va oq oraliq — logo fon rangidan qat'i
+ * nazar kartadan ajralib turadi. Rasm yuklanmasa bosh harfga qaytadi.
+ */
+function StoreAvatar({
+  logoUrl,
+  name,
+  initial,
+}: {
+  logoUrl: string | null;
+  name: string;
+  initial: string;
+}): JSX.Element {
+  const [failed, setFailed] = useState(false);
+
+  if (logoUrl && !failed) {
+    return (
+      <View style={styles.avatarShadow}>
+        <LinearGradient
+          colors={[colors.accent, colors.primary, colors.primaryDark]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.avatarRing}
+        >
+          <View style={styles.avatarGap}>
+            <Image
+              source={{ uri: logoUrl }}
+              style={styles.avatarImage}
+              resizeMode="cover"
+              accessibilityLabel={name}
+              onError={() => setFailed(true)}
+            />
+          </View>
+        </LinearGradient>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.avatarShadow}>
+      <LinearGradient
+        colors={[colors.primary, colors.primaryDark]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.avatar}
+      >
+        <Text style={styles.avatarInitial}>{initial}</Text>
+      </LinearGradient>
+    </View>
   );
 }
 
@@ -283,24 +460,54 @@ const styles = StyleSheet.create({
   },
 
   heroTop: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.9)',
+  /*
+   * Soya ALOHIDA o'ramda: rasm doiraga `overflow: 'hidden'` bilan kesiladi,
+   * iOS'da esa kesilgan ko'rinishning o'z soyasi ham kesilib ketadi.
+   */
+  avatarShadow: {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: AVATAR_SIZE / 2,
     shadowColor: '#A855F7',
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.35,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 6 },
     elevation: 6,
   },
+  // Logo: gradient halqa → oq oraliq → doira rasm
+  avatarRing: {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: AVATAR_SIZE / 2,
+    padding: 2.5,
+  },
+  avatarGap: {
+    flex: 1,
+    borderRadius: AVATAR_SIZE / 2,
+    padding: 2.5,
+    backgroundColor: '#FFFFFF',
+  },
+  avatarImage: {
+    flex: 1,
+    width: '100%',
+    borderRadius: AVATAR_SIZE / 2,
+    backgroundColor: colors.surface2,
+  },
+  // Logo yo'q: bosh harf gradient doirada
+  avatar: {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: AVATAR_SIZE / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.9)',
+  },
   avatarInitial: {
     ...text.h2,
     color: colors.textOnPrimary,
-    fontSize: 26,
+    fontSize: 30,
+    lineHeight: 36,
     fontWeight: '800',
   },
   heroIdentity: { flex: 1, minWidth: 0, gap: 3 },
@@ -380,8 +587,9 @@ const styles = StyleSheet.create({
   },
 
   // ── Mahsulot kartasi — premium: oq karta + binafsha soft shadow ──
+  footerLoader: { paddingVertical: spacing.lg },
+  // Kenglik komponentda hisoblanadi (`cardWidth`) — `flex: 1` toq sonda oxirgi kartani cho'zardi
   card: {
-    flex: 1,
     gap: 2,
     marginBottom: spacing.md,
     padding: spacing.xs,
@@ -389,7 +597,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
-    shadowColor: '#5B21B6',
+    shadowColor: '#15131E',
     shadowOpacity: 0.08,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 6 },
@@ -402,6 +610,26 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface2,
   },
   imagePlaceholder: { borderWidth: 1, borderColor: colors.border },
+  // «Look» pili — bosh sahifadagi karta bilan bir xil (`app/(tabs)/index.tsx`)
+  lookBtn: {
+    position: 'absolute',
+    bottom: spacing.sm,
+    left: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  lookBtnOn: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  lookBtnText: { ...text.tiny, color: colors.text, letterSpacing: 0.3 },
   cardTitle: {
     ...text.small,
     color: colors.text,

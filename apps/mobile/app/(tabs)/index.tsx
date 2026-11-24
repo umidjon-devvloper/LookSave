@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Animated,
   Image,
+  Linking,
   Pressable,
   StyleSheet,
   Text,
@@ -155,11 +156,40 @@ const REFRESH_PULL = 90;
  */
 const AnimatedFlatList = Animated.FlatList as unknown as typeof FlatList;
 
+/**
+ * Yo'nalish — Yandex Navi birinchi (O'zbekistonda eng ko'p o'rnatilgan),
+ * ilova yo'q bo'lsa web xaritaga tushadi. Google Maps / Apple Maps shart
+ * emas: O'zbekistonda transport yo'nalishlari Yandex'da aniqroq.
+ *
+ * `canOpenURL` sxemasini ishlatish uchun iOS Info.plist'da
+ * `LSApplicationQueriesSchemes` ga `yandexnavi` qo'shilishi kerak — yo'q
+ * bo'lsa `canOpenURL` har doim false qaytadi va web ochiladi (zararsiz).
+ */
+async function openNavigation(store: {
+  name: string;
+  location: { lat: number; lng: number };
+}): Promise<void> {
+  const { lat, lng } = store.location;
+  const naviApp = `yandexnavi://build_route_on_map?lat_to=${lat}&lon_to=${lng}`;
+  const yandexWeb = `https://yandex.com/maps/?rtext=~${lat},${lng}&rtt=auto`;
+
+  try {
+    const canOpenApp = await Linking.canOpenURL(naviApp);
+    await Linking.openURL(canOpenApp ? naviApp : yandexWeb);
+  } catch {
+    try {
+      await Linking.openURL(yandexWeb);
+    } catch {
+      /* foydalanuvchi uchun hech narsa chiqmaydi — jim yiqilish */
+    }
+  }
+}
+
 export default function Home(): JSX.Element {
   const router = useRouter();
   const t = useI18n((state) => state.t);
   const isRTL = useI18n((state) => state.isRTL);
-  const { coords, permission, request } = useLocationStore();
+  const { coords, permission, request, isFallback } = useLocationStore();
   // «Look» savati — kartadagi tugma kiyimni shu yerga yig'adi (`lookStore`)
   const lookItems = useLookStore((state) => state.items);
   const addLook = useLookStore((state) => state.add);
@@ -274,25 +304,49 @@ export default function Home(): JSX.Element {
             />
 
             <View style={styles.contentSheet}>
-              <View style={styles.section}>
-                <SectionHeader title="Yangi funksiyalar" />
-                <FeaturesRow />
-              </View>
+              {/*
+                Location-first bosh sahifa (spec Tier 1 №03):
+                  1) GPS rad etilgan / Toshkent zaxira — foydalanuvchi bilsin
+                  2) Yaqin do'konlar birinchi seksiya (features'dan oldin)
+                  3) Har do'kon kartochkasida yo'nalish tugmasi — Yandex Navi
+              */}
+              {isFallback ? (
+                <Pressable style={styles.locBanner} onPress={() => void request()}>
+                  <Icon name="location" size={18} color={colors.primary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.locBannerTitle}>
+                      {permission === 'denied'
+                        ? 'Joylashuv o`chiq — Toshkent ko`rsatilmoqda'
+                        : 'Joylashuvni yoqing'}
+                    </Text>
+                    <Text style={styles.locBannerSub}>
+                      Eng yaqin do`konlarni ko`rish uchun ruxsat bering
+                    </Text>
+                  </View>
+                  <Icon name="next" size={16} color={colors.primary} />
+                </Pressable>
+              ) : null}
 
               {(stores.data ?? []).length > 0 ? (
                 <View style={styles.section}>
                   <SectionHeader
-                    icon="hot"
-                    title={t.home.topStores}
+                    icon="stores"
+                    title="Sizga eng yaqin do'konlar"
                     actionLabel={t.home.viewAll}
                     onAction={() => router.push('/market/stores')}
                   />
                   <StoreRow
                     stores={stores.data ?? []}
                     onPress={(store) => router.push(`/store/${store.id}`)}
+                    onNavigate={(store) => void openNavigation(store)}
                   />
                 </View>
               ) : null}
+
+              <View style={styles.section}>
+                <SectionHeader title="Yangi funksiyalar" />
+                <FeaturesRow />
+              </View>
 
               <View style={styles.section}>
                 <SectionHeader icon="limited" title={t.home.trendingNow} />
@@ -502,6 +556,29 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   section: { marginTop: spacing.sm },
+
+  // Location-first banner — GPS rad etilgan yoki zaxira (Toshkent markazi) holatida
+  locBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+  },
+  locBannerTitle: {
+    fontSize: 13,
+    color: colors.text,
+    fontWeight: '600',
+  },
+  locBannerSub: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
 
   // Atelier karta: soyasiz, hair-thin chegara, deyarli kvadrat burchak (radius.md).
   // SaaS-card-kit yumaloq soyali shablonning aksi.

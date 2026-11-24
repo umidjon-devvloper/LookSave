@@ -9,7 +9,8 @@
       "distribution": "internal",
       "channel": "development",
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://10.0.2.2:3000"
+        "EXPO_PUBLIC_API_URL": "http://10.0.2.2:3000",
+        "npm_config_onnxruntime_node_install_cuda": "skip"
       },
       "android": {
         "buildType": "apk"
@@ -28,7 +29,8 @@
       "distribution": "internal",
       "channel": "preview",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.looksave.uz"
+        "EXPO_PUBLIC_API_URL": "https://api.looksave.uz",
+        "npm_config_onnxruntime_node_install_cuda": "skip"
       },
       "android": {
         "buildType": "apk"
@@ -39,7 +41,8 @@
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.looksave.uz",
-        "LOOKSAVE_IOS_SCENE": "0"
+        "LOOKSAVE_IOS_SCENE": "0",
+        "npm_config_onnxruntime_node_install_cuda": "skip"
       },
       "node": "22.12.0",
       "android": {

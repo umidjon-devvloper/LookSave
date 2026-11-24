@@ -87,23 +87,44 @@ export function BrandRow({
 export function StoreRow({
   stores,
   onPress,
+  onNavigate,
 }: {
   stores: NearbyStore[];
   onPress: (store: NearbyStore) => void;
+  /**
+   * Yo'nalish tugmasi bosilganda — Yandex Navi ochiladi.
+   * Berilmasa tugma ko'rinmaydi (eski chaqiruvlar buzilmasin).
+   */
+  onNavigate?: (store: NearbyStore) => void;
 }): JSX.Element {
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
       <View style={styles.brandRow}>
         {stores.map((store) => (
           <Pressable key={store.id} style={styles.storeTile} onPress={() => onPress(store)}>
-            <StoreLogo
-              logoUrl={store.logoUrl}
-              name={store.name}
-              size={76}
-              width={112}
-              style={styles.brandMark}
-              tintColor={colors.text}
-            />
+            <View style={styles.storeLogoWrap}>
+              <StoreLogo
+                logoUrl={store.logoUrl}
+                name={store.name}
+                size={76}
+                width={112}
+                style={styles.brandMark}
+                tintColor={colors.text}
+              />
+              {onNavigate ? (
+                <Pressable
+                  style={styles.navBtn}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    onNavigate(store);
+                  }}
+                  hitSlop={8}
+                  accessibilityLabel={`${store.name} ga yo'nalish`}
+                >
+                  <Icon name="location" size={14} color="#FFFFFF" />
+                </Pressable>
+              ) : null}
+            </View>
             <Text style={styles.storeName} numberOfLines={1}>
               {store.name}
             </Text>
@@ -159,6 +180,23 @@ const styles = StyleSheet.create({
   brandRow: { flexDirection: 'row', gap: 12 },
   brandTile: { alignItems: 'center', justifyContent: 'center' },
   storeTile: { alignItems: 'center', width: 112, gap: 4 },
+  storeLogoWrap: { position: 'relative' },
+  navBtn: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#15131E',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
   storeName: { ...text.small, color: colors.text, textAlign: 'center', maxWidth: 112 },
   storeMeta: { fontSize: 11, color: colors.textMuted, textAlign: 'center' },
   storePillWrap: { marginTop: 2 },

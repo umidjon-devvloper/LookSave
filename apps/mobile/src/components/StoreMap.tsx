@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
+import { MAP_AVAILABLE } from '../map/availability';
 import { colors, radius, spacing, text } from '../theme/tokens';
 import {
   initialRegion,
@@ -21,8 +22,10 @@ import {
  * Faqat xarita chizish va o'z markerlarimiz. Shuning uchun hisob nolda
  * qoladi.
  *
- * ⚠️ Kalitsiz Android'da xarita KO'K/BO'SH ko'rinadi, xato bermaydi —
- * eng chalkashtiradigan holat. `app.config.ts` va RUNBOOK'ga qarang.
+ * ⚠️ Kalitsiz Android'da bu komponent CHIZILMASLIGI KERAK: `MapView`
+ * «API key not found» bilan butun ilovani bo'sh ekranga tushiradi
+ * (`src/map/availability.ts`). Chaqiruvchi `MAP_AVAILABLE` ni tekshiradi;
+ * pastdagi himoya — ikkinchi qavat.
  */
 
 /**
@@ -40,8 +43,8 @@ import {
  * ichki qatlamiga ishora qiladi.
  *
  * iOS'da yechim oddiy: standart provayder — Apple Maps, u kalitsiz
- * ishlaydi. Android'da esa Google yagona variant, shuning uchun u yerda
- * kalitsiz xarita bo'sh qoladi (lekin qulamaydi).
+ * ishlaydi. Android'da esa Google yagona variant: kalit bo'lmasa xarita
+ * umuman chizilmaydi (`MAP_AVAILABLE`).
  */
 function mapProvider(): typeof PROVIDER_GOOGLE | undefined {
   if (Platform.OS === 'android') return PROVIDER_GOOGLE;
@@ -75,7 +78,13 @@ interface Props {
   onSelectStore: (id: string) => void;
 }
 
-export function StoreMap({
+export function StoreMap(props: Props): JSX.Element | null {
+  // Ikkinchi qavat himoya: kalitsiz Android'da `MapView` ilovani o'ldiradi
+  if (!MAP_AVAILABLE) return null;
+  return <StoreMapView {...props} />;
+}
+
+function StoreMapView({
   coords,
   markers,
   clusters,

@@ -219,6 +219,7 @@ function AppShell(): JSX.Element {
           <Stack.Screen name="discount-code" options={{ headerShown: false }} />
           <Stack.Screen name="try-on-history" options={{ headerShown: false }} />
           <Stack.Screen name="gift" options={{ headerShown: false }} />
+          <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
           {/* Mavjud bo'lmagan havola — expo-router'ning qora standart sahifasi o'rniga */}
           <Stack.Screen name="+not-found" options={{ headerShown: false }} />
         </Stack>
