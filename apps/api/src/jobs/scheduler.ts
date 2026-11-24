@@ -1,4 +1,5 @@
 import { anonymizeDueAccounts } from '../auth/deletion';
+import { checkFavoriteAlerts } from '../catalog/favorite-alerts';
 import { pool } from '../db/pool';
 import { redis } from '../db/redis';
 import { notifyStatusChange } from '../integrations/notify';
@@ -296,6 +297,14 @@ async function tick(): Promise<void> {
   if (await acquire('expire', 240)) {
     await run('expire', expireStaleOrders);
     await run('remind', remindSilentStores);
+  }
+
+  /*
+   * «Narx tushsa xabar» — ~15 daqiqada (qulf 14 daqiqa). Tunda funksiyaning
+   * o'zi hech narsa yubormaydi; hodisalar ertalabki birinchi yurishda ketadi.
+   */
+  if (await acquire('favorite-alerts', 840)) {
+    await run('favorite-alerts', checkFavoriteAlerts);
   }
 
   // Har kuni 04:00 UTC = Toshkentda 09:00

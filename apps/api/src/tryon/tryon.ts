@@ -233,9 +233,17 @@ export async function recordTryonEvent(
 // Sevimlilar
 // ============================================================
 
+/**
+ * `seen_price` / `seen_in_stock` — «narx tushsa xabar» uchun boshlang'ich
+ * holat (`catalog/favorite-alerts.ts`): xabar faqat SAQLANGANDAN keyingi
+ * arzonlashishda boradi.
+ */
 export async function addFavorite(userId: string, productId: string): Promise<void> {
   await pool.query(
-    `INSERT INTO favorites (user_id, product_id) VALUES ($1, $2)
+    `INSERT INTO favorites (user_id, product_id, seen_price, seen_in_stock)
+     VALUES ($1, $2,
+             (SELECT base_price FROM products WHERE id = $2),
+             product_in_stock($2))
      ON CONFLICT DO NOTHING`,
     [userId, productId],
   );

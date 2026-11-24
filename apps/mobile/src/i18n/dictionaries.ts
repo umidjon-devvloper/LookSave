@@ -493,6 +493,10 @@ const uz = {
     emptyTitle: "Sevimlilar bo'sh",
     emptyHint: 'Mahsulot sahifasidagi yurak belgisini bosing — u shu yerda saqlanadi.',
     unavailable: 'Sotuvdan olingan',
+    alertsTitle: 'Narx tushsa xabar bering',
+    alertsHint: "Sevimlilardagi mahsulot kamida 5% arzonlashsa yoki yana sotuvga chiqsa, bildirishnoma yuboramiz. Kechasi bezovta qilmaymiz.",
+    alertsDenied: "Bildirishnomalar telefon sozlamalarida o'chiq — xabar kelmaydi.",
+    alertsOpenSettings: 'Sozlamalarni ochish',
   },
   deleteAccount: {
     title: "Akkauntni o'chirish",
@@ -1478,6 +1482,10 @@ const ru: Dictionary = {
     emptyTitle: 'В избранном пусто',
     emptyHint: 'Нажмите на сердечко на странице товара — он сохранится здесь.',
     unavailable: 'Снят с продажи',
+    alertsTitle: 'Сообщить о снижении цены',
+    alertsHint: 'Пришлём уведомление, если товар из избранного подешевеет минимум на 5% или снова появится в продаже. Ночью не беспокоим.',
+    alertsDenied: 'Уведомления выключены в настройках телефона — сообщения не придут.',
+    alertsOpenSettings: 'Открыть настройки',
   },
   deleteAccount: {
     title: 'Удаление аккаунта',
@@ -2449,6 +2457,10 @@ const en: Dictionary = {
     emptyTitle: 'No favorites yet',
     emptyHint: 'Tap the heart on a product page — it will be saved here.',
     unavailable: 'No longer sold',
+    alertsTitle: 'Notify me about price drops',
+    alertsHint: "We'll send a notification when an item in your favorites drops by at least 5% or is back in stock. Never at night.",
+    alertsDenied: "Notifications are turned off in your phone settings — alerts won't arrive.",
+    alertsOpenSettings: 'Open settings',
   },
   deleteAccount: {
     title: 'Delete account',
@@ -3413,6 +3425,10 @@ const ar: Dictionary = {
     emptyTitle: 'المفضلة فارغة',
     emptyHint: 'اضغط على القلب في صفحة المنتج ليُحفظ هنا.',
     unavailable: 'لم يعد متاحًا',
+    alertsTitle: 'أبلغني عند انخفاض السعر',
+    alertsHint: 'سنرسل إشعارًا عندما ينخفض سعر منتج في مفضلتك بنسبة 5% على الأقل أو يعود للتوفر. لا نزعجك ليلًا.',
+    alertsDenied: 'الإشعارات متوقفة في إعدادات الهاتف — لن تصلك التنبيهات.',
+    alertsOpenSettings: 'فتح الإعدادات',
   },
   deleteAccount: {
     title: 'حذف الحساب',

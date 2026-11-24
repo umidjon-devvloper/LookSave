@@ -18,6 +18,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 
 import { paginate } from '../catalog/cursor';
+import { getPriceAlerts, setPriceAlerts } from '../catalog/favorite-alerts';
 import { pool } from '../db/pool';
 import { attachRenderCutout } from '../developer-ai/tasks';
 import { localeOf } from '../catalog/locale';
@@ -419,6 +420,29 @@ tryonRouter.delete(
   route({ params: idParamSchema }, async (input, _req, res) => {
     await removeFavorite(getAuth(res).sub, input.params.id);
     sendData(res, { isFavorite: false });
+  }),
+);
+
+/**
+ * GET/PUT /v1/price-alerts — «narx tushsa xabar» roziligi.
+ *
+ * ⚠️ `/favorites/alerts` EMAS: `PUT /favorites/:id` UUID kutadi va
+ * «alerts» so'zini 422 bilan rad etardi — marshrut tartibiga bog'liq
+ * tuzoq. Alohida yo'l bilan bu muammo umuman yo'q.
+ */
+tryonRouter.get(
+  '/price-alerts',
+  requireAuth,
+  route({}, async (_input, _req, res) => {
+    sendData(res, { enabled: await getPriceAlerts(getAuth(res).sub) });
+  }),
+);
+
+tryonRouter.put(
+  '/price-alerts',
+  requireAuth,
+  route({ body: z.object({ enabled: z.boolean() }) }, async (input, _req, res) => {
+    sendData(res, { enabled: await setPriceAlerts(getAuth(res).sub, input.body.enabled) });
   }),
 );
 

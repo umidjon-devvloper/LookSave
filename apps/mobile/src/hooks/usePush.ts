@@ -114,6 +114,56 @@ export function usePushRegistration(): void {
   }, [status]);
 }
 
+export type PushPermission = 'granted' | 'denied' | 'unavailable';
+
+/**
+ * «Narx tushsa xabar» yoqilganda: ruxsat so'raladi (hali so'ralmagan
+ * bo'lsa) va token serverga qayta yoziladi. Kirishda ruxsat rad etilgan
+ * bo'lsa qurilma tokensiz yozilgan — keyin ruxsat berilsa token shu yerda
+ * yetib boradi.
+ *
+ * `denied` — tizim sozlamasida o'chiq, ilova qayta so'ray olmaydi;
+ * `unavailable` — simulyator yoki native modul yo'q.
+ */
+export async function ensurePushRegistered(): Promise<PushPermission> {
+  if (!Device.isDevice) return 'unavailable';
+
+  const pushToken = await registerForPush();
+  if (!pushToken) {
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      return status === 'denied' ? 'denied' : 'unavailable';
+    } catch {
+      return 'unavailable';
+    }
+  }
+
+  try {
+    await api('/devices', {
+      method: 'POST',
+      body: {
+        deviceId: deviceId(),
+        platform: Platform.OS === 'ios' ? 'ios' : 'android',
+        pushToken,
+      },
+    });
+  } catch {
+    // Token keyingi kirishda yoziladi
+  }
+  return 'granted';
+}
+
+/** Joriy ruxsat — so'ramasdan. */
+export async function pushPermission(): Promise<PushPermission> {
+  if (!Device.isDevice) return 'unavailable';
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    return status === 'granted' ? 'granted' : status === 'denied' ? 'denied' : 'unavailable';
+  } catch {
+    return 'unavailable';
+  }
+}
+
 type Router = ReturnType<typeof useRouter>;
 
 /*

@@ -5,7 +5,12 @@
  * testlanadi (`pushTarget.test.ts`). Chaqiruvchi: `usePush.ts`.
  */
 
-export type NotificationTarget = '/seller' | '/ai/fitting' | `/order/${string}`;
+export type NotificationTarget =
+  | '/seller'
+  | '/ai/fitting'
+  | '/favorites'
+  | `/order/${string}`
+  | `/product/${string}`;
 
 /** Bildirishnoma `data` si → ochiladigan marshrut; mos kelmasa `null`. */
 export function notificationTarget(data: unknown): NotificationTarget | null {
@@ -28,6 +33,17 @@ export function notificationTarget(data: unknown): NotificationTarget | null {
    * odam aynan shuning uchun kutgan edi.
    */
   if (record['type'] === 'avatar_ready') return '/ai/fitting';
+
+  /*
+   * «Narx tushsa xabar» (`api/src/catalog/favorite-alerts.ts`): bitta
+   * mahsulot — uning sahifasi, bir nechtasi bitta xabarda — sevimlilar.
+   */
+  if (record['type'] === 'favorite_alert') {
+    const productId = record['productId'];
+    return typeof productId === 'string' && productId.length > 0
+      ? `/product/${productId}`
+      : '/favorites';
+  }
 
   return null;
 }

@@ -19,6 +19,15 @@ describe('notificationTarget', () => {
     expect(notificationTarget({ type: 'avatar_ready' })).toBe('/ai/fitting');
   });
 
+  it('narx tushdi (bitta mahsulot) — mahsulot sahifasi', () => {
+    expect(notificationTarget({ type: 'favorite_alert', productId: 'p1' })).toBe('/product/p1');
+  });
+
+  it('sevimlilarda bir nechta yangilik — sevimlilar sahifasi', () => {
+    expect(notificationTarget({ type: 'favorite_alert' })).toBe('/favorites');
+    expect(notificationTarget({ type: 'favorite_alert', productId: '' })).toBe('/favorites');
+  });
+
   it('orderId turi noma`lum xabarda ham buyurtmani ochadi', () => {
     expect(notificationTarget({ type: 'order_status', orderId: 'b7c1' })).toBe('/order/b7c1');
   });

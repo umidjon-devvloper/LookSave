@@ -953,6 +953,12 @@ export const addFavorite = (productId: string): Promise<{ isFavorite: boolean }>
 export const removeFavorite = (productId: string): Promise<{ isFavorite: boolean }> =>
   api(`/favorites/${productId}`, { method: 'DELETE' });
 
+/** «Narx tushsa xabar» roziligi — `api/src/catalog/favorite-alerts.ts`. */
+export const getPriceAlerts = (): Promise<{ enabled: boolean }> => api('/price-alerts');
+
+export const setPriceAlerts = (enabled: boolean): Promise<{ enabled: boolean }> =>
+  api('/price-alerts', { method: 'PUT', body: { enabled } });
+
 // ── Komplektlar ──
 
 export interface LookItem {
