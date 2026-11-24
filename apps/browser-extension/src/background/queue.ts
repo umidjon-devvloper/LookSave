@@ -645,13 +645,63 @@ function difference(a: Uint8ClampedArray, b: Uint8ClampedArray): number {
  * ⚠️ SAHIFA QAYTA YUKLANADI, YA'NI CONTENT SCRIPT HAM YANGIDAN QO'YILADI.
  * Shuning uchun keyin `ensureTab` bilan bir xil tekshiruvdan o'tiladi.
  */
+/**
+ * Tabning `status: 'complete'` ga o'tishini kutadi.
+ *
+ * ⚠️ NEGA SHART (2026-11-18). Qattiq `sleep(5s)` kafolat bermaydi: sekin
+ * tarmoqda ChatGPT 10 soniyada ham yuklanib bo'lmasligi mumkin, tez
+ * tarmoqda esa 2 soniyada yuklanib bo'lib, qolgan 3 soniya bekor
+ * ketadi. Tab holati esa aniq signal — content script shu paytgacha
+ * qayta ulangan bo'ladi.
+ */
+async function waitTabComplete(tabId: number, timeoutMs: number): Promise<void> {
+  await new Promise<void>((resolve) => {
+    const timer = setTimeout(() => {
+      chrome.tabs.onUpdated.removeListener(listener);
+      resolve();
+    }, timeoutMs);
+
+    const listener = (updatedId: number, info: { status?: string }): void => {
+      if (updatedId !== tabId) return;
+      if (info.status === 'complete') {
+        clearTimeout(timer);
+        chrome.tabs.onUpdated.removeListener(listener);
+        resolve();
+      }
+    };
+
+    chrome.tabs.onUpdated.addListener(listener);
+  });
+}
+
 async function freshChat(tabId: number, adapter: AdapterId): Promise<void> {
+  /*
+   * ⚠️ `tabs.update` + `tabs.reload` YETMAYDI (2026-11-18). ChatGPT 2025
+   * oxiridan boshlab suhbat qoralama (draft) va yuborilmagan
+   * biriktirmalarni IndexedDB'da saqlaydi: ildizga qaytilsa va sahifa
+   * qayta yuklansa ham, SPA ushbu biriktirmalarni DB'dan tiklaydi.
+   * Shu sababli 4 ish ketma-ket yurgandan keyin kirish maydonida 12 ta
+   * yuz to'planib qoldi.
+   *
+   * Yechim ikki qavat:
+   *  1. Bu yerda: `tabs.update` + `tabs.reload`, keyin tabning haqiqiy
+   *     `complete` holatini kutamiz (qattiq sleep emas).
+   *  2. Content script `dress()`: fayllar biriktirishdan oldin oldin
+   *     qolgan biriktirmalarni tozalaydi (biroz kutib, keyin aniq bir
+   *     qancha urinishda) va, oxirgi chora sifatida, yon paneldagi
+   *     «Yangi suhbat» tugmasini bosadi.
+   */
   await chrome.tabs.update(tabId, { url: ADAPTER_URL[adapter] });
-  await sleep(5_000);
+  await sleep(500);
+  await chrome.tabs.reload(tabId).catch(() => undefined);
+
+  /* Tab `complete` ga yetishini kutamiz — maksimum 20s */
+  await waitTabComplete(tabId, 20_000);
+  await sleep(1_500);
 
   for (let attempt = 0; attempt < 6; attempt += 1) {
     if (await ping(tabId)) return;
-    await sleep(2_000);
+    await sleep(1_500);
   }
 
   await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });

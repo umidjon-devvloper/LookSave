@@ -1,5 +1,5 @@
 import type { Adapter } from './adapters/types';
-import { attachFiles, submit, typeInto } from './dom';
+import { REMOVE_LABEL_RE, attachFiles, signalSummary, submit, typeInto } from './dom';
 
 /**
  * Sahifa tekshiruvi — «nima ishlayapti, nima yo'q».
@@ -41,6 +41,38 @@ export async function diagnose(adapter: Adapter | null): Promise<string[]> {
   );
 
   add(`biriktirma sanogi (bosh holatda): ${adapter.attachmentCount()}`);
+  add(`· signallar: ${signalSummary()}`);
+
+  /*
+   * ⚠️ TAFSILOT (2026-11-18): bugungi UI'da `attachmentCount()` manfiy
+   * raqam qaytargan paytda tashqaridan taxmin qilmasdan, DOM da
+   * aslida nima borligini ko'rish uchun.
+   */
+  const scopes: [string, number][] = [
+    ['form', document.querySelectorAll('form').length],
+    ['document img[blob]', document.querySelectorAll('img[src^="blob:"]').length],
+    ['document [style*=blob]', document.querySelectorAll('[style*="blob:"]').length],
+    ['input[type=file]', document.querySelectorAll('input[type="file"]').length],
+    [
+      'button[aria-label ~ REMOVE]',
+      [...document.querySelectorAll<HTMLButtonElement>('button[aria-label], button[title]')].filter(
+        (b) =>
+          REMOVE_LABEL_RE.test(
+            `${b.getAttribute('aria-label') ?? ''} ${b.getAttribute('title') ?? ''}`,
+          ),
+      ).length,
+    ],
+    [
+      '[data-testid ~ composer]',
+      document.querySelectorAll('[data-testid*="composer" i], [id*="composer" i]').length,
+    ],
+    [
+      '[data-testid ~ attachment]',
+      document.querySelectorAll('[data-testid*="attachment" i]').length,
+    ],
+    ['img[src^=data:]', document.querySelectorAll('img[src^="data:"]').length],
+  ];
+  for (const [name, count] of scopes) add(`· ${name}: ${count}`);
   add(
     adapter.sendButton()
       ? '· yuborish tugmasi bo`sh matnda ham FAOL'
@@ -50,7 +82,13 @@ export async function diagnose(adapter: Adapter | null): Promise<string[]> {
   // ── Surat biriktirish ──
   try {
     const file = await testImage();
-    const how = await attachFiles(composer, [file], () => adapter.attachmentCount(), inputs);
+    const how = await attachFiles(
+      composer,
+      [file],
+      () => adapter.attachmentCount(),
+      inputs,
+      () => adapter.sendButton(),
+    );
     add(`✓ SURAT BIRIKTIRILDI — usul: ${how}`);
   } catch (error) {
     add(`✗ surat biriktirilmadi: ${error instanceof Error ? error.message : 'xato'}`);
@@ -121,10 +159,18 @@ function cleanup(composer: HTMLElement): void {
     /* tozalash yiqilsa tekshiruv natijasi baribir qimmatli */
   }
 
-  for (const button of document.querySelectorAll<HTMLElement>(
-    'form button[aria-label*="Remove"], form button[aria-label*="remove"]',
+  /*
+   * ⚠️ Faqat kirish paneli atrofidagi tugmalarni bosamiz — `clearAttachments`
+   * dagi hudud cheklovi bilan mos. Sahifaning boshqa joyidagi «Delete»
+   * tugmasini tekshiruv tasodifan bosmasin.
+   */
+  const form = composer.closest('form, [data-testid*="composer" i], [id*="composer" i]');
+  const scope = form ?? composer.parentElement?.parentElement?.parentElement ?? document;
+  for (const button of scope.querySelectorAll<HTMLButtonElement>(
+    'button[aria-label], button[title]',
   )) {
-    button.click();
+    const label = `${button.getAttribute('aria-label') ?? ''} ${button.getAttribute('title') ?? ''}`;
+    if (REMOVE_LABEL_RE.test(label)) button.click();
   }
 }
 

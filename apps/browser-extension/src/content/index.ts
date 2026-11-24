@@ -6,6 +6,7 @@ import { diagnose, testSend } from './diagnose';
 import {
   attachFiles,
   base64ToFile,
+  clearAttachments,
   hasPrompt,
   readImage,
   sleep,
@@ -149,12 +150,26 @@ async function dress(
 
   const files = request.images.map((image) => base64ToFile(image.base64, image.mime, image.name));
 
+  /*
+   * ⚠️ IKKINCHI HIMOYA (2026-11-18). `freshChat` sahifani qayta yukladi,
+   * lekin ChatGPT yubroilmagan biriktirmalarni ichki holatidan tiklab
+   * yuborishi mumkin — natijada kirish maydonida avvalgi ishdan qolgan
+   * suratlar paydo bo'ladi va yangilari ularning ustiga qo'shiladi.
+   * Yangi biriktirishdan oldin eskilari o'chiriladi.
+   */
+  const leftover = Math.max(adapter.attachmentCount(), 0);
+  if (leftover > 0) {
+    const removed = await clearAttachments(() => adapter.attachmentCount());
+    step(`avvalgi ${leftover} biriktirma tozalandi (${removed} tugma bosildi)`);
+  }
+
   step(`${files.length} surat biriktirilmoqda… (sahifa skripti v${scriptVersion()})`);
   const how = await attachFiles(
     composer,
     files,
     () => adapter.attachmentCount(),
     adapter.fileInputs(),
+    () => adapter.sendButton(),
   );
   step(`suratlar biriktirildi (${how})`);
 

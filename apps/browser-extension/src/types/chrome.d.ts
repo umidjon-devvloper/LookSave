@@ -65,5 +65,22 @@ declare const chrome: {
     sendMessage(tabId: number, message: unknown): Promise<unknown>;
     create(info: { url: string; active?: boolean }): Promise<ChromeTab>;
     update(tabId: number, info: { active?: boolean; url?: string }): Promise<ChromeTab>;
+    reload(tabId?: number, info?: { bypassCache?: boolean }): Promise<void>;
+    onUpdated: {
+      addListener(
+        handler: (
+          tabId: number,
+          changeInfo: { status?: string; url?: string },
+          tab: ChromeTab,
+        ) => void,
+      ): void;
+      removeListener(
+        handler: (
+          tabId: number,
+          changeInfo: { status?: string; url?: string },
+          tab: ChromeTab,
+        ) => void,
+      ): void;
+    };
   };
 };

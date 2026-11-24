@@ -1,4 +1,4 @@
-import { firstOf, firstOfHidden } from '../dom';
+import { attachmentSignals, firstOf, firstOfHidden } from '../dom';
 import { looksLikeResult, type Adapter } from './types';
 
 /**
@@ -34,6 +34,40 @@ const VOICE_LABEL = /voice|dictat|microphone|голос|диктов|микро�
 
 function composerForm(): HTMLElement | null {
   return chatgpt.composer()?.closest('form') ?? null;
+}
+
+/**
+ * Kirish maydoni atrofidagi mantiqiy «idish».
+ *
+ * ⚠️ NEGA SHART (2026-11-18). ChatGPT 2026-noyabr tahririyatida
+ * biriktirmalar va fayl kiritish maydoni endi `<form>` ICHIDA emas,
+ * uning yonidagi `<div>` ichida chiziladi (yangi «octane» komponenti).
+ * Hamma qidiruvlarni `form` ga bog'lab qo'ygan edik — natijada
+ * `attachmentCount()` `-1` qaytarardi, `fileInputs()` bo'sh massiv.
+ * Biriktirish uchala usul bilan ham ishlamagandek ko'rinardi, aslida
+ * esa suratlar maydoniga TUSHIRILMASDI.
+ *
+ * Yangi «idish» — kirish maydonining eng yaqin tag-belgisiz ajdodi,
+ * yo `form`, yoki uni o'z ichiga oluvchi katta `<div>` (sahifaning pastki
+ * panel qismi). Ikkisi ham bo'lmasa `document` ishlatiladi.
+ */
+function composerArea(): ParentNode {
+  const el = chatgpt.composer();
+  if (!el) return document;
+
+  const form = el.closest('form');
+  if (form) return form;
+
+  /*
+   * Zaxira: kirish maydonining uch darajadagi ajdodi yetadi — ChatGPT'da
+   * bu `#composer-background` yoki shunga o'xshash idish bo'ladi.
+   */
+  return (
+    el.closest('[data-testid*="composer" i]') ??
+    el.closest('[id*="composer" i]') ??
+    el.parentElement?.parentElement?.parentElement ??
+    document
+  );
 }
 
 /** Forma ichidagi, yorlig'i `pattern` ga mos tugma. */
@@ -109,10 +143,9 @@ export const chatgpt: Adapter = {
      * faollashishi mumkin. Shuning uchun biriktirma ustidagi yuklash
      * belgisi alohida kutiladi, aks holda xabar suratsiz ketardi.
      */
-    const form = composerForm();
-    if (!form) return false;
+    const area = composerArea();
     return Boolean(
-      form.querySelector(
+      area.querySelector(
         '[role="progressbar"], [aria-busy="true"], .animate-spin, circle[stroke-dasharray]',
       ),
     );
@@ -120,22 +153,28 @@ export const chatgpt: Adapter = {
 
   fileInputs() {
     /*
-     * ⚠️ AVVAL KO'RINADIGAN MATN MAYDONINING O'Z FORMASIDAN. Sahifada
-     * bir nechta qurilma bor va ularning har birida o'z fayl maydoni
-     * turadi; boshqasiniki olinsa surat ko'rinmaydigan oynaga tushardi.
+     * ⚠️ AVVAL KIRISH MAYDONI ATROFI. Sahifada bir nechta qurilma bor
+     * va ularning har birida o'z fayl maydoni turadi; boshqasiniki
+     * olinsa surat ko'rinmaydigan oynaga tushardi.
+     *
+     * ⚠️ `<form>` ICHIDA SHART EMAS (2026-11-18). ChatGPT yangi tahririda
+     * fayl maydoni endi yonidagi `<div>` ichida chiziladi.
      *
      * ⚠️ «files» MAYDONI, «photos» YOKI «camera» EMAS. Uchalasiga ham
      * yozilsa surat uch marta biriktirilardi.
      */
-    const form = chatgpt.composer()?.closest('form');
-    const scoped = form?.querySelector<HTMLInputElement>(
-      'input[type="file"][accept*="image"], input[type="file"]',
-    );
+    const area = composerArea();
+    const scoped =
+      (area as Element).querySelector?.<HTMLInputElement>(
+        'input[type="file"][accept*="image"]',
+      ) ?? (area as Element).querySelector?.<HTMLInputElement>('input[type="file"]');
     if (scoped) return [scoped];
 
     const any = firstOfHidden<HTMLInputElement>([
       '#octane-mobile-composer-files-input',
       'form input[type="file"][accept*="image"]',
+      'input[type="file"][accept*="image"]',
+      'form input[type="file"]',
       'input[type="file"]',
     ]);
     return any ? [any] : [];
@@ -143,17 +182,18 @@ export const chatgpt: Adapter = {
 
   attachmentCount() {
     /*
-     * ⚠️ `blob:` ENG ISHONCHLI BELGI. Biriktirilgan surat ko'rinishi
-     * brauzerda yasalgan `blob:` havoladan chiziladi — bu sayt qaysi
-     * belgilash usulini ishlatishidan qat'i nazar shunday.
+     * ⚠️ KO'P-SIGNAL (2026-11-18). ChatGPT biriktirma plitkasini sayt
+     * versiyasiga bog'liq ravishda `<img>`, `background-image: url(blob:…)`
+     * li `<span>`, yoki `[data-testid*="attachment"]` orqali chizadi.
+     * Bitta belgiga bog'lanish «ko'r» bo'lib qoladi: 2026-11-18 tahririda
+     * plitka `<img>` emas edi va eski kodimiz biriktirmani UMUMAN
+     * ko'rmasdi, keyingi strategiya yana fayllar qo'shib yuborardi.
+     *
+     * `attachmentSignals` beshta belgini sanaydi va eng kattasini oladi.
+     * Hech bir belgi 0 bo'lmasa `-1` — «bilmayman».
      */
-    const blobs = document.querySelectorAll('form img[src^="blob:"]');
-    if (blobs.length > 0) return blobs.length;
-
-    const thumbs = document.querySelectorAll(
-      'form [data-testid*="attachment"], form button[aria-label*="Remove"]',
-    );
-    return thumbs.length > 0 ? thumbs.length : -1;
+    const max = attachmentSignals().max;
+    return max > 0 ? max : -1;
   },
 
   lastReplyText() {

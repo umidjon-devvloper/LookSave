@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LookSave — AI kiyintirish",
-  "version": "0.9.12",
+  "version": "0.9.17",
   "description": "developer_ai navbatidagi kiyimlarni brauzerdagi AI orqali mijoz avatariga kiydiradi.",
   "permissions": ["storage", "tabs", "alarms", "scripting"],
   "host_permissions": [
