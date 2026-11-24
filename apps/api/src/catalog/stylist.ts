@@ -14,7 +14,7 @@ import {
  *   1) `loadCatalog` — faol do'konlardagi faol, rasmi bor mahsulotlar (har
  *      slotdan ko'pi bilan `PER_SLOT` ta; «№23», «№24» kabi faqat raqami
  *      farq qiladigan nomlardan bittasi qoladi).
- *   2) GPT (`chooseFromCatalog`) shu ro'yxatdan RAQAM bilan tanlaydi —
+ *   2) AI (`chooseFromCatalog`: OpenAI, u yiqilsa Gemini) shu ro'yxatdan RAQAM bilan tanlaydi —
  *      uydirma mahsulot bo'lmaydi, javob matni ham tanlanganini aytadi.
  *   3) GPT yo'q / yiqildi / yaroqsiz raqam qaytardi → `pickByRules`: qoida
  *      slot + so'z bilan moslaydi, topilmasa mavjud slotlardan to'ldiradi.
@@ -70,9 +70,9 @@ export async function buildOutfit(prompt: string): Promise<OutfitResult> {
       }
       const products = resolvePicks(choice.picks, catalog);
       if (products.length > 0) return { answer: choice.answer, products };
-      logger.warn({ picks: choice.picks }, 'stylist: GPT raqamlari yaroqsiz, qoidaga tushamiz');
+      logger.warn({ picks: choice.picks }, 'stylist: AI raqamlari yaroqsiz, qoidaga tushamiz');
     } catch (err) {
-      logger.warn({ err }, 'stylist: GPT yiqildi, qoidaga tushamiz');
+      logger.warn({ err }, 'stylist: AI (OpenAI va Gemini) yiqildi, qoidaga tushamiz');
     }
   }
 

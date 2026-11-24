@@ -247,6 +247,25 @@ const envSchema = z.object({
   OPENAI_STYLIST_API_KEY: z.string().default(''),
 
   /*
+   * ⚠️ STILISTNING ZAXIRA PROVAYDERI — Gemini (egasining talabi, 2026-11-24).
+   *
+   * OpenAI javob bermasa (balans tugagan — 429 `insufficient_quota`, kalit
+   * o'chirilgan, tarmoq, 5xx) stilist so'rovi Gemini'ga ketadi. Bu kalit ham
+   * FAQAT stilist uchun — rasm chaqiruvlari unga tegmaydi. Bo'sh bo'lsa
+   * zaxira yo'q: OpenAI yiqilsa stilist qoidalar asosida javob beradi.
+   *
+   * `GEMINI_TEXT_MODELS` — vergul bilan ro'yxat, tartibida sinaladi. Keyingi
+   * modelga faqat «band» (429/5xx), model yopilgan (404) yoki vaqt tugaganda o'tiladi;
+   * Google eski modellarni yangi kalitlarga yopib qo'yadi (2.5 avlodi
+   * 2026-11 da 404 qaytargan), shuning uchun ro'yxatni kod emas, muhit beradi.
+   * Sukut — fikrlash bosqichisiz «lite» modellar: javob ~1–4 s; to'liq
+   * `flash` 20 s+ fikrlaydi va mobil ilovaning 25 s kutishiga sig'maydi.
+   */
+  GEMINI_STYLIST_API_KEY: z.string().default(''),
+  GEMINI_BASE_URL: z.string().url().default('https://generativelanguage.googleapis.com/v1beta'),
+  GEMINI_TEXT_MODELS: z.string().default('gemini-3.5-flash-lite,gemini-3.1-flash-lite'),
+
+  /*
    * ⚠️ OCHIQ WEB MANZILI — ulashish havolalari uchun.
    *
    * Group try-on sessiyasi `shareUrl` da `PUBLIC_WEB_URL/g/<id>` bo'lib
