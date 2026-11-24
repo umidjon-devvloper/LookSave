@@ -32,8 +32,20 @@ interface ExpoResponse {
   errors?: Array<{ message: string }>;
 }
 
+/**
+ * Kalit (`EXPO_ACCESS_TOKEN`) shart emas — `config/env.ts` dagi izohga qarang.
+ * Sinovlarda o'chiq: sinov hech qachon haqiqiy telefonga xabar yubormasin.
+ */
 export function isPushEnabled(): boolean {
-  return env().EXPO_ACCESS_TOKEN.length > 0;
+  return !env().PUSH_DISABLED && env().NODE_ENV !== 'test';
+}
+
+/** Kalit bo'lsa — `Authorization`, bo'lmasa tokensiz (Expo ruxsat bersa). */
+export function pushHeaders(): Record<string, string> {
+  const token = env().EXPO_ACCESS_TOKEN;
+  return token
+    ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+    : { 'Content-Type': 'application/json' };
 }
 
 async function loadTokens(userId: string): Promise<string[]> {
@@ -77,10 +89,7 @@ export async function sendPush(
     try {
       const response = await fetch(EXPO_PUSH_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${env().EXPO_ACCESS_TOKEN}`,
-        },
+        headers: pushHeaders(),
         body: JSON.stringify(messages),
         signal: AbortSignal.timeout(10_000),
       });
@@ -88,7 +97,15 @@ export async function sendPush(
       const result = (await response.json()) as ExpoResponse;
 
       if (result.errors) {
-        logger.warn({ errors: result.errors }, 'expo push xatosi');
+        // Kalitsiz yuborilganda Expo «Enhanced push security» yoqilgan bo'lsa
+        // shu yerga tushadi — sabab logda aniq ko'rinsin
+        const needsToken = !env().EXPO_ACCESS_TOKEN && response.status === 401;
+        logger.warn(
+          { errors: result.errors, status: response.status },
+          needsToken
+            ? 'expo push: loyiha kalit talab qiladi — EXPO_ACCESS_TOKEN qo`ying'
+            : 'expo push xatosi',
+        );
         continue;
       }
 

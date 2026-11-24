@@ -104,8 +104,22 @@ const envSchema = z.object({
   DEVELOPER_AI_TELEGRAM_CHAT_ID: z.string().default(''),
   DEVELOPER_AI_PANEL_URL: z.string().url().default('https://developer.looksave.uz'),
 
-  // Expo Push. Bo'sh bo'lsa push o'chirilgan deb hisoblanadi.
+  /*
+   * Expo Push.
+   *
+   * ⚠️ KALIT IXTIYORIY (egasining qarori, 2026-11-24). Ilgari kalit bo'sh
+   * bo'lsa push umuman yuborilmasdi — prod'da kalit yo'q edi va mijozlarga
+   * buyurtma holati xabarlari ham bormagan. Expo loyihada «Enhanced push
+   * security» yoqilmagan bo'lsa tokensiz so'rovni qabul qiladi; kalit
+   * qo'yilsa `Authorization` bilan yuboriladi (xavfsizroq).
+   * Push'ni butunlay o'chirish: `PUSH_DISABLED=true`.
+   */
   EXPO_ACCESS_TOKEN: z.string().default(''),
+  // `z.coerce.boolean()` EMAS: u «false» satrini ham true qiladi
+  PUSH_DISABLED: z
+    .string()
+    .default('')
+    .transform((v) => ['1', 'true', 'yes'].includes(v.trim().toLowerCase())),
 
   // ── 3D avatar ──
   // Skelet versiyasi model havolalariga kiradi: yangilanganda ilovani
