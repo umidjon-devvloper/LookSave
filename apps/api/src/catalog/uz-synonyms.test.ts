@@ -41,6 +41,13 @@ describe('expandSearchQuery', () => {
     expect(result).toContain("red ko'ylak");
   });
 
+  it('jonli katalog yozuvi — "krossovka" ↔ "krasovka", "sumka" → "barsetka"', () => {
+    expect(expandSearchQuery('qora krossovka')).toContain('qora krasovka');
+    expect(expandSearchQuery('krasovka')).toContain('krossovka');
+    expect(expandSearchQuery('sumka')).toContain('barsetka');
+    expect(expandSearchQuery('kepka')).toContain('cap');
+  });
+
   it('kattalik cheklovi — maxVariants ni buzmaydi', () => {
     const result = expandSearchQuery('qovun pista anor nok', 5);
     expect(result.length).toBeLessThanOrEqual(5);
