@@ -262,12 +262,18 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
 
-  // Sarlavha — Fraunces display, 2-3 qator, natural case. `text.hero` tokendan
+  // Sarlavha — Fraunces display. Ilgari 44pt/64lh edi: iPhone 17 Pro
+  // ekranida hero sarlavhasi ekranning yarmini egallab yuborardi. Egasining
+  // talabi (2026-11-23): "qara so'zlari katta katta bo'lib ketgan". Endi
+  // 32pt/40lh — jurnal muqovasiday ixcham va nafis, uch qator ham
+  // ekranning kichik ulushiga sig'adi.
   heroLine: {
     ...text.hero,
     color: '#FFFFFF',
-    lineHeight: 64,
-    marginBottom: 4,
+    fontSize: 32,
+    lineHeight: 40,
+    letterSpacing: -0.5,
+    marginBottom: 2,
   },
   // Markaziy qator anorga bo'yaladi — Chanel qoidasi, bitta aksent
   heroAccent: {
@@ -276,9 +282,10 @@ const styles = StyleSheet.create({
   subtitle: {
     ...text.body,
     color: '#D6D1E2',
-    marginTop: spacing.lg,
-    maxWidth: '62%',
-    lineHeight: 22,
+    fontSize: 14,
+    marginTop: spacing.md,
+    maxWidth: '72%',
+    lineHeight: 20,
   },
 
   // CTA bloki — body (alignItems: flex-start) ostida aniq kenglik beradi,

@@ -35,13 +35,13 @@ export function SectionHeader({
   return (
     <View style={[styles.header, rtlStyles.row(isRTL)]}>
       <View style={styles.titleRow}>
-        {icon ? <Icon name={icon} size={24} color={colors.accent} /> : null}
+        {icon ? <Icon name={icon} size={18} color={colors.accent} /> : null}
         <Text style={styles.headerTitle}>{title}</Text>
       </View>
       {actionLabel && onAction ? (
         <Pressable style={[styles.action, rtlStyles.row(isRTL)]} onPress={onAction}>
           <Text style={styles.actionText}>{actionLabel}</Text>
-          <Icon name={isRTL ? 'back' : 'next'} size={14} color={colors.primary} />
+          <Icon name={isRTL ? 'back' : 'next'} size={16} color={colors.primary} />
         </Pressable>
       ) : null}
     </View>
@@ -123,17 +123,39 @@ export function StoreRow({
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     justifyContent: 'space-between',
+    // Belgilangan balandlik — ikkala tarafning markazi bir xil joyda bo'lsin
+    // uchun eng ishonchli yo'l. Ichki qatorlar `alignItems: center` bilan shu
+    // balandlik markaziga tekislanadi.
+    height: 28,
     marginBottom: spacing.md,
     paddingTop: spacing.sm,
   },
-  // Atelier bo'lim sarlavhasi: Fraunces display, h2 o'lchami. Moda jurnali bo'lim boshi.
-  headerTitle: { ...text.h2, color: colors.text, fontSize: 22 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  action: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  // Atelier bo'lim sarlavhasi: Fraunces display. Egasining talabi (2026-11-23):
+  // h2 (22pt) juda katta — bo'lim nomi mahsulotdan muhimroq ko'rinardi. Endi
+  // 17pt — ekran tartibida mahsulot kartochkasi bosh, sarlavha ikkinchi darajaga
+  // tushadi. `includeFontPadding: false` Android'da yuqoridagi qo'shimcha
+  // bo'shliqni olib tashlaydi — iOS'da ta'siri yo'q, lekin xavfsiz.
+  headerTitle: {
+    ...text.h2,
+    color: colors.text,
+    fontSize: 17,
+    lineHeight: 22,
+    includeFontPadding: false,
+  },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 28 },
+  action: { flexDirection: 'row', alignItems: 'center', gap: 4, height: 28 },
   // "Barchasi" linki — italic serif, template "VIEW ALL →" dan farqli.
-  actionText: { ...text.eyebrow, color: colors.primary },
+  // Sarlavha bilan bir xil lineHeight → bir xil lineBox, `alignItems: center`
+  // ikki tarafni aniq vertikal markazga qo'yadi.
+  actionText: {
+    ...text.eyebrow,
+    color: colors.primary,
+    fontSize: 15,
+    lineHeight: 22,
+    includeFontPadding: false,
+  },
   brandRow: { flexDirection: 'row', gap: 12 },
   brandTile: { alignItems: 'center', justifyContent: 'center' },
   storeTile: { alignItems: 'center', width: 112, gap: 4 },

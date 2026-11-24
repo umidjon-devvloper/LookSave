@@ -22,16 +22,15 @@ interface Feature {
   href: string;
 }
 
+/*
+ * 2026-11-24, egasining qarori: «olib tashla, bitta AI stil qolsin». Qolgan
+ * sakkizta kartochka (Komplekt, Garderob, Rasmdan, Brendlar, Bayramlar,
+ * Sovg'a, QR chegirma, Ballar) bosh sahifadan olindi; sahifalarning o'zi
+ * (`app/outfit-builder.tsx` va h.k.) joyida — qaytarish uchun shu ro'yxatga
+ * qatorini qo'shish yetadi. So'ramasdan qaytarma.
+ */
 const FEATURES: Feature[] = [
   { key: 'stylist',   icon: 'stylist',       label: 'AI stilist',  accent: '#6E2CD5', tint: '#F3EEFE', href: '/stylist' },
-  { key: 'outfit',    icon: 'dress',         label: 'Komplekt',    accent: '#5B21B6', tint: '#EFE9FD', href: '/outfit-builder' },
-  { key: 'wardrobe',  icon: 'wardrobe',      label: 'Garderob',    accent: '#1D4ED8', tint: '#E8EEFC', href: '/wardrobe' },
-  { key: 'visual',    icon: 'visualSearch',  label: 'Rasmdan',     accent: '#047857', tint: '#E3F5EC', href: '/visual-search' },
-  { key: 'brands',    icon: 'brands',        label: 'Brendlar',    accent: '#B45309', tint: '#FBEFDC', href: '/local-brands' },
-  { key: 'seasonal',  icon: 'seasonal',      label: 'Bayramlar',   accent: '#9F1239', tint: '#FDE7EC', href: '/seasonal' },
-  { key: 'gift',      icon: 'gift',          label: "Sovg'a",      accent: '#BE185D', tint: '#FCE4ED', href: '/gift' },
-  { key: 'discount',  icon: 'discountCode',  label: 'QR chegirma', accent: '#0369A1', tint: '#E0F0F9', href: '/discount-code' },
-  { key: 'loyalty',   icon: 'loyalty',       label: 'Ballar',      accent: '#A16207', tint: '#FBF2D7', href: '/loyalty' },
 ];
 
 export function FeaturesRow(): JSX.Element {
