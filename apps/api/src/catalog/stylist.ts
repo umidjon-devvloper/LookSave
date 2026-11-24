@@ -214,14 +214,20 @@ async function findProductForPick(
    *   - keyin tryon_count — mashhurroq mahsulot oldinroq
    *   - RANDOM — bir xil narsa qaytmasin
    *
-   * `usedStores` bo'sh bo'lsa `store_bias` qisman olib tashlanadi (dastlabki
+   * `usedStores` bo'sh bo'lsa `store_bias` umuman qo'yilmaydi (dastlabki
    * mahsulotga tryon_count birinchi o'rinda qoladi).
+   *
+   * ⚠️ `ORDER BY 0` YOZMA: Postgres butun son literalini ustun RAQAMI deb
+   * o'qiydi va «ORDER BY position 0 is not in select list» bilan yiqiladi
+   * (2026-11-24 prod'da har birinchi tanlov 500 berdi). Bo'sh holatda
+   * ifodaning o'zini tashlab ketamiz.
    */
-  const storeBias =
-    usedStores.size > 0
-      ? `(CASE WHEN p.store_id = ANY($${params.length + 1}::uuid[]) THEN 1 ELSE 0 END)`
-      : '0';
-  if (usedStores.size > 0) params.push(Array.from(usedStores));
+  const order: string[] = [];
+  if (usedStores.size > 0) {
+    params.push(Array.from(usedStores));
+    order.push(`(CASE WHEN p.store_id = ANY($${params.length}::uuid[]) THEN 1 ELSE 0 END) ASC`);
+  }
+  order.push('p.tryon_count DESC', 'RANDOM()');
 
   const sql = `
     SELECT p.id, p.title, p.base_price, p.currency, p.images, p.slot,
@@ -229,7 +235,7 @@ async function findProductForPick(
       FROM products p
       JOIN stores s ON s.id = p.store_id
      WHERE ${where.join(' AND ')}
-     ORDER BY ${storeBias} ASC, p.tryon_count DESC, RANDOM()
+     ORDER BY ${order.join(', ')}
      LIMIT 1
   `;
 
