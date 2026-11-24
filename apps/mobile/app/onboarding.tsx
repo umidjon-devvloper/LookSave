@@ -61,6 +61,10 @@ export default function Onboarding(): JSX.Element {
   const { width } = useWindowDimensions();
   const listRef = useRef<FlatList<Slide>>(null);
   const [index, setIndex] = useState(0);
+  // Rasm maydoni egiluvchan — orqadagi doira uning haqiqiy balandligiga
+  // moslanadi (foiz + aspectRatio absolute elementda ovalga cho'zilardi).
+  const [stageHeight, setStageHeight] = useState(0);
+  const glow = stageHeight > 0 ? Math.min(280, Math.round(stageHeight * 0.92)) : 280;
   const last = index === SLIDES.length - 1;
 
   const finish = (): void => {
@@ -104,12 +108,15 @@ export default function Onboarding(): JSX.Element {
         onMomentumScrollEnd={onScrollEnd}
         renderItem={({ item }) => (
           <View style={[styles.slide, { width }]}>
-            <View style={styles.artStage}>
+            <View
+              style={styles.artStage}
+              onLayout={(e) => setStageHeight(e.nativeEvent.layout.height)}
+            >
               {item.shape === 'framed' ? (
                 <Image source={item.image} style={styles.artFramed} resizeMode="cover" />
               ) : (
                 <>
-                  <View style={styles.artGlow} />
+                  <View style={[styles.artGlow, { width: glow, height: glow, borderRadius: glow / 2 }]} />
                   <Image
                     source={item.image}
                     style={item.shape === 'small' ? styles.artSmall : styles.art}
@@ -164,25 +171,38 @@ const styles = StyleSheet.create({
   },
   wordmarkAccent: { color: colors.accent },
   skip: { ...text.small, color: colors.textMuted, fontWeight: '600' },
-  slide: { flex: 1, alignItems: 'center', paddingHorizontal: spacing.xl },
+  /*
+   * ⚠️ RASM EGILUVCHAN, MATN QAT'IY (2026-11-24). Ilgari rasm maydoni
+   * `height: 52%` + `minHeight: 300` edi — past oynada (iPad'dagi iPhone
+   * oynasi, iPhone SE) matnga joy qolmasdi va oxirgi qator nuqtalar ostiga
+   * kirib kesilardi («…from Settings.»; o'zbekcha matn uzunroq — battar).
+   * Endi rasm `flex: 1` bilan bo'sh joyni oladi va kerak bo'lsa 140 gacha
+   * kichrayadi; sarlavha va matn har doim to'liq ko'rinadi. Baland ekranda
+   * rasm 430 bilan cheklanadi va blok vertikal markazda turadi.
+   */
+  slide: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.md,
+  },
   artStage: {
     width: '100%',
-    height: '52%',
-    minHeight: 300,
+    flex: 1,
+    minHeight: 140,
     maxHeight: 430,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // O'lchami komponentda (`glow`) — rasm maydoni balandligining 92%, ko'pi 280
   artGlow: {
     position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
     backgroundColor: 'rgba(139,44,245,0.08)',
   },
   art: { width: '93%', height: '93%' },
-  // 480 px manba — kattaroq chizilsa xira tortadi
-  artSmall: { width: 230, height: 230 },
+  // 480 px manba — kattaroq chizilsa xira tortadi; joy kam bo'lsa kichrayadi
+  artSmall: { width: '100%', height: '82%', maxWidth: 230, maxHeight: 230 },
   // Kiyinish xonasi surati (941×1672) — bo'yiga, yumaloq ramkada
   artFramed: { height: '94%', aspectRatio: 941 / 1672, borderRadius: radius.xxl },
   title: {
