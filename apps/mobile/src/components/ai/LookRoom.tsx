@@ -20,7 +20,6 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { matchSize, recommendSize } from '@looksave/validation';
 
 import {
   canWear,
@@ -31,6 +30,7 @@ import {
   unresolved,
   type TrayItem,
 } from '../../ai/lookTray';
+import { cartSize } from '../../ai/cartSize';
 import { resolveGarment, startTryon } from '../../ai/lookTryon';
 import { pastLooks, wearInputs, type PastLook } from '../../ai/pastLooks';
 import { ApiError } from '../../api/client';
@@ -54,6 +54,7 @@ import { money } from '../../theme/format';
 import { colors, fonts, radius, spacing, text } from '../../theme/tokens';
 import { Icon, type IconName } from '../Icon';
 import { SignInRequired } from '../SignInRequired';
+import { SizeChooser, type SizeQuestion } from './SizeChooser';
 import { Button, ErrorView, Loading, Screen } from '../ui';
 
 /**
@@ -213,6 +214,9 @@ export function LookRoom({ showBack = false }: LookRoomProps): JSX.Element {
 
   const [zoomed, setZoomed] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // O'lchami noma'lum kiyimlar uchun savol (`SizeChooser`) va tanlangan javoblar
+  const [sizeQuestions, setSizeQuestions] = useState<SizeQuestion[] | null>(null);
+  const [pickedSizes, setPickedSizes] = useState<Record<string, string>>({});
   const [limitReached, setLimitReached] = useState(false);
   /** Qaysi to'plam savatga qo'shilgan — tugma «Savatni ochish» ga aylanadi */
   const [cartKey, setCartKey] = useState<string | null>(null);
@@ -586,29 +590,62 @@ export function LookRoom({ showBack = false }: LookRoomProps): JSX.Element {
   });
 
   /**
-   * Har kiyimga O'ZINING tavsiya o'lchami: ustki kiyim ko'krakdan, pastki
-   * beldan hisoblanadi. Tavsiya omborda bo'lmasa — mavjud birinchisi.
+   * Har kiyimga O'ZINING o'lchami: ustki kiyim ko'krakdan, pastki beldan
+   * hisoblanadi. Foydalanuvchi shu sessiyada o'zi tanlagani ustun.
+   *
+   * ⚠️ `null` — ilova o'lchamni ANIQ bilmaydi (tavsiya yo'q yoki tavsiya
+   * etilgani omborda yo'q). Ilgari bunda ro'yxatdagi birinchi o'lcham
+   * («3XL») so'ramasdan savatga tushardi — sababi `ai/cartSize.ts` da.
    */
   const sizeFor = (item: TrayItem): string | null => {
     const garment = item.variantId ? garments.get(item.variantId) : undefined;
     if (!garment || !item.slot) return null;
-    const fit = measurements ? recommendSize(item.slot, measurements) : null;
-    return matchSize(garment.sizes, fit) ?? garment.sizes[0] ?? null;
+    const own = pickedSizes[garment.variantId];
+    if (own && garment.sizes.includes(own)) return own;
+    return cartSize(garment.sizes, item.slot, measurements);
+  };
+
+  /** Tanlangan kiyimlardan savat qatorlari; o'lchami noma'lumlari — savol. */
+  const cartPlan = (
+    extra: Record<string, string> = {},
+  ): { lines: Array<{ variantId: string; size: string }>; ask: SizeQuestion[] } => {
+    const lines: Array<{ variantId: string; size: string }> = [];
+    const ask: SizeQuestion[] = [];
+
+    for (const item of selected) {
+      const garment = item.variantId ? garments.get(item.variantId) : undefined;
+      // Ma'lumoti kelmagan yoki omborda tugagan kiyim savatga tushmaydi
+      if (!garment || garment.sizes.length === 0) continue;
+
+      const chosen = extra[garment.variantId];
+      const size = chosen && garment.sizes.includes(chosen) ? chosen : sizeFor(item);
+      if (size) lines.push({ variantId: garment.variantId, size });
+      else ask.push({ variantId: garment.variantId, title: garment.title, sizes: garment.sizes });
+    }
+
+    return { lines, ask };
   };
 
   const addSelectedToCart = (): void => {
-    const lines = selected
-      .map((item) => {
-        const size = sizeFor(item);
-        return size && item.variantId ? { variantId: item.variantId, size } : null;
-      })
-      .filter((line): line is { variantId: string; size: string } => line !== null);
+    const { lines, ask } = cartPlan();
 
+    if (ask.length > 0) {
+      setSizeQuestions(ask);
+      return;
+    }
     if (lines.length === 0) {
       setNotice(t.tryon.soldOut);
       return;
     }
     cart.mutate(lines);
+  };
+
+  /** O'lchamlar tanlandi — eslab qolamiz (karta yorlig'i uchun) va qo'shamiz. */
+  const confirmSizes = (picked: Record<string, string>): void => {
+    setSizeQuestions(null);
+    setPickedSizes((prev) => ({ ...prev, ...picked }));
+    const { lines, ask } = cartPlan(picked);
+    if (ask.length === 0 && lines.length > 0) cart.mutate(lines);
   };
 
   /** Kiyim qo'shish — do'konga, «Look» tugmalari turgan joyga */
@@ -929,6 +966,12 @@ export function LookRoom({ showBack = false }: LookRoomProps): JSX.Element {
           </>
         )}
       </View>
+
+      <SizeChooser
+        questions={sizeQuestions}
+        onCancel={() => setSizeQuestions(null)}
+        onConfirm={confirmSizes}
+      />
     </Screen>
   );
 }

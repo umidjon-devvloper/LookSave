@@ -2,7 +2,7 @@ import { addressSchema } from '@looksave/validation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   KeyboardAvoidingView,
@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 
 import { explainError } from '../src/api/explainError';
+import { keepOrderKeyAfter, orderKeyFor, type OrderKey } from '../src/api/orderKey';
 import { createOrder, getCart, type CreateOrderInput } from '../src/api/endpoints';
 import { SignInRequired } from '../src/components/SignInRequired';
 import { ErrorView, Field, Loading, Screen } from '../src/components/ui';
@@ -76,14 +77,11 @@ export default function Checkout(): JSX.Element {
   });
 
   /**
-   * Idempotentlik kaliti CHECKOUT boshlanganda bir marta yaratiladi.
-   * Har urinishda yangisi yaratilsa, takroriy yuborish ikkinchi
-   * buyurtma yaratib qo'yardi.
+   * Idempotentlik kaliti so'rov TANASIGA bog'lanadi — qoidalar va sababi
+   * `src/api/orderKey.ts` da. (Ilgari kalit ekran ochilganda bir marta
+   * yaratilardi va birinchi server radidan keyin buyurtma qulflanib qolardi.)
    */
-  const idempotencyKey = useMemo(
-    () => `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`,
-    [],
-  );
+  const orderKey = useRef<OrderKey | null>(null);
 
   const cart = useQuery({ queryKey: ['cart'], queryFn: getCart, enabled: signedIn });
   const group = cart.data?.stores.find((item) => item.store.id === storeId);
@@ -133,14 +131,28 @@ export default function Checkout(): JSX.Element {
           : {}),
       };
 
-      return createOrder(input, idempotencyKey);
+      orderKey.current = orderKeyFor(orderKey.current, input);
+      return createOrder(input, orderKey.current.key);
     },
     onSuccess: (order) => {
       void queryClient.invalidateQueries({ queryKey: ['cart'] });
       void queryClient.invalidateQueries({ queryKey: ['orders'] });
       router.replace(`/order/${order.id}`);
     },
-    onError: (err) => setError(explainError(err, t)),
+    onError: (err) => {
+      if (keepOrderKeyAfter(err)) {
+        /*
+         * Javob kelmadi — buyurtma yaratilgan bo'lishi mumkin. Savat va
+         * buyurtmalar qayta o'qiladi: yaratilgan bo'lsa savat bo'shaydi va
+         * tugma o'chadi, foydalanuvchi ikkinchi marta yubormaydi.
+         */
+        void queryClient.invalidateQueries({ queryKey: ['cart'] });
+        void queryClient.invalidateQueries({ queryKey: ['orders'] });
+      } else {
+        orderKey.current = null;
+      }
+      setError(explainError(err, t));
+    },
   });
 
   // Savat akkauntga bog'liq — kirmagan odamga «yuklab bo'lmadi» emas, kirish taklifi

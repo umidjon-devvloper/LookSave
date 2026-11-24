@@ -651,7 +651,8 @@ export interface UserAvatar {
 export const requestAvatar = (storeId?: string | null): Promise<UserAvatar> =>
   api<UserAvatar>('/tryon/avatar', {
     method: 'POST',
-    ...(storeId ? { body: { storeId } } : {}),
+    // Tana doim yuboriladi — tanasiz so'rovni server sxemasi rad etadi
+    body: storeId ? { storeId } : {},
   });
 
 /** Holat — ilova tayyor bo'lguncha takrorlaydi. */
@@ -1274,7 +1275,12 @@ export const storeOrderAction = (
   action: 'seen' | 'confirm' | 'ready' | 'complete' | 'reject',
   body?: Record<string, unknown>,
 ): Promise<unknown> =>
-  api(`/store/orders/${id}/${action}`, { method: 'POST', ...(body ? { body } : {}) });
+  /*
+   * ⚠️ TANA DOIM YUBORILADI (bo'sh bo'lsa ham). «Yakunlash» server tomonda
+   * tana sxemasi bilan tekshiriladi; tanasiz so'rov 422 bilan rad etilardi
+   * va sotuvchi buyurtmani yakunlay olmasdi (2026-11-24).
+   */
+  api(`/store/orders/${id}/${action}`, { method: 'POST', body: body ?? {} });
 
 // ── Do'kon: mahsulotlar va sozlamalar ──
 

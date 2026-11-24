@@ -2,6 +2,7 @@ import type { ApiFailure, ApiSuccess, ErrorCode } from '@looksave/shared-types';
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 import { NativeModules } from 'react-native';
+import { refreshOutcome, type RefreshResult } from './refreshOutcome';
 
 /**
  * API mijozi.
@@ -147,12 +148,25 @@ export class ApiError extends Error {
   }
 }
 
-/** Bir vaqtda bir nechta so'rov 401 olsa, yangilash faqat bir marta bajariladi. */
-let refreshing: Promise<boolean> | null = null;
+// Yangilash natijasining uch holati va sababi — `refreshOutcome.ts` da.
 
-async function doRefresh(): Promise<boolean> {
+/*
+ * Sessiya serverda tugaganini (`rejected`) holat omboriga bildiradi.
+ * `authStore` bu modulni import qiladi — teskari import sikl bo'lardi,
+ * shuning uchun ombor o'zini shu yerga ro'yxatdan o'tkazadi.
+ */
+let onSessionLost: (() => void) | null = null;
+
+export function setSessionLostHandler(handler: (() => void) | null): void {
+  onSessionLost = handler;
+}
+
+/** Bir vaqtda bir nechta so'rov 401 olsa, yangilash faqat bir marta bajariladi. */
+let refreshing: Promise<RefreshResult> | null = null;
+
+async function doRefresh(): Promise<RefreshResult> {
   const refreshToken = await getRefreshToken();
-  if (!refreshToken) return false;
+  if (!refreshToken) return 'rejected';
 
   try {
     // Ilova ochilishida chaqiriladi — muddatsiz qolsa splash abadiy kutadi
@@ -165,28 +179,36 @@ async function doRefresh(): Promise<boolean> {
       }),
     );
 
-    if (!response.ok) {
+    const outcome = refreshOutcome(response.status);
+
+    if (outcome === 'rejected') {
       await clearTokens();
-      return false;
+      onSessionLost?.();
+      return 'rejected';
     }
+    if (outcome === 'unreachable') return 'unreachable';
 
     const body = (await response.json()) as ApiSuccess<{
       accessToken: string;
       refreshToken: string;
     }>;
     await saveTokens(body.data.accessToken, body.data.refreshToken);
-    return true;
+    return 'ok';
   } catch {
     // Tarmoq xatosi — sessiya o'chirilmaydi, keyinroq qayta urinamiz
-    return false;
+    return 'unreachable';
   }
 }
 
-function refreshOnce(): Promise<boolean> {
+function refreshState(): Promise<RefreshResult> {
   refreshing ??= doRefresh().finally(() => {
     refreshing = null;
   });
   return refreshing;
+}
+
+function refreshOnce(): Promise<boolean> {
+  return refreshState().then((result) => result === 'ok');
 }
 
 /**
@@ -302,8 +324,15 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
     const { code, message, details } = payload.error;
 
     if ((code === 'TOKEN_EXPIRED' || code === 'UNAUTHORIZED') && !options.retried) {
-      if (await refreshOnce()) {
-        return api<T>(path, { ...options, retried: true });
+      const refreshed = await refreshState();
+      if (refreshed === 'ok') return api<T>(path, { ...options, retried: true });
+      /*
+       * Yangilab bo'lmadi, lekin sessiya RAD ETILMAGAN (server band yoki
+       * aloqa yo'q). Buni «sessiya tugadi» deb ko'rsatsak, chaqiruvchi
+       * foydalanuvchini chiqarib yuborardi — aslida bu ulanish muammosi.
+       */
+      if (refreshed === 'unreachable') {
+        throw new ApiError('NETWORK', 'Internetga ulanib bo`lmadi', 0);
       }
     }
 
@@ -316,6 +345,7 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
 /** Ro'yxat javoblari uchun — `meta.nextCursor` kerak bo'lganda. */
 export async function apiList<T>(
   path: string,
+  retried = false,
 ): Promise<{ items: T[]; nextCursor: string | null; hasMore: boolean }> {
   const headers: Record<string, string> = { 'Accept-Language': language };
   if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
@@ -329,7 +359,24 @@ export async function apiList<T>(
   const payload = (await response.json()) as ApiSuccess<T[]> | ApiFailure;
 
   if ('error' in payload) {
-    throw new ApiError(payload.error.code, payload.error.message, response.status);
+    const { code, message } = payload.error;
+
+    /*
+     * ⚠️ `api()` DAGI BILAN BIR XIL YANGILASH (2026-11-24). Ilgari bu yerda
+     * yo'q edi: access token 15 daqiqada eskiradi va «Buyurtmalarim» yoki
+     * sotuvchining buyurtmalar ro'yxati «Sessiya tugadi» bilan qolardi —
+     * «Qayta urinish» ham yordam bermasdi, chunki tokenni hech kim
+     * yangilamasdi.
+     */
+    if ((code === 'TOKEN_EXPIRED' || code === 'UNAUTHORIZED') && !retried) {
+      const refreshed = await refreshState();
+      if (refreshed === 'ok') return apiList<T>(path, true);
+      if (refreshed === 'unreachable') {
+        throw new ApiError('NETWORK', 'Internetga ulanib bo`lmadi', 0);
+      }
+    }
+
+    throw new ApiError(code, message, response.status);
   }
 
   return {

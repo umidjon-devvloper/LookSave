@@ -1,7 +1,7 @@
 import type { AuthUser } from '@looksave/shared-types';
 import { create } from 'zustand';
 
-import { ApiError, clearTokens, getRefreshToken } from '../api/client';
+import { ApiError, clearTokens, getRefreshToken, setSessionLostHandler } from '../api/client';
 import { getProfile, login as apiLogin, register as apiRegister } from '../api/endpoints';
 import { queryClient } from '../api/queryClient';
 import { setFaceLocked } from './faceLock';
@@ -21,6 +21,66 @@ interface AuthState {
    * store'dan o'qiladi — yangilanmasa eski ism qolib ketardi.
    */
   setUser: (user: AuthUser) => void;
+}
+
+/** Sessiya serverda rad etilganini bildiradigan xato (tarmoq/5xx emas). */
+function isAuthRejection(err: unknown): boolean {
+  return (
+    err instanceof ApiError &&
+    (err.status === 401 ||
+      err.status === 403 ||
+      err.code === 'UNAUTHORIZED' ||
+      err.code === 'TOKEN_EXPIRED' ||
+      err.code === 'TOKEN_INVALID')
+  );
+}
+
+/**
+ * Akkauntga tegishli lokal ma'lumot: React Query keshi, «Look» savati va
+ * natijalari, yuz qulfi. Chiqishda ham, sessiya serverda tugaganda ham
+ * tozalanadi — aks holda keyingi akkaunt oldingisining ma'lumotini ko'rardi.
+ */
+async function clearLocalAccount(): Promise<void> {
+  try {
+    queryClient.clear();
+    await useLookStore.getState().clearAccount();
+    await setFaceLocked(false);
+  } catch (err) {
+    console.warn('[auth] lokal ma`lumot tozalanmadi', err);
+  }
+}
+
+/*
+ * ⚠️ `user: null` HOLATINI DAVOLASH (2026-11-24). Ilova zaif internetda
+ * ochilsa profil olinmaydi va holat `signedIn` + `user: null` bo'lib qoladi.
+ * Ilgari uni HECH NARSA to'ldirmasdi (izohda «keyinroq yangilanadi»
+ * deyilgan edi, lekin kod yo'q edi): butun sessiya davomida buyurtma berib
+ * bo'lmasdi («Savat topilmadi» — `user.phone` kerak), sotuvchiga «siz
+ * sotuvchi emassiz» chiqardi, profilda ism yo'q edi. Faqat ilovani yopib
+ * ochish yordam berardi. Endi profil fonda qayta so'raladi: 5 s, 10 s,
+ * 20 s … ko'pi bilan daqiqada bir marta.
+ */
+const HEAL_MAX_ATTEMPTS = 30;
+let healTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleUserHeal(attempt = 0): void {
+  if (healTimer) clearTimeout(healTimer);
+  if (attempt >= HEAL_MAX_ATTEMPTS) return;
+
+  healTimer = setTimeout(() => {
+    healTimer = null;
+    const state = useAuthStore.getState();
+    if (state.status !== 'signedIn' || state.user) return;
+
+    getProfile()
+      .then((user) => {
+        if (useAuthStore.getState().status === 'signedIn') useAuthStore.setState({ user });
+      })
+      .catch((err: unknown) => {
+        if (isAuthRejection(err)) useAuthStore.setState({ status: 'signedOut', user: null });
+        else scheduleUserHeal(attempt + 1);
+      });
+  }, Math.min(60_000, 5_000 * 2 ** attempt));
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -68,18 +128,12 @@ export const useAuthStore = create<AuthState>((set) => ({
        * yangilanadi. Token yaroqsiz bo'lsa client o'zi refresh qilgan va
        * endi muvaffaqiyatsiz bo'lsa — tokenlar tozalangan.
        */
-      if (
-        err instanceof ApiError &&
-        (err.status === 401 ||
-          err.status === 403 ||
-          err.code === 'UNAUTHORIZED' ||
-          err.code === 'TOKEN_EXPIRED' ||
-          err.code === 'TOKEN_INVALID')
-      ) {
+      if (isAuthRejection(err)) {
         set({ status: 'signedOut', user: null });
       } else {
-        // Tarmoq/server xatosi — token saqlanadi, user keyinroq yangilanadi
+        // Tarmoq/server xatosi — token saqlanadi, profil fonda qayta so'raladi
         set({ status: 'signedIn', user: null });
+        scheduleUserHeal();
       }
     }
   },
@@ -113,18 +167,28 @@ export const useAuthStore = create<AuthState>((set) => ({
    * foydalanuvchi akkauntda qamalib qolmasin.
    */
   signOut: async () => {
-    await clearTokens();
-
     try {
-      queryClient.clear();
-      await useLookStore.getState().clearAccount();
-      await setFaceLocked(false);
+      await clearTokens();
     } catch (err) {
-      console.warn('[auth] chiqishda kesh tozalanmadi', err);
+      // SecureStore nosoz bo'lsa ham chiqaramiz (yuqoridagi izoh)
+      console.warn('[auth] token o`chirilmadi', err);
     }
 
+    await clearLocalAccount();
     set({ status: 'signedOut', user: null });
   },
 
   setUser: (user) => set({ user }),
 }));
+
+/*
+ * Sessiya serverda tugadi (refresh token rad etildi). Ilgari tokenlar
+ * o'chardi-yu, holat `signedIn` qolardi: har ekran «Sessiya tugadi» derdi
+ * va kirish taklifi hech qachon chiqmasdi. Endi holat ham chiqadi va lokal
+ * ma'lumot tozalanadi — ekranlar «Kirish» ni ko'rsatadi.
+ */
+setSessionLostHandler(() => {
+  if (useAuthStore.getState().status !== 'signedIn') return;
+  useAuthStore.setState({ status: 'signedOut', user: null });
+  void clearLocalAccount();
+});
