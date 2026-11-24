@@ -138,6 +138,21 @@ olib boradi).
       ochilmagan. Topshirishdan oldin TestFlight'dan o'rnatib, ilovani
       o'chirib qayta o'rnatib, onboarding'dan o'tib ko'ring — shundan keyin
       belgilang.
+      **71-build (2026-11-18 10:46, TestFlight'da):** 70 + bosh sahifa
+      sarlavhasidagi kamera («Live try-on») tugmasi. Arxivdagi JS xuddi shu
+      tartibda sinalgan (toza o'rnatish, kamera tugmasi, 41 ekran). Uni
+      topshirishdan oldin yuqoridagi «Live try-on sahifasi» bandi bajarilgan
+      bo'lsin.
+      ⚠️ iPad bo'yicha tuzatish: 70 dagi iPad tekshiruvi iPhone-moslik
+      oynasining faqat chap yarmidagi tugmalarni ko'rgan (sinovning xatosi).
+      71 da to'liq o'tkazildi: kirmagan holatda 41 ekranda 153 tugma, kirgan
+      xaridor va sotuvchi ekranlarida (sinov ma'lumoti bilan) 20 ekranda 156
+      tugma — ko'rinib turib bosilmaydigani yo'q; qulash yo'q.
+      **72-build (2026-11-18 13:36, TestFlight'da):** 71 + do'kon sahifasi —
+      mahsulotlar oxirigacha yuklanadi (ilgari faqat 20 ta), logo doirada,
+      kartalarda «Look» tugmasi. Arxivdagi JS iPhone va iPad'da xuddi shu
+      tartibda sinalgan (iPhone: 41 ekran / 149 tugma; iPad: 41 ekran / 153
+      tugma) — nuqson yo'q.
 - [x] **AI provayderi tasdiqlangan (2026-11-12).** Ikkalasi ham ishlatiladi:
       server OpenAI'ni chaqiradi, operator esa ChatGPT va Gemini'da ishlaydi.
       Matnlarda «OpenAI or Google» qoladi (tavsif, Review Notes, ilovadagi
@@ -194,6 +209,19 @@ olib boradi).
       ilovadagi hech narsa bosilmaydi. Bu tizim oynasi, ilova nuqsoni emas
       (iPad sinovida shu oyna «hamma tugma bosilmaydi» degan soxta signal
       bergan edi).
+- [ ] **«Live try-on» sahifasi jonli saytda yangilangan (2026-11-18).** Bosh
+      sahifa sarlavhasidagi kamera tugmasi `looksave.uz/anywear.html` ni
+      WebView'da ochadi. Tugma 70-buildda yashirilgan edi, egasining talabi
+      bilan 71-builddan boshlab yana ko'rinadi. Tuzatilgan sahifa (`0adfeae`:
+      faqat kiyib ko'rsa bo'ladigan mahsulotlar, matn ilova tilida) ASOSIY
+      REPOGA yetib, Vercel deploy qilmaguncha jonli saytda ESKI sahifa
+      turadi — unda hamma mahsulotda o'chiq «Try-on mavjud emas» tugmasi va
+      o'zbekcha matn (ko'rib chiquvchi uchun ishlamaydigan funksiya, 2.1).
+      Tekshirish: `curl -sL https://looksave.uz/anywear.html | grep -c
+      onlyTryon` — 1 chiqishi kerak. Shundan keyin haqiqiy telefonda kamera
+      tugmasini bosib, bitta kiyimni kiyib ko'ring (kamera ruxsati
+      so'raladi) — kamera bilan kiyib ko'rishning o'zi simulyatorda
+      sinalmagan.
 - [x] **Kutilmagan xatoda ilova yopilmaydi (2026-11-18, build 70 da).** Har
       navigatorda ekran xato chegarasi bor (`ScreenErrorBoundary`), ildizda —
       oxirgi to'siq. Buzuq server javobi ekranni «Something went wrong · Try

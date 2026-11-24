@@ -265,24 +265,30 @@ LookSave ليس تطبيق دفع. طلبك هو طلب يُرسَل إلى مت
 > shart — tekshiruv ro'yxati `docs/17-appstore-review-reply.md` §0 da.
 >
 > ⚠️ **Demo akkaunt paroli bu faylga YOZILMAYDI** — repo ochiq. Parol faqat
-> App Store Connect'dagi «Sign-In Information» maydonlarida turadi; matndagi
-> `[parol]` ni joylashtirayotganda qo'lda almashtiring. Demo akkaunt
+> App Store Connect'dagi «Sign-In Information» maydonlarida turadi; 2026-11-18
+> dan matnning o'zida parol umuman yozilmaydi. Demo akkaunt
 > 2026-11-13 dan `+998937844572` («LookSave Review»); eski `+998900007777`
 > ning paroli shu faylning git tarixida ochiq qolgan — u yopilishi kerak
 > (`docs/17` §0).
 
-> Matn 2026-11-13 da build 1.0 (64) uchun yangilangan, 2026-11-17 da keyingi
-> build uchun to'ldirildi; uzunligi 3962 belgi (maydon chegarasi 4000 —
-> parol va `[60]` almashtirilgach qayta sanang).
+> Matn 2026-11-18 da build 1.0 (72) uchun yangilandi; uzunligi 3911 belgi
+> (maydon chegarasi 4000 — `[60]` almashtirilgach qayta sanang).
 >
-> ⚠️ **2026-11-17 dagi ikki eslatma:**
-> - Demo akkaunt do'kon egasi, shuning uchun kirgach ilova bosh sahifaga emas,
->   SOTUVCHI PANELIGA olib boradi. 1-qadamga shu yozildi. Akkaunt oddiy
->   xaridorga aylantirilsa o'sha jumlani o'chiring.
-> - «Test stores and placeholder listings were removed…» jumlasi shu kuni hali
->   ROST EMAS edi: ilovada «Ndjxjx», «Fufu», «umidjon» do'konlari va demo
->   do'kondagi «Jsjcjc» mahsuloti ko'rinib turardi. Katalog tozalanmaguncha
->   bu jumlani yubormang.
+> ⚠️ **2026-11-18 dagi o'zgarishlar va shartlar:**
+> - Parol endi matnda YO'Q — faqat «Sign-In Information» maydonlarida.
+> - 2-qadam KATALOG orqali yozildi («Tops» → mahsulot → «Add to Look»).
+>   Sabab: bosh sahifadagi «Trending» da hozir sumka va kepkalar turibdi —
+>   ularni kiyib ko'rib bo'lmaydi, «Look» bosilsa mahsulot sahifasi ochiladi
+>   va ko'rib chiquvchi asosiy funksiyaga yeta olmaydi.
+> - «Test stores and placeholder listings were removed…» jumlasi OLIB
+>   TASHLANDI: katalog hali tozalanmagan («Ndjxjx», «Fufu», «umidjon»
+>   do'konlari, demo do'kondagi «Jsjcjc», «Ko’ulak» 12 000 so'm). Tozalangach
+>   qaytarish mumkin.
+> - Demo akkaunt do'kon egasi, shuning uchun kirgach SOTUVCHI PANELI ochiladi
+>   (1-qadamda yozilgan). Akkaunt xaridorga aylantirilsa o'sha jumlani o'chiring.
+> - `[60]` — demo akkaunt bilan BITTA kiyintirish qilib, necha soniyada
+>   chiqishini o'lchang va shu sonni yozing. Natija avtomatik chiqmasa
+>   (operator navbati) — TOPSHIRMANG: bu avvalgi radlarning dalilli sababi.
 
 ```
 ABOUT THE APP
@@ -290,27 +296,26 @@ LookSave is a fashion marketplace for Uzbekistan that connects shoppers with phy
 
 WHAT WE FIXED SINCE BUILD 1.0 (61)
 • Crash on launch on iOS 27 — the reason build 61 could not be opened. The app now adopts the UIScene life cycle. Verified with a release build on iOS 27.
-• On iOS 27 the Back button stopped responding after its first use, so a screen could not be left. Fixed.
+• On a fresh install on iOS 27 the "Next" button of the introduction did not respond. Fixed.
+• On iOS 27 the Back button stopped responding after its first use. Fixed.
 • Tapping a push notification while the app was closed did not open the related screen. Fixed.
-• The first-launch introduction was never shown because of a storage error. Fixed.
-• Permission prompts (camera, photos, location) are now in English and state exactly what the data is used for. The photo-library purpose string that caused the crash in build 22 is in place.
+• Permission prompts (camera, photos, location) are in English and state exactly what the data is used for.
 • Every screen now follows the device language (avatar setup, checkout and the seller panel were partly Uzbek-only).
-• Fixed controls that did not respond: "Forgot password?", hearts on product cards, the bell in the seller panel.
+• Fixed controls that did not respond: "Forgot password?", hearts on product cards, the bell and "Add product" in the seller panel.
+• An unexpected server response no longer closes the app: the screen shows a retry message instead.
 
 WHAT WE REDESIGNED
 • Home, Marketplace and Try-on screens have a new design.
-• Try-on was rebuilt: tap "Look" on product cards to collect items, then try them on together with one button.
+• Try-on was rebuilt: collect items with "Add to Look", then try them on together with one button.
 • Outfits already tried are kept in a "Your try-ons" row and open instantly.
-• Test stores and placeholder listings were removed from the production catalog.
 
 DEMO ACCOUNT
-Phone: +998 93 784 45 72
-Password: [parol]
+Phone: +998 93 784 45 72 (the password is in the Sign-In Information fields above).
 The account already has an avatar, body measurements and saved try-on results, so you do not need to scan your own face.
 
 HOW TO SEE THE CORE FEATURE (about 2 minutes)
 1. Open the app and skip the introduction (link in the top-right corner). Open the Profile tab and sign in with the demo account. The account also owns a test store, so the seller panel opens first — tap the back arrow (top left) to return to the shop, then open Home.
-2. On the Home screen, tap the "Look" chip on two or three product cards — for example a jacket, trousers and sneakers. The round button in the middle of the tab bar shows how many items are collected.
+2. On Home, tap the search icon to open the catalog. Select "Tops", open a product and tap "Add to Look". Go back and do the same under "Bottoms" and "Shoes". The round button in the middle of the tab bar shows how many items are collected.
 3. Tap that middle button to open "Try-on". The collected items are listed at the bottom. Tap "Try on · N items".
 4. The result appears on the avatar in about [60] seconds. Tap an item in the list to take it off or put it back on and try again.
 5. Tap "Add to cart", open the cart and place the order (delivery or pickup).
@@ -318,13 +323,13 @@ HOW TO SEE THE CORE FEATURE (about 2 minutes)
 GOOD TO KNOW
 • Timing. For this demo account the image is generated automatically right away. For regular users, during the launch period each request is processed by our team with an AI image model and usually takes a few minutes; the app shows the queue status and keeps the result once it is ready.
 • New avatar. Creating one requires a live face scan with the front camera (camera icon on the Try-on screen), so it cannot be done in the Simulator.
-• Orders. There is no payment in the app. An order is a request sent to the store; the shopper pays the store on delivery or at pickup. Orders placed with the demo account go to [a test store operated by us].
+• Orders. There is no payment in the app. An order is a request sent to the store; the shopper pays the store on delivery or at pickup.
 • The catalog and stores can be browsed without an account.
 
 PERMISSIONS
 • Camera — the face scan for the avatar.
 • Photos — only for a profile picture and for sellers' product photos.
-• Location — optional; used to show nearby stores on the map.
+• Location — optional; used to show nearby stores and to preset the delivery point.
 • Notifications — optional; order status and avatar-ready messages.
 
 PRIVACY
