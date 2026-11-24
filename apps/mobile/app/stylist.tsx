@@ -1,6 +1,8 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
+  Animated,
+  Easing,
   FlatList,
   Image,
   Keyboard,
@@ -112,11 +114,14 @@ export default function Stylist(): JSX.Element {
     try {
       const reply = await askStylist(text.trim());
       setMessages((prev) => [...prev, reply]);
-      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
     } finally {
       setBusy(false);
     }
   };
+
+  // Yangi xabar, «yozmoqda» pufagi yoki yuklangan mahsulot rasmlari ro'yxatni
+  // uzaytiradi — har safar oxiriga tushamiz, javob ekrandan pastda qolmasin.
+  const scrollToEnd = (): void => listRef.current?.scrollToEnd({ animated: true });
 
   return (
     <Screen>
@@ -126,7 +131,7 @@ export default function Stylist(): JSX.Element {
         </Pressable>
         <View>
           <Text style={styles.title}>AI stilist</Text>
-          <Text style={styles.subtitle}>Online · javob beradi</Text>
+          <Text style={styles.subtitle}>{busy ? 'yozmoqda…' : 'Online · javob beradi'}</Text>
         </View>
         <View style={{ width: 24 }} />
       </View>
@@ -138,6 +143,8 @@ export default function Stylist(): JSX.Element {
           keyExtractor={(m) => m.id}
           contentContainerStyle={styles.list}
           renderItem={({ item }) => <Bubble msg={item} onProduct={(id) => router.push(`/product/${id}` as any)} />}
+          ListFooterComponent={busy ? <TypingBubble /> : null}
+          onContentSizeChange={scrollToEnd}
         />
 
         <View style={styles.chips}>
@@ -175,6 +182,53 @@ export default function Stylist(): JSX.Element {
         </View>
       </View>
     </Screen>
+  );
+}
+
+/**
+ * «Stilist yozmoqda» — javob kutilayotganda chap tomonda turadigan pufak,
+ * uchta nuqta navbatma-navbat yonib-o'chadi (messenjerlardagi kabi).
+ * `useNativeDriver` — animatsiya JS ipini band qilmaydi, so'rov kutilayotgan
+ * paytda ham silliq yuradi.
+ */
+function TypingBubble(): JSX.Element {
+  const dots = useRef([0, 1, 2].map(() => new Animated.Value(0.3))).current;
+
+  useEffect(() => {
+    const loops = dots.map((v, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(i * 160),
+          Animated.timing(v, { toValue: 1, duration: 320, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+          Animated.timing(v, { toValue: 0.3, duration: 320, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+          Animated.delay((2 - i) * 160),
+        ]),
+      ),
+    );
+    loops.forEach((l) => l.start());
+    return () => loops.forEach((l) => l.stop());
+  }, [dots]);
+
+  return (
+    <View style={[styles.bubbleWrap, styles.typingWrap]} accessibilityLabel="Stilist yozmoqda">
+      <View style={[styles.bubble, styles.typingBubble]}>
+        <View style={styles.typingDots}>
+          {dots.map((v, i) => (
+            <Animated.View
+              key={i}
+              style={[
+                styles.typingDot,
+                {
+                  opacity: v,
+                  transform: [{ translateY: v.interpolate({ inputRange: [0.3, 1], outputRange: [0, -3] }) }],
+                },
+              ]}
+            />
+          ))}
+        </View>
+        <Text style={styles.typingText}>Stilist mahsulot tanlamoqda</Text>
+      </View>
+    </View>
   );
 }
 
@@ -233,6 +287,11 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   bubbleUser: { backgroundColor: colors.primary, borderColor: colors.primary },
+  typingWrap: { marginTop: spacing.sm },
+  typingBubble: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  typingDots: { flexDirection: 'row', alignItems: 'center', gap: 4, height: 20 },
+  typingDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: colors.primary },
+  typingText: { fontSize: 13, color: colors.textMuted },
   bubbleText: { fontSize: 14, color: colors.text, lineHeight: 20 },
   bubbleTextUser: { color: colors.textOnPrimary },
   products: { marginTop: spacing.sm, gap: spacing.xs },

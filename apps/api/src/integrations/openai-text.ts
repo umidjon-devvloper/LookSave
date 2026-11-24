@@ -11,21 +11,25 @@ import { describeNetworkError } from './openai';
  * bilan tushunarli JSON qaytaradi. Rasm bilan aralashtirmaslik uchun
  * alohida modul.
  *
- * ⚠️ BU MODUL HAM PUL SARFLAYDI. `gpt-4o-mini` ~$0.15/1M input, $0.60/1M
- * output — bir stilist chaqiruvi odatda $0.001 dan kam. Kunlik chegara
- * hozircha yo'q (chaqiruv rasm try-on'dan ancha arzon), lekin suiiste'mol
- * belgisi ko'ringanda `TRYON_DAILY_LIMIT` singari chegara qo'yiladi.
+ * ⚠️ MODEL FAQAT BERILGAN RO'YXATDAN TANLAYDI (2026-11-24). Ilgari model
+ * qidiruv so'zi («ko'ylak», «shim») qaytarardi, DB'da esa bunday mahsulot
+ * yo'q edi — javob «taklif qilaman» derdi-yu, bitta ham mahsulot chiqmasdi.
+ * Endi chaqiruvchi (`catalog/stylist.ts`) mavjud mahsulotlarni raqamlangan
+ * ro'yxat qilib beradi, model esa raqam qaytaradi. Uydirma mahsulot bo'lmaydi.
  *
- * ⚠️ JAVOB JSON `ZOD` BILAN TEKSHIRILADI. Model vaqti-vaqti bilan
- * ko'rsatilgan sxemadan chetga chiqadi (ekstra matn, bo'sh maydon). Xato
- * tashlanadi va chaqiruvchi fallback'ga tushadi — foydalanuvchi bo'sh
- * oyna ko'rmaydi.
+ * ⚠️ BU MODUL HAM PUL SARFLAYDI. `gpt-4o-mini` ~$0.15/1M input, $0.60/1M
+ * output — 150 qatorlik ro'yxat bilan ham bir chaqiruv ~$0.0005.
+ *
+ * ⚠️ JAVOB QO'LDA TEKSHIRILADI. Model vaqti-vaqti bilan sxemadan chetga
+ * chiqadi (ro'yxatda yo'q raqam, bo'sh maydon). Yaroqsiz raqamlar tashlanadi;
+ * javob umuman yaroqsiz bo'lsa xato tashlanadi va chaqiruvchi fallback'ga
+ * tushadi — foydalanuvchi bo'sh oyna ko'rmaydi.
  */
 
 export interface StylistPick {
   /** Mahsulot slot'i — `products.slot` qiymatlariga mos */
   slot: 'top' | 'bottom' | 'outer' | 'feet' | 'bag' | 'head' | 'neck';
-  /** Qidiruv kaliti — DB tags/title ga mos keladi */
+  /** Qidiruv kaliti — sarlavhaga mos keladi */
   search?: string;
   /** Rang tavsiyasi — ixtiyoriy */
   color?: string;
@@ -38,38 +42,33 @@ export interface StylistPlan {
   picks: StylistPick[];
 }
 
-const STYLIST_SYSTEM_PROMPT = `
-You are an outfit stylist for LookSave, an Uzbek fashion marketplace.
-The user writes in Uzbek (Latin), sometimes Russian or English.
-Your job: understand the occasion and recommend a COMPLETE outfit — 2 to 4 items
-drawn from these slots:
-  - top       (shirt / blouse / t-shirt / sweater)
-  - bottom    (trousers / jeans / skirt)
-  - outer     (jacket / coat / cardigan)
-  - feet      (shoes / sneakers / boots)
-  - bag       (bag / purse)
-  - head      (hat / cap)
-  - neck      (scarf / tie)
-
-Return STRICT JSON (no prose, no markdown fences) with this shape:
-{
-  "answer": "<1-2 sentence Uzbek-Latin reply, warm tone, no emoji>",
-  "picks": [
-    { "slot": "top",    "search": "<keyword in Uzbek or Russian>", "color": "<optional>" },
-    { "slot": "bottom", "search": "<keyword>" },
-    ...
-  ]
+/** Model tanlovi: javob matni va ro'yxatdagi raqamlar (1 dan boshlanadi). */
+export interface StylistChoice {
+  answer: string;
+  picks: number[];
 }
 
-Rules:
-- Always include at least one top and one bottom (or a dress → use slot "top").
-- Pick slots that fit the occasion (adding "feet" for most, "outer" for cold/formal).
-- "search" is one or two Uzbek/Russian words likely to appear in a product title
-  (e.g. "ko'ylak", "shim", "kurtka", "tufli", "krasovka", "jinsa", "kostyum",
-  "платье", "блузка"). NEVER brand names.
-- "answer" greets the user, names the occasion, and promises items below.
-- If the user asks something off-topic, still return the shape with a short
-  polite answer and an empty picks array.
+const STYLIST_SYSTEM_PROMPT = `
+You are the outfit stylist of LookSave, an Uzbek fashion marketplace.
+You receive the user's request and a numbered list of products that are in
+stock right now. Each line is: <number>. [<slot>] <title>.
+
+Pick 2 to 4 products FROM THIS LIST ONLY that best fit the request. Prefer
+different slots (one shoe, one bag, one cap...), best match first. Never
+invent products and never recommend anything that is not in the list.
+
+Return STRICT JSON (no prose, no markdown fences):
+{ "answer": "<text>", "picks": [<number>, ...] }
+
+Rules for "answer":
+- 1-2 short sentences in Uzbek Latin; if the user wrote in Russian or English,
+  answer in that language. Warm tone, no emoji.
+- Name only what you actually picked (e.g. "qora krossovka va kepka").
+- If nothing in the list really suits the occasion (e.g. formal clothes are
+  requested but only sneakers exist), say so honestly in one short clause and
+  offer the closest items.
+- If the request is not about clothing or style, reply briefly and politely
+  and return "picks": [].
 `.trim();
 
 interface ChatMessage {
@@ -99,20 +98,28 @@ export function isTextAiEnabled(): boolean {
 }
 
 /**
- * Stilist uchun GPT chaqiruvi.
+ * Stilist: mavjud mahsulotlar ro'yxatidan komplekt tanlatadi.
+ *
+ * `catalogLines` — tayyor qatorlar (`"[feet] Krasovka Open Walk"`), raqamni
+ * shu funksiya qo'yadi. Qaytgan `picks` — 1 dan boshlanuvchi raqamlar,
+ * faqat ro'yxat chegarasidagilari qoladi.
  *
  * ⚠️ XATOLAR YUQORIGA TASHLANADI, fallback chaqiruvchida.
  *
  * ⚠️ JSON MODE — `response_format: {type:"json_object"}`. Usiz model ba'zan
- * markdown kodo blok ichida qaytaradi va `JSON.parse` yiqiladi.
+ * markdown kod blok ichida qaytaradi va `JSON.parse` yiqiladi.
  */
-export async function generateStylistPlan(userPrompt: string): Promise<StylistPlan> {
+export async function chooseFromCatalog(
+  userPrompt: string,
+  catalogLines: string[],
+): Promise<StylistChoice> {
   const key = stylistApiKey();
   if (!key) throw new Error('OpenAI kaliti sozlanmagan');
 
+  const list = catalogLines.map((line, i) => `${i + 1}. ${line}`).join('\n');
   const messages: ChatMessage[] = [
     { role: 'system', content: STYLIST_SYSTEM_PROMPT },
-    { role: 'user', content: userPrompt },
+    { role: 'user', content: `Request: ${userPrompt}\n\nProducts:\n${list}` },
   ];
 
   let response: Response;
@@ -127,8 +134,8 @@ export async function generateStylistPlan(userPrompt: string): Promise<StylistPl
         model: env().OPENAI_TEXT_MODEL,
         messages,
         response_format: { type: 'json_object' },
-        temperature: 0.4,
-        max_tokens: 400,
+        temperature: 0.5,
+        max_tokens: 300,
       }),
       signal: AbortSignal.timeout(CHAT_TIMEOUT_MS),
     });
@@ -153,23 +160,18 @@ export async function generateStylistPlan(userPrompt: string): Promise<StylistPl
   const content = body.choices?.[0]?.message?.content;
   if (!content) throw new Error('OpenAI bo`sh javob qaytardi');
 
-  const parsed = parsePlan(content);
+  const parsed = parseChoice(content, catalogLines.length);
   if (!parsed) throw new Error('OpenAI javobi sxemaga mos emas');
 
   return parsed;
 }
 
-const VALID_SLOTS = new Set<StylistPick['slot']>([
-  'top',
-  'bottom',
-  'outer',
-  'feet',
-  'bag',
-  'head',
-  'neck',
-]);
-
-function parsePlan(raw: string): StylistPlan | null {
+/**
+ * Model javobini tekshiradi. `answer` bo'sh bo'lsa — yaroqsiz (null).
+ * `picks` dan faqat 1..count oralig'idagi butun sonlar qoladi, takrorsiz,
+ * ko'pi bilan 6 ta. Raqam matn ko'rinishida kelsa ham («3») qabul qilinadi.
+ */
+export function parseChoice(raw: string, count: number): StylistChoice | null {
   let obj: unknown;
   try {
     obj = JSON.parse(raw);
@@ -184,19 +186,12 @@ function parsePlan(raw: string): StylistPlan | null {
   if (!answer) return null;
 
   const picksRaw = Array.isArray(data['picks']) ? (data['picks'] as unknown[]) : [];
-  const picks: StylistPick[] = [];
+  const picks: number[] = [];
   for (const p of picksRaw) {
-    if (!p || typeof p !== 'object') continue;
-    const item = p as Record<string, unknown>;
-    const slot = item['slot'];
-    if (typeof slot !== 'string' || !VALID_SLOTS.has(slot as StylistPick['slot'])) continue;
-
-    picks.push({
-      slot: slot as StylistPick['slot'],
-      search: typeof item['search'] === 'string' ? item['search'].trim() : undefined,
-      color: typeof item['color'] === 'string' ? item['color'].trim() : undefined,
-    });
-
+    const n = typeof p === 'number' ? p : typeof p === 'string' ? Number(p.trim()) : NaN;
+    if (!Number.isInteger(n) || n < 1 || n > count) continue;
+    if (picks.includes(n)) continue;
+    picks.push(n);
     if (picks.length >= 6) break;
   }
 
