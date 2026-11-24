@@ -2,6 +2,7 @@ import { AI_TRYON_SLOTS, supportsAiTryon, type ProductsQuery } from '@looksave/v
 
 import { pool } from '../db/pool';
 import { decodeCursor } from './cursor';
+import { expandSearchQuery } from './uz-synonyms';
 
 export interface ProductListRow {
   id: string;
@@ -156,19 +157,23 @@ export async function findProducts(query: ProductsQuery): Promise<ProductListRow
   }
 
   if (query.q !== undefined) {
-    // To'liq matnli qidiruv + trigram.
+    // To'liq matnli qidiruv + trigram + o'zbek sinonim lug'ati.
     //
     // `<%` (word_similarity) ishlatiladi, `%` (similarity) EMAS: `%` butun
     // sarlavhani so'rov bilan solishtiradi, shuning uchun uzun sarlavha
     // qisqa so'rovga hech qachon mos kelmaydi ("nike" vs "Nike Air Max 90"
     // similarity = 0.05). `<%` esa eng mos so'zni topadi (0.75+).
     //
-    // ⚠️ Bu XATO YOZILISHNI tuzatadi ("nikee", "futbolk"), transliteratsiyani
-    // emas ("nayk" → "Nike" ishlamaydi — buning uchun sinonim lug'ati kerak).
-    const qIndex = add(query.q);
-    conditions.push(
-      `(p.search_vec @@ plainto_tsquery('simple', $${qIndex}) OR $${qIndex} <% p.title)`,
+    // Sinonim kengaytirish asl so'rovdan variantlar yasaydi («qovun ro'mol»
+    // → «sariq ro'mol», «orange ro'mol»), har biriga alohida tsquery qo'yiladi
+    // va OR bilan birlashtiriladi. Sinonim topilmasa variantlar massivida
+    // faqat asl so'rov bo'ladi va yurish-turish eski kabi qoladi.
+    const variants = expandSearchQuery(query.q);
+    const origIndex = add(query.q);
+    const tsClauses = variants.map(
+      (variant) => `p.search_vec @@ plainto_tsquery('simple', $${add(variant)})`,
     );
+    conditions.push(`(${tsClauses.join(' OR ')} OR $${origIndex} <% p.title)`);
   }
 
   const plan = sortPlan(query.sort);
