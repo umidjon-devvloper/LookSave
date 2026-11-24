@@ -25,20 +25,25 @@ function fmtTime(iso: string): string {
 
 export function StoreStatusPill({ isOpen, closesAt, opensAt, compact }: Props): JSX.Element {
   const t = useI18n((s) => s.t);
-  const openLabel = (t as any).store?.openNow ?? (isOpen ? 'Ochiq' : 'Yopiq');
-  const closedLabel = (t as any).store?.closedNow ?? 'Yopiq';
-
+  // Matn lug'atdan (`t.stores`). Ilgari bu yerda mavjud bo'lmagan
+  // `t.store.openNow` kaliti o'qilardi va har doim o'zbekcha «Ochiq»/«Yopiq»
+  // chiqardi — ingliz tilida ham.
   const tone = isOpen ? colors.success : colors.textMuted;
   const bg = isOpen ? 'rgba(22,166,106,0.12)' : 'rgba(21,19,30,0.06)';
 
-  const label = isOpen ? openLabel : closedLabel;
-  const extra = isOpen && closesAt ? ` · ${fmtTime(closesAt)}` : !isOpen && opensAt ? ` · ${fmtTime(opensAt)}` : '';
+  const short = isOpen ? t.stores.open : t.stores.closed;
+  const full =
+    isOpen && closesAt
+      ? t.stores.openUntil.replace('{time}', fmtTime(closesAt))
+      : !isOpen && opensAt
+        ? t.stores.closedOpensAt.replace('{time}', fmtTime(opensAt))
+        : short;
 
   return (
     <View style={[styles.pill, { backgroundColor: bg }, compact && styles.compact]}>
       <View style={[styles.dot, { backgroundColor: tone }]} />
       <Text style={[styles.text, { color: tone }, compact && styles.textCompact]} numberOfLines={1}>
-        {compact ? (isOpen ? openLabel : closedLabel) : label + extra}
+        {compact ? short : full}
       </Text>
     </View>
   );

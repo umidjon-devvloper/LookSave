@@ -315,13 +315,9 @@ export default function Home(): JSX.Element {
                   <Icon name="location" size={18} color={colors.primary} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.locBannerTitle}>
-                      {permission === 'denied'
-                        ? 'Joylashuv o`chiq — Toshkent ko`rsatilmoqda'
-                        : 'Joylashuvni yoqing'}
+                      {permission === 'denied' ? t.home.locationDenied : t.home.locationEnable}
                     </Text>
-                    <Text style={styles.locBannerSub}>
-                      Eng yaqin do`konlarni ko`rish uchun ruxsat bering
-                    </Text>
+                    <Text style={styles.locBannerSub}>{t.home.locationHint}</Text>
                   </View>
                   <Icon name="next" size={16} color={colors.primary} />
                 </Pressable>
@@ -331,7 +327,7 @@ export default function Home(): JSX.Element {
                 <View style={styles.section}>
                   <SectionHeader
                     icon="stores"
-                    title="Sizga eng yaqin do'konlar"
+                    title={t.home.nearestStores}
                     actionLabel={t.home.viewAll}
                     onAction={() => router.push('/market/stores')}
                   />
@@ -344,7 +340,7 @@ export default function Home(): JSX.Element {
               ) : null}
 
               <View style={styles.section}>
-                <SectionHeader title="Yangi funksiyalar" />
+                <SectionHeader title={t.home.newFeatures} />
                 <FeaturesRow />
               </View>
 

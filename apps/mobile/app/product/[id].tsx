@@ -176,15 +176,13 @@ export default function Product(): JSX.Element {
   const canTryOn = supportsAiTryon(data.slot) && Boolean(data.images[0]);
 
   /*
-   * ⚠️ «100% original» QATORI ATAYLAB YO'Q (2026-11-19, egasining qarori).
-   * Ilova mahsulotning asl ekanini tekshirmaydi — e'lonni sotuvchi yozadi,
-   * shuning uchun bu da'vo har mahsulot sahifasida turishi noto'g'ri edi.
+   * ⚠️ KAFOLAT QATORI ATAYLAB YO'Q (egasining qarori). Ilgari bu yerda
+   * «100% original» (2026-11-19 da olingan), «7 kun ichida qaytarish — to'liq
+   * pul qaytariladi» va «Tez yetkazib berish — Toshkent 1–2 kun» turardi
+   * (2026-11-24 da olingan). Ilova bularni kafolatlamaydi: yetkazish va
+   * qaytarishni har do'kon o'zi hal qiladi, asl ekanini ham ilova tekshirmaydi.
    * Qaytarib qo'shmang.
    */
-  const trust: Array<{ icon: IconName; label: string; hint: string }> = [
-    { icon: 'reset', label: t.product.trustReturn, hint: t.product.trustReturnHint },
-    { icon: 'delivery', label: t.product.trustDelivery, hint: t.product.trustDeliveryHint },
-  ];
 
   // Slot serverdan texnik nom bilan keladi («top») — foydalanuvchiga tarjimasi ko'rsatiladi
   const slotKey = data.slot ? SLOT_LABEL[data.slot] : undefined;
@@ -493,20 +491,6 @@ export default function Product(): JSX.Element {
               <Icon name="chat" size={20} color={colors.text} />
             </Pressable>
           </View>
-
-          {/* Trust — Atelier: hairline ustida tipografik qator */}
-          <View style={styles.rule} />
-          <View style={styles.trust}>
-            {trust.map((item) => (
-              <View key={item.label} style={styles.trustItem}>
-                <Icon name={item.icon} size={16} color={colors.primary} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.trustText}>{item.label}</Text>
-                  <Text style={styles.trustHint}>{item.hint}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
         </View>
       </ScrollView>
 
@@ -718,16 +702,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  trust: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-    marginTop: spacing.xs,
-  },
-  trustItem: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
-  trustText: { ...text.eyebrow, color: colors.text },
-  trustHint: { ...text.tiny, color: colors.textMuted, marginTop: 2 },
 
   // ── Zoom modal ──
   zoomBackdrop: {

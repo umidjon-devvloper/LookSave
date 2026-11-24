@@ -1,6 +1,7 @@
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { useI18n, type Dictionary } from '../../i18n';
 import { Icon, type IconName } from '../Icon';
 import { colors, spacing } from '../../theme/tokens';
 
@@ -16,10 +17,11 @@ import { colors, spacing } from '../../theme/tokens';
 interface Feature {
   key: string;
   icon: IconName;
-  label: string;
+  /** Matn lug'atdan (`t.home.*`) — ilgari o'zbekcha qattiq yozilgan edi */
+  label: keyof Dictionary['home'];
   accent: string;
   tint: string;
-  href: string;
+  href: Href;
 }
 
 /*
@@ -30,11 +32,12 @@ interface Feature {
  * qatorini qo'shish yetadi. So'ramasdan qaytarma.
  */
 const FEATURES: Feature[] = [
-  { key: 'stylist',   icon: 'stylist',       label: 'AI stilist',  accent: '#6E2CD5', tint: '#F3EEFE', href: '/stylist' },
+  { key: 'stylist',   icon: 'stylist',       label: 'featureStylist', accent: '#6E2CD5', tint: '#F3EEFE', href: '/stylist' },
 ];
 
 export function FeaturesRow(): JSX.Element {
   const router = useRouter();
+  const t = useI18n((state) => state.t);
 
   return (
     <ScrollView
@@ -46,14 +49,14 @@ export function FeaturesRow(): JSX.Element {
         <Pressable
           key={f.key}
           style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
-          onPress={() => router.push(f.href as any)}
+          onPress={() => router.push(f.href)}
           accessibilityRole="button"
-          accessibilityLabel={f.label}
+          accessibilityLabel={t.home[f.label]}
         >
           <View style={[styles.square, { backgroundColor: f.tint }]}>
             <Icon name={f.icon} size={26} color={f.accent} />
           </View>
-          <Text style={styles.label} numberOfLines={1}>{f.label}</Text>
+          <Text style={styles.label} numberOfLines={1}>{t.home[f.label]}</Text>
         </Pressable>
       ))}
     </ScrollView>
