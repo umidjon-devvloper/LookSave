@@ -24,9 +24,11 @@ CREATE TABLE group_tryon_sessions (
 CREATE INDEX group_tryon_sessions_creator_idx
   ON group_tryon_sessions (creator_user_id, created_at DESC);
 
+-- ⚠️ ODDIY INDEKS, shartsiz. `WHERE expires_at > now()` yozib bo'lmaydi:
+-- `now()` IMMUTABLE emas va Postgres «functions in index predicate must be
+-- marked IMMUTABLE» bilan butun migratsiyani rad etadi.
 CREATE INDEX group_tryon_sessions_expires_idx
-  ON group_tryon_sessions (expires_at)
-  WHERE expires_at > now();
+  ON group_tryon_sessions (expires_at);
 
 -- ============================================================
 -- OVOZLAR
